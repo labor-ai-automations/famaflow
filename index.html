@@ -1150,6 +1150,7 @@
         let currentMenu = null;
         let currentEditingRequest = null;
         let selectedParticipants = [];
+        let currentActiveRoutineId = null;
         
         // Task: Fix Panzoom Globals
         let isPanning = false;
@@ -4979,11 +4980,15 @@ const numParticipants = updatedData.num_participantes || 1;
                 if (!response.ok) throw new Error('Falha ao criar rotina.');
                 showToast('Rotina criada com sucesso!', 'success');
                 document.getElementById('new-routine-modal').classList.remove('visible');
-                loadManageRoutinesPage(); 
+                await loadManageRoutinesPage();
+                // Auto-seleciona a primeira rotina da lista após criar
+                const primeiroItem = document.querySelector('#routines-list-col1 .routines-list-item');
+                if (primeiroItem) primeiroItem.click(); 
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
 
         async function selectRoutine(routineId, element) {
+            currentActiveRoutineId = routineId;
             document.querySelectorAll('#routines-list-col1 .routines-list-item').forEach(item => item.classList.remove('active'));
             element.classList.add('active');
 
@@ -5301,7 +5306,8 @@ const numParticipants = updatedData.num_participantes || 1;
                 if (!response.ok) throw new Error('Falha ao adicionar tarefa.');
                 showToast('Tarefa adicionada!', 'success');
                 document.getElementById('new-task-modal').classList.remove('visible');
-                selectRoutine(routineId, document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`));
+                const elTask = document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`);
+                if (elTask) await selectRoutine(routineId, elTask);
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
 
@@ -5341,11 +5347,9 @@ const numParticipants = updatedData.num_participantes || 1;
 
                 showToast('Atribuições salvas!', 'success');
                 document.getElementById('assign-users-modal').classList.remove('visible');
-                
-                const activeRoutineElement = document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`);
-                if (activeRoutineElement) {
-                    await selectRoutine(routineId, activeRoutineElement);
-                }
+
+                const elAssign = document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`);
+                if (elAssign) await selectRoutine(routineId, elAssign);
                 
             } catch (e) { 
                 showToast(e.message, 'danger'); 
