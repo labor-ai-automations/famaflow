@@ -1121,8 +1121,12 @@
         let selectedAssignmentDates = [];
         let routineCurrentDate = new Date();
         let currentMenu = null;
-        let currentEditingRequest = null; // <- NOVA VARIÁVEL GLOBAL
+        let currentEditingRequest = null;
         let selectedParticipants = [];
+        
+        // Task: Fix Panzoom Globals
+        let isPanning = false;
+        let startPanX, startPanY, scrollLeftStart, scrollTopStart;
 
 
         const root = document.getElementById('root');
@@ -4401,7 +4405,8 @@ async function syncUserPermissions(userId) {
 
                 const voosHTML = (reqData.analise_viagem?.melhores_voos || []).length > 0
                     ? (reqData.analise_viagem.melhores_voos).map(voo => {
-                        const isSelecionado = isApproved && reqData.approved_flight_link && voo.link === reqData.approved_flight_link;
+                        const linkAprovado = reqData.approved_flight_link || "";
+const isSelecionado = isApproved && linkAprovado !== "" && voo.link === linkAprovado;
                         return `
                         <div class="${isSelecionado ? 'voo-selecionado' : ''}" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding: 6px 0;">
                             <div>
