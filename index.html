@@ -66,6 +66,28 @@
 .calc-info:hover { color: var(--color-brand-primary); }
 .voo-selecionado { background-color: var(--color-success-bg); border-left: 3px solid var(--color-success); padding: 6px 8px !important; margin: 4px -8px; border-radius: 4px; }
 
+        /* Estilos para o Modal de Briefing */
+        #briefing-modal .modal-content { max-width: 550px; text-align: center; padding: 0; overflow: hidden; background: var(--color-surface); border-radius: 12px; box-shadow: var(--shadow); }
+        .briefing-header { background: var(--color-brand-primary); color: white; padding: 1.5rem; text-align: center; border-top-left-radius: 12px; border-top-right-radius: 12px; }
+        .briefing-header h2 { margin: 0 0 0.5rem 0; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; gap: 0.75rem; }
+        .briefing-header p { margin: 0; font-size: 0.9rem; opacity: 0.8; }
+        .briefing-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .briefing-card { display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px; background: var(--color-background); border: 1px solid var(--color-border); text-align: left; transition: all 0.2s; cursor: pointer; }
+        .briefing-card:hover { filter: brightness(0.95); }
+        .briefing-card .material-icons { font-size: 28px; flex-shrink: 0; }
+        .briefing-card.critical { border-left: 4px solid var(--color-danger); background-color: var(--color-danger-bg); color: var(--color-danger); }
+        .briefing-card.critical .material-icons { color: var(--color-danger); }
+        .briefing-card.warning { border-left: 4px solid var(--color-warning); background-color: var(--color-warning-bg); color: var(--color-warning); }
+        .briefing-card.warning .material-icons { color: var(--color-warning); }
+        .briefing-card.info { border-left: 4px solid var(--color-info); background-color: var(--color-info-bg); color: var(--color-info); }
+        .briefing-card.info .material-icons { color: var(--color-info); }
+        .briefing-card.success { border-left: 4px solid var(--color-success); background-color: var(--color-success-bg); color: var(--color-success); }
+        .briefing-card.success .material-icons { color: var(--color-success); }
+        .briefing-card h4 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .briefing-card p { margin: 0; font-size: 0.9rem; }
+        .progress-bar-briefing-container { width: 100%; background-color: rgba(255,255,255,0.2); border-radius: 50px; height: 8px; margin-top: 0.75rem; overflow: hidden; }
+        .progress-bar-briefing { height: 100%; width: 0%; background-color: white; border-radius: 50px; transition: width 0.5s ease-out; }
+
         /* --- PAINEL DE CONTROLE DIÁRIO --- */
         .briefing-progress-bar-wrapper { width: 100%; background: var(--color-border); border-radius: 8px; height: 8px; margin-bottom: 1.5rem; overflow: hidden; }
         .briefing-progress-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--color-success), #34d399); transition: width 0.6s ease-out; }
@@ -945,6 +967,11 @@
         </div>
     </div>
 
+    <!-- BRIEFING MODAL -->
+    <div id="briefing-modal" class="modal-overlay">
+        <div class="modal-content"></div>
+    </div>
+
     <!-- LIGHTBOX FOR IMAGES (NEW) -->
     <div id="lightbox-overlay" onclick="closeLightbox()">
         <span id="lightbox-close" onclick="closeLightbox()">&times;</span>
@@ -1532,7 +1559,7 @@
             }
         }
 
-        async function handleLogin(e) { e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) { showToast('Erro no login: ' + error.message, 'danger'); } else if (data.user) { await fetchUserProfile(data.user); await showWelcomeNotification(); renderAppLayout(); } }
+        async function handleLogin(e) { e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) { showToast('Erro no login: ' + error.message, 'danger'); } else if (data.user) { await fetchUserProfile(data.user); await displayUserBriefing(); renderAppLayout(); } }
         async function handleLogout() { await supabaseClient.auth.signOut(); currentUserProfile = null; allUsers = []; renderAuthLayout(); }
         
         async function fetchUserProfile(user) {
@@ -1545,7 +1572,7 @@
             const appContainer = document.getElementById('app-container'); if (!appContainer) return;
             appContainer.classList.add('visible'); 
 
-            checkNotificationTriggers(); // <-- CHAMA A CENTRAL DE ALERTAS 
+            displayUserBriefing(); // <-- CHAMA O NOVO BRIEFING 
 
             const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
             if (permissionsError) {
@@ -5385,6 +5412,122 @@ const numParticipants = updatedData.num_participantes || 1;
             if (now.getHours() >= 17 && lastEveningAlert !== today) {
                  showToast(`Última chamada! Verifique se há pendências antes de encerrar o dia.`, 'info');
                  localStorage.setItem('lastEveningAlert', today);
+            }
+        }
+
+        function closeBriefingModal() {
+            document.getElementById('briefing-modal')?.classList.remove('visible');
+        }
+
+        async function displayUserBriefing() {
+            const modal = document.getElementById('briefing-modal');
+            const modalContent = modal.querySelector('.modal-content');
+            if (!modal || !modalContent) return;
+
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentHour = now.getHours();
+
+            if (modal.classList.contains('visible')) return;
+
+            const lastSessionDate = sessionStorage.getItem('lastSessionDate');
+            if (lastSessionDate !== today) {
+                sessionStorage.clear();
+                sessionStorage.setItem('lastSessionDate', today);
+            }
+
+            const welcomeShown = sessionStorage.getItem('welcomeShown');
+
+            if (!welcomeShown) {
+                const [summaryRes, statsRes] = await Promise.all([
+                    supabaseClient.rpc('get_user_tasks_summary'),
+                    supabaseClient.rpc('get_dashboard_stats').single()
+                ]);
+
+                if (summaryRes.error || statsRes.error) {
+                    console.error('Erro ao buscar dados para briefing:', summaryRes.error || statsRes.error);
+                    showToast('Erro ao carregar seu briefing diário.', 'danger');
+                    return;
+                }
+
+                const summary = summaryRes.data || {};
+                const stats = statsRes.data || {};
+
+                const pendingMessages = stats.pending_messages_count || 0;
+                const openTickets = stats.urgent_tickets_count || 0;
+                const totalTasksToday = summary.today || 0;
+                const concludedTasksToday = 0;
+
+                let briefingBodyHTML = '';
+
+                if (summary.overdue > 0) {
+                    briefingBodyHTML += `
+                        <div class="briefing-card critical" onclick="showPage('my-routines-page'); closeBriefingModal()">
+                            <span class="material-icons">priority_high</span>
+                            <div class="briefing-info"><h4>CRÍTICO!</h4><p>Você tem <strong>${summary.overdue}</strong> pendência(s) em atraso!</p></div>
+                        </div>`;
+                } else {
+                    briefingBodyHTML += `
+                        <div class="briefing-card success">
+                            <span class="material-icons">check_circle</span>
+                            <div class="briefing-info"><h4>TUDO EM DIA!</h4><p>Você não possui atrasos no momento.</p></div>
+                        </div>`;
+                }
+
+                const isLateForToday = currentHour >= 16;
+                if (totalTasksToday > 0 && !isLateForToday) {
+                    briefingBodyHTML += `
+                        <div class="briefing-card warning" onclick="showPage('my-routines-page'); closeBriefingModal()">
+                            <span class="material-icons">today</span>
+                            <div class="briefing-info">
+                                <h4>TAREFAS PARA HOJE</h4>
+                                <p>Você tem <strong>${totalTasksToday}</strong> tarefa(s) para finalizar.</p>
+                                ${summary.next_task_title ? `<p style="font-size:0.8rem; margin-top:5px;">Próxima: ${summary.next_task_title} ${summary.next_task_time ? `às ${summary.next_task_time.substring(0,5)}` : ''}</p>` : ''}
+                            </div>
+                        </div>`;
+                } else if (summary.tomorrow > 0 && isLateForToday) {
+                    briefingBodyHTML += `
+                        <div class="briefing-card info" onclick="showPage('my-routines-page'); closeBriefingModal()">
+                            <span class="material-icons">event_note</span>
+                            <div class="briefing-info"><h4>AMANHÃ</h4><p>Você tem <strong>${summary.tomorrow}</strong> tarefa(s) agendada(s).</p></div>
+                        </div>`;
+                } else if (totalTasksToday === 0 && summary.tomorrow === 0 && !isLateForToday) {
+                    briefingBodyHTML += `
+                        <div class="briefing-card success">
+                            <span class="material-icons">task_alt</span>
+                            <div class="briefing-info"><h4>AGENDA LIMPA!</h4><p>Você não tem tarefas para hoje ou amanhã.</p></div>
+                        </div>`;
+                }
+
+                if (pendingMessages > 0 || openTickets > 0) {
+                    briefingBodyHTML += `
+                        <div class="briefing-card info" onclick="showPage('messages-page'); closeBriefingModal()">
+                            <span class="material-icons">email</span>
+                            <div class="briefing-info">
+                                <h4>MENSAGENS & CHAMADOS</h4>
+                                <p>${pendingMessages > 0 ? `<strong>${pendingMessages}</strong> mensagens ` : ''}${openTickets > 0 ? `e <strong>${openTickets}</strong> chamados ` : ''}aguardam você.</p>
+                            </div>
+                        </div>`;
+                }
+
+                modalContent.innerHTML = `
+                    <div class="briefing-header">
+                        <h2><span class="material-icons">waving_hand</span> Fala, ${currentUserProfile.full_name.split(' ')[0]}!</h2>
+                        <p>${now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                        <div class="progress-bar-briefing-container">
+                            <div class="progress-bar-briefing" style="width: ${totalTasksToday > 0 ? ((concludedTasksToday / totalTasksToday) * 100) : 100}%;"></div>
+                        </div>
+                        <p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">${concludedTasksToday}/${totalTasksToday} concluídas hoje</p>
+                    </div>
+                    <div class="briefing-body">
+                        ${briefingBodyHTML}
+                        <button class="btn btn-danger" onclick="closeBriefingModal()" style="width: 100%; padding: 1rem; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <span class="material-icons" style="font-size: 1.2rem;">rocket_launch</span> VAMOS EXECUTAR!
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('visible');
+                sessionStorage.setItem('welcomeShown', 'true');
             }
         }
 
