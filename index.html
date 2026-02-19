@@ -4796,6 +4796,8 @@ const numParticipants = updatedData.num_participantes || 1;
                 return;
             }
 
+            console.log('Dados recebidos para Minhas Rotinas:', tasks); // ADICIONE ESTA LINHA
+
             if (tasks.length === 0) {
                 tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa atribuída a você para este dia.</div>`;
                 return;
