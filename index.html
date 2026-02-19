@@ -5495,7 +5495,7 @@ const numParticipants = updatedData.num_participantes || 1;
                     briefingBodyHTML += `
                         <div class="briefing-card success">
                             <span class="material-icons">task_alt</span>
-                            <div class="briefing-info"><h4>AGENDA LIMPA!</h4><p>Você não tem tarefas para hoje ou amanhã.</p></div>
+                            <div class="briefing-info"><h4>AGENDA LIMPA!</h4><p>Nenhuma rotina atribuída a você por enquanto. Aproveite!</p></div>
                         </div>`;
                 }
 
@@ -5517,7 +5517,7 @@ const numParticipants = updatedData.num_participantes || 1;
                         <div class="progress-bar-briefing-container">
                             <div class="progress-bar-briefing" style="width: ${totalTasksToday > 0 ? ((concludedTasksToday / totalTasksToday) * 100) : 100}%;"></div>
                         </div>
-                        <p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">${concludedTasksToday}/${totalTasksToday} concluídas hoje</p>
+                        ${totalTasksToday > 0 ? `<p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">${concludedTasksToday}/${totalTasksToday} concluídas hoje</p>` : `<p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">Sem tarefas agendadas por enquanto</p>`}
                     </div>
                     <div class="briefing-body">
                         ${briefingBodyHTML}
