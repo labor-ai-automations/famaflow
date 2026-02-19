@@ -1575,14 +1575,16 @@
                 let menuHTML = '';
                 const permissions = currentUserProfile.permissions;
 
-                if (permissions.includes('manage_users') || permissions.includes('manage_requests') || permissions.includes('manage_routines')) {
-                    
+if (permissions.includes('manage_users') || permissions.includes('manage_requests') || permissions.includes('manage_routines') || permissions.includes('manage_travel')) {
+                
                     if (permissions.includes('manage_users')) {
                         menuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
                         menuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
                     }
                     if (permissions.includes('manage_requests')) {
                         menuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
+                    }
+                    if (permissions.includes('manage_travel') || permissions.includes('manage_requests')) {
                         menuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
                     }
                     if (permissions.includes('manage_routines')) {
@@ -4376,7 +4378,7 @@ async function syncUserPermissions(userId) {
 
                 // 3. CONTEÚDO DAS ABAS
                 const canApprove = currentUserProfile.permissions &&
-                                   currentUserProfile.permissions.includes('manage_requests');
+                                   (currentUserProfile.permissions.includes('manage_travel') || currentUserProfile.permissions.includes('manage_requests'));
 
                 const tabCarroHTML = `
                     <div class="card" style="border-left: 4px solid var(--color-brand-primary); margin: 0;">
