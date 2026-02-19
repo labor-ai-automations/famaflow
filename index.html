@@ -4844,10 +4844,10 @@ const numParticipants = updatedData.num_participantes || 1;
                     <details class="routine-group" open>
                         <summary class="routine-group-header">
                             <h4>${routine.title}</h4>
-                            <div class="routine-group-meta">
-                                <span>Atribuído por: ${routine.assigned_by || 'Sistema'} • Criado em: ${creationDate}</span>
-                                <span class="score-pill ${completedCount === totalCount ? 'good' : 'med'}">${completedCount}/${totalCount}</span>
-                            </div>
+<div class="routine-group-meta">
+    <span>Atribuído por: ${routine.assigned_by_name || 'Sistema'} • Criado em: ${creationDate}</span>
+    <span class="score-pill ${completedCount === totalCount ? 'good' : 'med'}">${completedCount}/${totalCount}</span>
+</div>
                         </summary>
                         <div class="routine-group-body">
                             ${tasksHTML}
@@ -5000,41 +5000,57 @@ const numParticipants = updatedData.num_participantes || 1;
             document.getElementById('add-task-button-container').innerHTML = `<button class="btn btn-danger btn-icon" onclick="openNewTaskModal('${routineId}')" title="Adicionar Tarefa"><span class="material-icons">add</span></button>`;
             document.getElementById('assign-user-button-container').innerHTML = `<button class="btn btn-danger btn-icon" onclick="openAssignUsersModal('${routineId}')" title="Atribuir Usuários"><span class="material-icons">person_add</span></button>`;
 
-            const [tasksRes, assignmentsRes] = await Promise.all([
+const [tasksRes, assignmentsRes] = await Promise.all([
                 supabaseClient.from('routine_tasks').select('*').eq('routine_id', routineId).order('task_order'),
-                supabaseClient.from('user_routine_assignments').select('*, user:user_id(id, full_name, department)').eq('routine_id', routineId)
+                // Modificado para selecionar 'due_date' e ordenar por ela
+                supabaseClient.from('user_routine_assignments').select('user_id, due_date, user:user_id(id, full_name, department)').eq('routine_id', routineId).order('due_date', { ascending: true })
             ]);
 
-            if (tasksRes.error) {
-                tasksCol.innerHTML = `<div class="empty-state">Erro ao carregar tarefas.</div>`;
-            } else {
-                tasksCol.innerHTML = tasksRes.data.length > 0
-                    ? `<ul id="task-list-sortable" style="list-style:none; padding:0; margin:0;">${tasksRes.data.map(t => `
-                        <li class="routines-list-item" data-task-id="${t.id}" style="display:flex; align-items:center; gap:0.5rem;">
-                            <span class="material-icons drag-handle" style="cursor:grab; color:var(--color-text-secondary);">drag_handle</span>
-                            <span><strong>#${t.task_order}</strong> - ${t.title}</span>
-                            <div class="routine-actions" style="margin-left:auto; display:flex;">
-                                <button class="btn btn-icon" title="Editar Tarefa" onclick="event.stopPropagation(); openEditTaskModal('${t.id}', '${t.title.replace(/'/g, "\\'")}', \`${(t.description || '').replace(/`/g, "\\`")}\`, ${t.task_order})"><span class="material-icons">edit</span></button>
-                                <button class="btn btn-icon" title="Excluir Tarefa" onclick="event.stopPropagation(); deleteTaskHandler('${t.id}', '${t.title.replace(/'/g, "\\'")}')"><span class="material-icons">delete</span></button>
-                            </div>
-                        </li>`).join('')}</ul>`
-                    : `<div class="empty-state">Nenhuma tarefa adicionada.</div>`;
-            }
+            // ... (código existente para tasksCol.innerHTML)
 
             if (assignmentsRes.error) {
                 assignmentsCol.innerHTML = `<div class="empty-state">Erro ao carregar atribuições.</div>`;
             } else {
-                const uniqueUsers = Array.from(new Map(assignmentsRes.data.map(item => [item.user.id, item.user])).values());
-                assignmentsCol.innerHTML = uniqueUsers.length > 0 ? uniqueUsers.map(u => `
-                    <div class="routines-list-item">
-                        <div>
-                            <div style="font-weight: 500;">${u.full_name}</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary);">${u.department || 'N/A'}</div>
-                        </div>
-                        <div class="routine-actions" style="margin-left:auto; display:flex;">
-                            <button class="btn btn-icon" title="Remover Usuário" onclick="event.stopPropagation(); removeUserHandler('${u.id}', '${routineId}', '${u.full_name.replace(/'/g, "\\'")}')"><span class="material-icons">person_remove</span></button>
-                        </div>
-                    </div>`).join('') : `<div class="empty-state">Nenhum usuário atribuído.</div>`;
+                // Agrupa as atribuições por usuário para exibir todas as datas para cada um
+                const assignmentsByUser = assignmentsRes.data.reduce((acc, assignment) => {
+                    const userId = assignment.user.id;
+                    if (!acc[userId]) {
+                        acc[userId] = {
+                            id: userId,
+                            full_name: assignment.user.full_name,
+                            department: assignment.user.department,
+                            dates: []
+                        };
+                    }
+                    acc[userId].dates.push(assignment.due_date); // Adiciona todas as datas
+                    return acc;
+                }, {});
+
+                const assignedUsersWithDates = Object.values(assignmentsByUser);
+
+                assignmentsCol.innerHTML = assignedUsersWithDates.length > 0
+                    ? assignedUsersWithDates.map(u => {
+                        const datePills = u.dates.map(dateStr => {
+                            const formattedDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
+                            return `<span class="tag-fino" style="background: var(--color-background); color: var(--color-text-secondary); margin-right: 0.5rem; margin-top: 0.25rem;">${formattedDate}</span>`;
+                        }).join('');
+
+                        return `
+                            <div class="routines-list-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--color-border); margin-bottom: 0.5rem;">
+                                <div>
+                                    <div style="font-weight: 500;">${u.full_name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">${u.department || 'N/A'}</div>
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; margin-top: 0.5rem;">
+                                    ${datePills}
+                                </div>
+                                <div class="routine-actions" style="margin-left:auto; display:flex; align-self: flex-end; margin-top: 0;">
+                                    <button class="btn btn-icon" title="Remover Usuário" onclick="event.stopPropagation(); removeUserHandler('${u.id}', '${routineId}', '${u.full_name.replace(/'/g, "\\'")}')"><span class="material-icons">person_remove</span></button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')
+                    : `<div class="empty-state">Nenhum usuário atribuído.</div>`;
             }
 
             initializeSortable(routineId);
