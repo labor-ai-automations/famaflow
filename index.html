@@ -5008,6 +5008,27 @@ const [tasksRes, assignmentsRes] = await Promise.all([
 
             // ... (código existente para tasksCol.innerHTML)
 
+            if (tasksRes.error) {
+                tasksCol.innerHTML = `<div class="empty-state">Erro ao carregar tarefas.</div>`;
+            } else {
+                tasksCol.innerHTML = tasksRes.data.length > 0
+                    ? `<ul id="task-list-sortable" style="list-style:none; padding:0; margin:0;">
+                        ${tasksRes.data.map(task => `
+                            <li data-task-id="${task.id}" style="display:flex; align-items:center; gap:0.5rem; padding:0.75rem 1rem; border-bottom:1px solid var(--color-border);">
+                                <span class="material-icons drag-handle" style="cursor:grab; color:var(--color-text-secondary); font-size:20px;">drag_indicator</span>
+                                <div style="flex-grow:1;">
+                                    <span style="font-weight:500;">${task.title}</span>
+                                    <span style="font-size:0.8rem; color:var(--color-text-secondary); margin-left:0.5rem;"><strong>#${task.task_order}</strong></span>
+                                    ${task.description ? `<div style="font-size:0.8rem; color:var(--color-text-secondary);">${task.description}</div>` : ''}
+                                </div>
+                                <button class="btn btn-icon" title="Editar" onclick="openEditTaskModal('${task.id}', \`${task.title.replace(/`/g,"\\`")}\`, \`${(task.description||'').replace(/`/g,"\\`")}\`, ${task.task_order})"><span class="material-icons">edit</span></button>
+                                <button class="btn btn-icon" title="Excluir" onclick="deleteTaskHandler('${task.id}', \`${task.title.replace(/`/g,"\\`")}\`)"><span class="material-icons">delete</span></button>
+                            </li>
+                        `).join('')}
+                       </ul>`
+                    : `<div class="empty-state">Nenhuma tarefa. Clique em + para adicionar.</div>`;
+            }
+
             if (assignmentsRes.error) {
                 assignmentsCol.innerHTML = `<div class="empty-state">Erro ao carregar atribuições.</div>`;
             } else {
