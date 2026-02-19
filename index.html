@@ -4874,11 +4874,12 @@ const numParticipants = updatedData.num_participantes || 1;
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`
                     },
-                    body: JSON.stringify({ 
+body: JSON.stringify({ 
                         action: action,
                         routine_task_id: routineTaskId,
                         task_instance_id: taskInstanceId,
-                        date: date
+                        date: date,
+                        user_id: currentUserProfile.id // ADICIONE ESTA LINHA
                     })
                 });
 
