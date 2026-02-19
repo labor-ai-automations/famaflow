@@ -5375,7 +5375,8 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                     body: JSON.stringify({ 
                         routine_id: routineId, 
                         user_ids: selectedUserIds,
-                        dates: selectedAssignmentDates
+                        dates: selectedAssignmentDates,
+                        assigned_by: currentUserProfile.id // ADICIONADO: Envia o ID do usuário logado
                     })
                 });
 
