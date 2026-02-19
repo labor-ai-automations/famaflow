@@ -4905,7 +4905,7 @@ const numParticipants = updatedData.num_participantes || 1;
                 </div>
             `;
 
-            const { data: routines, error } = await supabaseClient.from('routines').select('*').order('title');
+            const { data: routines, error } = await supabaseClient.rpc('get_manageable_routines');
             const listContainer = document.getElementById('routines-list-col1');
 
             if(error) {
