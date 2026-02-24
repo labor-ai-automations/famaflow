@@ -5245,6 +5245,7 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                 showToast('Tarefa atualizada!', 'success');
                 document.getElementById('edit-task-modal').classList.remove('visible');
                 if (currentActiveRoutineId) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     await selectRoutine(currentActiveRoutineId);
                 }
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
@@ -5265,6 +5266,7 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                         if (!response.ok) throw new Error('Falha ao excluir tarefa.');
                         showToast('Tarefa excluída com sucesso!', 'success');
                         if (currentActiveRoutineId) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
                             await selectRoutine(currentActiveRoutineId);
                         }
                     } catch (e) { showToast(e.message, 'danger'); }
@@ -5287,6 +5289,7 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                         if (!response.ok) throw new Error('Falha ao remover usuário.');
                         showToast('Usuário removido da rotina!', 'success');
                         if (currentActiveRoutineId) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
                             await selectRoutine(currentActiveRoutineId);
                         }
                     } catch (e) { showToast(e.message, 'danger'); }
@@ -5348,7 +5351,8 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                 if (!response.ok) throw new Error('Falha ao adicionar tarefa.');
 showToast('Tarefa adicionada!', 'success');
                 document.getElementById('new-task-modal').classList.remove('visible');
-                await selectRoutine(routineId); // Chama a atualização automática
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await selectRoutine(routineId);
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
 
@@ -5389,7 +5393,8 @@ showToast('Tarefa adicionada!', 'success');
 
                 showToast('Atribuições salvas!', 'success');
                 document.getElementById('assign-users-modal').classList.remove('visible');
-                await selectRoutine(routineId); // Chama a atualização automática
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await selectRoutine(routineId);
                 
             } catch (e) { 
                 showToast(e.message, 'danger'); 
