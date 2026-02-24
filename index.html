@@ -1901,18 +1901,25 @@ function toggleFullscreenOrg() {
 let currentZoom = 1.0;
 
 function zoomOrganograma(delta) {
+    const wrapper = document.querySelector('.org-tree-wrapper');
     const orgTree = document.querySelector('.org-tree');
-    if (!orgTree) {
-        console.error('Árvore do organograma não encontrada');
+    if (!orgTree || !wrapper) {
+        console.error('Elementos do organograma não encontrados');
         return;
     }
-    
+
+    const oldZoom = currentZoom;
     currentZoom += delta;
     currentZoom = Math.max(0.3, Math.min(currentZoom, 2.0));
-    
+
+    const baseWidth = orgTree.scrollWidth; 
+    const widthChange = baseWidth * currentZoom - baseWidth * oldZoom;
+
     orgTree.style.transform = `scale(${currentZoom})`;
     orgTree.style.transformOrigin = 'top center';
-    
+
+    wrapper.scrollLeft += widthChange / 2;
+
     const zoomLabel = document.getElementById('zoom-level');
     if (zoomLabel) {
         zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
