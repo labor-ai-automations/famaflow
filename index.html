@@ -1792,7 +1792,9 @@ async function loadOrganogramaPage(departmentFilter = '') {
             
             const name = node.name;
             const role = node.title || 'Colaborador';
-            const dept = node.department;
+            const dept = node.department || '';
+
+            const roleAndDeptText = [role, dept].filter(Boolean).join(' • ');
 
             let childrenHTML = '';
             if (node.children && node.children.length > 0) {
@@ -1805,7 +1807,7 @@ async function loadOrganogramaPage(departmentFilter = '') {
                 <li>
                     <div class="org-node" onclick="openOrgMenu(event, '${node.id}', '${node.name.replace(/'/g, "\\'")}')">
                         <h4>${name}</h4>
-                        <p>${role}</p>
+                        <p>${roleAndDeptText}</p>
                     </div>
                     ${childrenHTML}
                 </li>
