@@ -4949,7 +4949,7 @@ body: JSON.stringify({
             }
 
             listContainer.innerHTML = routines.map(r => `
-                <div class="routines-list-item" data-routine-id="${r.id}" onclick="selectRoutine('${r.id}', this)">
+                <div class="routines-list-item" data-routine-id="${r.id}" onclick="selectRoutine('${r.id}')">
                     <span>${r.title}</span>
                     <div class="routine-actions" style="margin-left:auto; display:flex;">
                         <button class="btn btn-icon" title="Editar Rotina" onclick="event.stopPropagation(); openEditRoutineModal('${r.id}', '${r.title.replace(/'/g, "\\'")}', \`${(r.description || '').replace(/`/g, "\\`")}\`)"><span class="material-icons">edit</span></button>
@@ -4990,10 +4990,15 @@ body: JSON.stringify({
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
 
-        async function selectRoutine(routineId, element) {
+        async function selectRoutine(routineId) { // O segundo parâmetro "element" foi removido
             currentActiveRoutineId = routineId;
             document.querySelectorAll('#routines-list-col1 .routines-list-item').forEach(item => item.classList.remove('active'));
-            element.classList.add('active');
+            
+            // A função agora encontra o elemento por si mesma
+            const element = document.querySelector(`#routines-list-col1 .routines-list-item[data-routine-id="${routineId}"]`);
+            if (element) {
+                element.classList.add('active');
+            }
 
             const tasksCol = document.getElementById('tasks-list-col2');
             const assignmentsCol = document.getElementById('assignments-list-col3');
@@ -5344,10 +5349,9 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                     body: JSON.stringify({ routine_id: routineId, title, description, task_order: parseInt(taskOrder) })
                 });
                 if (!response.ok) throw new Error('Falha ao adicionar tarefa.');
-                showToast('Tarefa adicionada!', 'success');
+showToast('Tarefa adicionada!', 'success');
                 document.getElementById('new-task-modal').classList.remove('visible');
-                const elTask = document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`);
-                if (elTask) await selectRoutine(routineId, elTask);
+                await selectRoutine(routineId); // Chama a atualização automática
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
 
@@ -5388,9 +5392,7 @@ const [tasksRes, assignmentsRes] = await Promise.all([
 
                 showToast('Atribuições salvas!', 'success');
                 document.getElementById('assign-users-modal').classList.remove('visible');
-
-                const elAssign = document.querySelector(`.routines-list-item[data-routine-id="${routineId}"]`);
-                if (elAssign) await selectRoutine(routineId, elAssign);
+                await selectRoutine(routineId); // Chama a atualização automática
                 
             } catch (e) { 
                 showToast(e.message, 'danger'); 
