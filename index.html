@@ -296,13 +296,12 @@
         /* --- ORGANOGRAMA STYLES (RESTAURADO) --- */
         .org-tree-wrapper {
             width: 100%;
-            overflow: auto;
-            padding: 2rem 0;
-            display: flex;
-            justify-content: center;
+            min-height: 600px;
+            overflow: hidden;
             background: var(--color-background);
             position: relative;
             cursor: grab;
+            user-select: none;
         }
         .org-tree-wrapper:active {
             cursor: grabbing;
@@ -317,6 +316,11 @@
         }
         .org-tree ul {
             padding-top: 20px;
+        }
+        .org-tree {
+            transform-origin: 0 0;
+            will-change: transform;
+            display: inline-flex;
         }
         .org-tree li {
             text-align: center;
@@ -815,10 +819,8 @@
         }
         body.fullscreen .org-tree-wrapper {
             min-height: 100vh;
-            padding: 2rem;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            height: 100vh;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -1722,6 +1724,8 @@ async function loadOrganogramaPage(departmentFilter = '') {
     
     // Reset zoom quando recarregar o organograma
     currentZoom = 1.0;
+    panX = 0;
+    panY = 0;
 
             container.innerHTML = `<div class="empty-state">Carregando organograma...</div>`;
 
@@ -1777,9 +1781,8 @@ async function loadOrganogramaPage(departmentFilter = '') {
                 container.innerHTML = treeHTML;
                 
                 setTimeout(() => {
-                    initOrganogramaZoomScroll();
-                    initOrganogramaPan();
-                }, 100);
+                    initOrgZoomPan();
+                }, 150);
 
             } catch (e) {
                 console.error('Erro ao carregar organograma:', e);
@@ -1873,128 +1876,108 @@ async function loadOrganogramaPage(departmentFilter = '') {
 function toggleFullscreenOrg() {
     const body = document.body;
     const isFullscreen = body.classList.toggle('fullscreen');
-    const expandButton = document.querySelector('.org-tree-wrapper > button.btn.btn-icon');
+    const expandButton = document.querySelector('#organograma-tree-container > button.btn.btn-icon');
     const icon = expandButton?.querySelector('.material-icons');
-    
+
     if (!expandButton || !icon) return;
-    
+
     if (isFullscreen) {
         icon.textContent = 'fullscreen_exit';
         expandButton.title = 'Sair da Tela Cheia';
     } else {
         icon.textContent = 'fullscreen';
         expandButton.title = 'Expandir Tela Cheia';
-        
-        // Resetar zoom ao sair do fullscreen
-        currentZoom = 1.0;
-        const orgTree = document.querySelector('.org-tree');
-        if (orgTree) {
-            orgTree.style.transform = 'scale(1)';
-        }
-        const zoomLabel = document.getElementById('zoom-level');
-        if (zoomLabel) {
-            zoomLabel.textContent = '100%';
-        }
+        setTimeout(() => resetZoomOrganograma(), 50);
     }
 }
 
 let currentZoom = 1.0;
+let panX = 0;
+let panY = 0;
 
-function zoomOrganograma(delta) {
-    const wrapper = document.querySelector('.org-tree-wrapper');
+function applyOrgTransform() {
     const orgTree = document.querySelector('.org-tree');
-    if (!orgTree || !wrapper) {
-        console.error('Elementos do organograma não encontrados');
-        return;
-    }
-
-    const oldZoom = currentZoom;
-    currentZoom += delta;
-    currentZoom = Math.max(0.3, Math.min(currentZoom, 2.0));
-
-    const baseWidth = orgTree.scrollWidth; 
-    const widthChange = baseWidth * currentZoom - baseWidth * oldZoom;
-
-    orgTree.style.transform = `scale(${currentZoom})`;
-    orgTree.style.transformOrigin = 'top center';
-
-    wrapper.scrollLeft += widthChange / 2;
-
+    if (!orgTree) return;
+    orgTree.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
     const zoomLabel = document.getElementById('zoom-level');
-    if (zoomLabel) {
-        zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
+    if (zoomLabel) zoomLabel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+function zoomOrganograma(delta, mouseX, mouseY) {
+    const wrapper = document.querySelector('.org-tree-wrapper');
+    if (!wrapper) return;
+    const oldZoom = currentZoom;
+    currentZoom = Math.max(0.3, Math.min(currentZoom + delta, 2.0));
+    if (mouseX !== undefined && mouseY !== undefined) {
+        const rect = wrapper.getBoundingClientRect();
+        const mx = mouseX - rect.left;
+        const my = mouseY - rect.top;
+        panX = mx - (mx - panX) * (currentZoom / oldZoom);
+        panY = my - (my - panY) * (currentZoom / oldZoom);
     }
+    applyOrgTransform();
 }
 
 function resetZoomOrganograma() {
+    const wrapper = document.querySelector('.org-tree-wrapper');
     const orgTree = document.querySelector('.org-tree');
-    if (!orgTree) {
-        console.error('Árvore do organograma não encontrada');
-        return;
-    }
-    
+    if (!orgTree || !wrapper) return;
     currentZoom = 1.0;
-    orgTree.style.transform = 'scale(1)';
-    
-    const zoomLabel = document.getElementById('zoom-level');
-    if (zoomLabel) {
-        zoomLabel.textContent = '100%';
-    }
+    panX = Math.max(0, (wrapper.offsetWidth - orgTree.scrollWidth) / 2);
+    panY = 40;
+    applyOrgTransform();
 }
 
 
 
 
 
-// Ativar zoom com scroll do mouse
-function initOrganogramaZoomScroll() {
+function initOrgZoomPan() {
     const wrapper = document.querySelector('.org-tree-wrapper');
-    if (!wrapper) return;
-    
+    const orgTree = document.querySelector('.org-tree');
+    if (!wrapper || !orgTree) return;
+
+    // Centralizar a árvore inicialmente
+    panX = Math.max(0, (wrapper.offsetWidth - orgTree.scrollWidth) / 2);
+    panY = 40;
+    applyOrgTransform();
+
+    // Zoom com scroll do mouse (pivot no cursor)
     wrapper.addEventListener('wheel', (e) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        zoomOrganograma(delta);
+        zoomOrganograma(delta, e.clientX, e.clientY);
     }, { passive: false });
-}
 
-// Ativar arrastar para mover (pan)
-function initOrganogramaPan() {
-    const wrapper = document.querySelector('.org-tree-wrapper');
-    if (!wrapper) return;
-    
+    // Pan via arrastar
+    let panStartX, panStartY, panStartPanX, panStartPanY, localPanning = false;
+
     wrapper.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.btn-icon-secondary') || 
-            e.target.closest('.btn') || 
-            e.target.closest('.org-node')) {
-            return;
-        }
-        isPanning = true;
+        if (e.target.closest('.btn-icon-secondary') ||
+            e.target.closest('.btn') ||
+            e.target.closest('.org-node')) return;
+        localPanning = true;
         wrapper.style.cursor = 'grabbing';
-        startPanX = e.clientX;
-        startPanY = e.clientY;
-        scrollLeftStart = wrapper.scrollLeft;
-        scrollTopStart = wrapper.scrollTop;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+        panStartPanX = panX;
+        panStartPanY = panY;
         e.preventDefault();
     });
-    
-    wrapper.addEventListener('mouseleave', () => {
-        isPanning = false;
-        wrapper.style.cursor = 'grab';
+
+    window.addEventListener('mouseup', () => {
+        if (localPanning) {
+            localPanning = false;
+            const w = document.querySelector('.org-tree-wrapper');
+            if (w) w.style.cursor = 'grab';
+        }
     });
-    
-    wrapper.addEventListener('mouseup', () => {
-        isPanning = false;
-        wrapper.style.cursor = 'grab';
-    });
-    
+
     wrapper.addEventListener('mousemove', (e) => {
-        if (!isPanning) return;
-        e.preventDefault();
-        const deltaX = e.clientX - startPanX;
-        const deltaY = e.clientY - startPanY;
-        wrapper.scrollLeft = scrollLeftStart - deltaX;
-        wrapper.scrollTop = scrollTopStart - deltaY;
+        if (!localPanning) return;
+        panX = panStartPanX + (e.clientX - panStartX);
+        panY = panStartPanY + (e.clientY - panStartY);
+        applyOrgTransform();
     });
 }
 
