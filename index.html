@@ -377,6 +377,15 @@
         .org-node h4 { margin: 5px 0; font-size: 0.95rem; }
         .org-node p { margin: 0; font-size: 0.8rem; color: var(--color-text-secondary); }
 
+        .org-node.current-user {
+            background-color: var(--color-info-bg);
+            border-color: var(--color-info);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+        .org-node.current-user h4 {
+            color: var(--color-info);
+        }
+
         /* --- ORGANOGRAMA CONTEXT MENU (NEW) --- */
         .org-context-menu {
             position: fixed;
@@ -1865,6 +1874,10 @@ async function loadOrganogramaPage(departmentFilter = '') {
 
             const roleAndDeptText = [role, dept].filter(Boolean).join(' • ');
 
+            // Verifica se o nó atual pertence ao usuário logado
+            const isCurrentUser = currentUserProfile && node.id === currentUserProfile.id;
+            const nodeClass = isCurrentUser ? 'org-node current-user' : 'org-node';
+
             let childrenHTML = '';
             if (node.children && node.children.length > 0) {
                 childrenHTML += `<ul>`;
@@ -1874,7 +1887,7 @@ async function loadOrganogramaPage(departmentFilter = '') {
 
             return `
                 <li>
-                    <div class="org-node" onclick="openOrgMenu(event, '${node.id}', '${node.name.replace(/'/g, "\\'")}')">
+                    <div class="${nodeClass}" onclick="openOrgMenu(event, '${node.id}', '${node.name.replace(/'/g, "\\'")}')">
                         <h4>${name}</h4>
                         <p>${roleAndDeptText}</p>
                     </div>
