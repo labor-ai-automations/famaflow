@@ -1412,7 +1412,7 @@
                                 </div>
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label for="role">Cargo</label>
-                                    <select id="role" class="input-field">
+                                    <select id="role" class="input-field" onchange="toggleRoleOther()">
                                         <option value="">Selecione...</option>
                                         <option value="Admin">Admin</option>
                                         <option value="Gerente">Gerente</option>
@@ -1420,7 +1420,9 @@
                                         <option value="Líder">Líder</option>
                                         <option value="Auxiliar">Auxiliar</option>
                                         <option value="Colaborador">Colaborador</option>
+                                        <option value="Outros">Outros</option>
                                     </select>
+                                    <input type="text" id="role-other" class="input-field" placeholder="Especifique o cargo..." style="display: none; margin-top: 0.5rem;">
                                 </div>
                             </div>
                             
@@ -3955,10 +3957,14 @@ async function openUserModal(user) {
             passwordGroup.style.display = user ? 'none' : 'block';
             document.getElementById('user_password').required = !user;
             
-            // Resetar campo "Outros"
+            // Resetar campos "Outros"
+            const roleOtherInput = document.getElementById('role-other');
             deptOtherInput.style.display = 'none';
             deptOtherInput.required = false;
             deptOtherInput.value = '';
+            roleOtherInput.style.display = 'none';
+            roleOtherInput.required = false;
+            roleOtherInput.value = '';
             
             managerSelect.innerHTML = '<option value="">Nenhum</option>';
             allUsers.forEach(u => {
@@ -3986,8 +3992,21 @@ async function openUserModal(user) {
                     deptOtherInput.style.display = 'block';
                     deptOtherInput.required = true;
                 }
+
+                // Lógica para Cargo (verificar se é "Outros")
+                const roleSelect = document.getElementById('role');
+                const validRoles = ['Admin', 'Gerente', 'Supervisor', 'Líder', 'Auxiliar', 'Colaborador'];
+                if (user.role && validRoles.includes(user.role)) {
+                    roleSelect.value = user.role;
+                } else if (user.role) {
+                    roleSelect.value = 'Outros';
+                    roleOtherInput.value = user.role;
+                    roleOtherInput.style.display = 'block';
+                    roleOtherInput.required = true;
+                } else {
+                    roleSelect.value = '';
+                }
                 
-                document.getElementById('role').value = user.role || '';
                 managerSelect.value = user.manager_id || '';
                 
                 // Carregar permissões específicas do usuário
@@ -4019,6 +4038,21 @@ async function openUserModal(user) {
                 deptOtherInput.style.display = 'none';
                 deptOtherInput.required = false;
                 deptOtherInput.value = '';
+            }
+        }
+
+        function toggleRoleOther() {
+            const roleSelect = document.getElementById('role');
+            const roleOtherInput = document.getElementById('role-other');
+            
+            if (roleSelect.value === 'Outros') {
+                roleOtherInput.style.display = 'block';
+                roleOtherInput.required = true;
+                roleOtherInput.focus();
+            } else {
+                roleOtherInput.style.display = 'none';
+                roleOtherInput.required = false;
+                roleOtherInput.value = '';
             }
         }
 		
@@ -4057,7 +4091,12 @@ const userId = document.getElementById('user-id').value;
             const department = deptSelect.value === 'Outros' 
                 ? document.getElementById('department-other').value 
                 : deptSelect.value;
-            const role = document.getElementById('role').value;
+
+            const roleSelect = document.getElementById('role');
+            const role = roleSelect.value === 'Outros'
+                ? document.getElementById('role-other').value
+                : roleSelect.value;
+
     const managerIdValue = document.getElementById('manager_id').value;
     const managerId = managerIdValue === "" ? null : managerIdValue;
     const email = document.getElementById('user_email').value;
