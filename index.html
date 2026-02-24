@@ -1846,7 +1846,7 @@ async function loadOrganogramaPage(departmentFilter = '') {
                 
                 setTimeout(() => {
                     initOrgZoomPan();
-                }, 150);
+                }, 300);
 
             } catch (e) {
                 console.error('Erro ao carregar organograma:', e);
@@ -2001,9 +2001,20 @@ function initOrgZoomPan() {
     const orgTree = document.querySelector('.org-tree');
     if (!wrapper || !orgTree) return;
 
-    // Centralizar a árvore inicialmente
-    panX = Math.max(0, (wrapper.offsetWidth - orgTree.scrollWidth) / 2);
-    panY = 40;
+    // Centralizar no nó raiz
+    const rootNode = orgTree.querySelector('.org-node');
+    if (rootNode) {
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const nodeRect = rootNode.getBoundingClientRect();
+        const orgTreeRect = orgTree.getBoundingClientRect();
+        const nodeRelX = nodeRect.left - orgTreeRect.left;
+        const nodeWidth = nodeRect.width;
+        panX = (wrapperRect.width / 2) - (nodeRelX + nodeWidth / 2);
+        panY = 60;
+    } else {
+        panX = Math.max(0, (wrapper.offsetWidth - orgTree.scrollWidth) / 2);
+        panY = 40;
+    }
     applyOrgTransform();
 
     // Zoom com scroll do mouse (pivot no cursor)
