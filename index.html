@@ -1153,6 +1153,25 @@
         let currentEditingRequest = null;
         let selectedParticipants = [];
         let currentActiveRoutineId = null;
+        let currentSortOrder = 'newest'; // Variável para controlar a ordenação
+
+        function sortConversations(conversations, sortBy) {
+            const priorityOrder = { 'urgent': 1, 'important': 2, 'normal': 3 };
+
+            return [...conversations].sort((a, b) => {
+                switch (sortBy) {
+                    case 'oldest':
+                        return new Date(a.last_message_created_at) - new Date(b.last_message_created_at);
+                    case 'priority':
+                        const priorityA = priorityOrder[a.priority] || 4;
+                        const priorityB = priorityOrder[b.priority] || 4;
+                        return priorityA - priorityB;
+                    case 'newest':
+                    default:
+                        return new Date(b.last_message_created_at) - new Date(a.last_message_created_at);
+                }
+            });
+        }
         
         // Task: Fix Panzoom Globals
         let isPanning = false;
@@ -1194,7 +1213,23 @@
             <main class="content">
                 <button id="mobile-menu-toggle" class="btn btn-icon" title="Menu"><span class="material-icons">menu</span></button>
                 <div id="dashboard-page" class="page-content"><div class="page-header"><div><h1 id="dashboard-title">Dashboard</h1><p>Visão geral do seu desempenho</p></div></div><div class="grid grid-cols-2"><div class="card stat-card card-warning"><div class="stat-icon"><span class="material-icons">mark_email_unread</span></div><div class="stat-info"><h3>Mensagens Pendentes</h3><p id="pending-messages-count">0</p></div></div><div class="card stat-card card-danger"><div class="stat-icon"><span class="material-icons">report_problem</span></div><div class="stat-info"><h3>Chamados Abertos</h3><p id="urgent-tickets-count">0</p></div></div></div></div>
-                <div id="messages-page" class="page-content"><div class="page-header"><h1>Mensagens</h1></div><div class="message-actions-header"><div class="tabs-container"><button class="tab-link active" data-tab="inbox-content">Caixa de Entrada</button><button class="tab-link" data-tab="sent-content">Enviados</button><button class="tab-link" data-tab="tickets-content">Chamados</button><button class="tab-link" data-tab="archived-content">Arquivados</button></div><button id="refresh-messages-btn" class="refresh-btn" title="Atualizar mensagens"><span class="material-icons">refresh</span></button></div><div class="card" style="padding: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><div id="inbox-content" class="tab-content active"></div><div id="sent-content" class="tab-content"></div><div id="tickets-content" class="tab-content"></div><div id="archived-content" class="tab-content"></div></div></div>
+                <div id="messages-page" class="page-content"><div class="page-header"><h1>Mensagens</h1></div><div class="message-actions-header">
+    <div class="tabs-container"><button class="tab-link active" data-tab="inbox-content">Caixa de Entrada</button><button class="tab-link" data-tab="sent-content">Enviados</button><button class="tab-link" data-tab="tickets-content">Chamados</button><button class="tab-link" data-tab="archived-content">Arquivados</button></div>
+    <div class="page-header-actions">
+        <div id="sort-menu-container" style="position: relative;">
+            <button id="sort-button" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+                <span class="material-icons">sort</span>
+                Ordenar por: <span id="sort-label" style="font-weight: 700;">Mais Recente</span>
+            </button>
+            <div id="sort-options" style="display: none; position: absolute; top: 100%; right: 0; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 10; min-width: 220px; padding: 0.5rem; margin-top: 0.25rem;">
+                <a href="#" data-sort="newest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Recente)</a>
+                <a href="#" data-sort="oldest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Antigo)</a>
+                <a href="#" data-sort="priority" class="nav-link" style="padding: 0.5rem 1rem;">Prioridade (Urgente Primeiro)</a>
+            </div>
+        </div>
+        <button id="refresh-messages-btn" class="refresh-btn" title="Atualizar mensagens"><span class="material-icons">refresh</span></button>
+    </div>
+</div><div class="card" style="padding: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><div id="inbox-content" class="tab-content active"></div><div id="sent-content" class="tab-content"></div><div id="tickets-content" class="tab-content"></div><div id="archived-content" class="tab-content"></div></div></div>
                 <div id="requests-page" class="page-content"><div class="page-header"><div><h1>Requisições</h1><p>Gerencie solicitações de RH e administrativas.</p></div><div class="page-header-actions"><button id="btn-new-request" class="btn btn-danger"><span class="material-icons">add</span> Nova Requisição</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 18%;">Tipo</th><th style="width: 25%;">Solicitante</th><th style="width: 14%;">Data</th><th style="width: 20%;">Status</th><th style="width: 23%;">Ações</th></tr></thead><tbody id="request-table-body"></tbody></table></div></div>
                 <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
                 <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div>
@@ -1547,6 +1582,35 @@
                     try { await loadMessages(); showToast("Caixa de entrada atualizada!", "info"); } 
                     catch (e) { showToast("Falha ao atualizar.", "danger"); } 
                     finally { refreshMessagesBtn.classList.remove('loading'); refreshMessagesBtn.disabled = false; }
+                });
+            }
+
+            // Lógica para o novo menu de ordenação
+            const sortButton = document.getElementById('sort-button');
+            const sortOptions = document.getElementById('sort-options');
+            const sortLabel = document.getElementById('sort-label');
+            
+            if (sortButton && sortOptions) {
+                sortButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    sortOptions.style.display = sortOptions.style.display === 'none' ? 'block' : 'none';
+                });
+
+                sortOptions.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        currentSortOrder = e.target.dataset.sort;
+                        sortLabel.textContent = e.target.textContent;
+                        sortOptions.style.display = 'none';
+                        loadMessages(); // Recarrega e reordena as mensagens
+                    });
+                });
+                
+                // Fecha o menu se clicar fora
+                document.addEventListener('click', () => {
+                    if (sortOptions.style.display === 'block') {
+                        sortOptions.style.display = 'none';
+                    }
                 });
             }
 
@@ -3585,7 +3649,10 @@ function toggleRecipientSelection(user) {
             if (!conversations || conversations.length === 0) {
                 container.innerHTML = `<div class="empty-state">Nenhuma mensagem aqui.</div>`; return;
             }
-            const tableRows = conversations.map(conv => {
+
+            const sortedConversations = sortConversations(conversations, currentSortOrder);
+
+            const tableRows = sortedConversations.map(conv => {
                 const preview = conv.last_message_content ? conv.last_message_content.replace(/<[^>]*>?/gm, ' ') : '';
                 const timestamp = conv.last_message_created_at ? new Date(conv.last_message_created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '';
                 
