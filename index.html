@@ -5244,9 +5244,8 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                 if (!response.ok) throw new Error('Falha ao atualizar tarefa.');
                 showToast('Tarefa atualizada!', 'success');
                 document.getElementById('edit-task-modal').classList.remove('visible');
-                const activeRoutine = document.querySelector('#routines-list-col1 .routines-list-item.active');
-                if (activeRoutine) {
-                    selectRoutine(activeRoutine.dataset.routineId, activeRoutine);
+                if (currentActiveRoutineId) {
+                    await selectRoutine(currentActiveRoutineId);
                 }
             } catch (e) { showToast(e.message, 'danger'); } finally { btn.disabled = false; }
         }
@@ -5265,9 +5264,8 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                         });
                         if (!response.ok) throw new Error('Falha ao excluir tarefa.');
                         showToast('Tarefa excluída com sucesso!', 'success');
-                        const activeRoutine = document.querySelector('#routines-list-col1 .routines-list-item.active');
-                        if (activeRoutine) {
-                            selectRoutine(activeRoutine.dataset.routineId, activeRoutine);
+                        if (currentActiveRoutineId) {
+                            await selectRoutine(currentActiveRoutineId);
                         }
                     } catch (e) { showToast(e.message, 'danger'); }
                 }
@@ -5288,9 +5286,8 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                         });
                         if (!response.ok) throw new Error('Falha ao remover usuário.');
                         showToast('Usuário removido da rotina!', 'success');
-                        const activeRoutine = document.querySelector('#routines-list-col1 .routines-list-item.active');
-                        if (activeRoutine) {
-                            selectRoutine(activeRoutine.dataset.routineId, activeRoutine);
+                        if (currentActiveRoutineId) {
+                            await selectRoutine(currentActiveRoutineId);
                         }
                     } catch (e) { showToast(e.message, 'danger'); }
                 }
