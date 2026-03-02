@@ -1833,33 +1833,23 @@ if (permissions.includes('manage_routines')) {
 
         // --- FUNÇÕES DE PROCESSOS (NOVO MÓDULO) ---
 
+// --- FUNÇÕES DE PROCESSOS (SISTEMA OPERACIONAL FINAL) ---
+        const N8N_START_PROCESS_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/start-process';
+        const N8N_COMPLETE_PROCESS_STEP_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/complete-process-step';
+
         async function loadManageProcessesPage() {
             const listContainer = document.getElementById('process-list-sidebar');
             listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
-            
-            const { data: processes, error } = await supabaseClient
-                .from('processes')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error(error);
-                listContainer.innerHTML = '<div class="empty-state">Erro ao carregar.</div>';
-                return;
-            }
-
-            if (!processes || processes.length === 0) {
-                listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>';
-                return;
-            }
+            const { data: processes, error } = await supabaseClient.from('processes').select('*').order('created_at', { ascending: false });
+            if (error) { listContainer.innerHTML = 'Erro ao carregar.'; return; }
+            if (!processes.length) { listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>'; return; }
 
             listContainer.innerHTML = processes.map(p => `
                 <div class="routines-list-item" onclick="selectProcess('${p.id}', '${p.title}')">
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-weight:600">${p.title}</span>
-                        <span style="font-size:0.8rem; color:var(--color-text-secondary);">${p.description || ''}</span>
                     </div>
-                    <span class="material-icons" style="font-size:16px; color:var(--color-text-secondary);">chevron_right</span>
+                    <span class="material-icons" style="font-size:16px;">chevron_right</span>
                 </div>
             `).join('');
         }
@@ -1867,52 +1857,38 @@ if (permissions.includes('manage_routines')) {
         async function selectProcess(processId, title) {
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
-                <h3 style="border-bottom:1px solid var(--color-border); padding-bottom:1rem; margin-top:0;">Fluxo: ${title}</h3>
-                <div id="process-steps-area" style="padding: 1rem 0;">Carregando etapas...</div>
-                <button class="btn btn-secondary" onclick="openAddStepModal('${processId}')" style="margin-top:1rem; width:100%;">
-                    <span class="material-icons">add_circle_outline</span> Adicionar Etapa ao Fluxo
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-border); padding-bottom:1rem; margin-bottom:1rem;">
+                    <h3 style="margin:0;">Fluxo: ${title}</h3>
+                    <button class="btn btn-success" onclick="startProcessInstance('${processId}')">
+                        <span class="material-icons">play_arrow</span> Iniciar Instância
+                    </button>
+                </div>
+                <div id="process-steps-area">Carregando etapas...</div>
+                <button class="btn btn-secondary" onclick="openAddStepModal('${processId}')" style="width:100%; margin-top:1rem;">
+                    <span class="material-icons">add_circle</span> Adicionar Etapa
                 </button>
             `;
-            // Aqui carregaremos as etapas (process_steps) no próximo passo
             loadProcessSteps(processId);
         }
 
         async function loadProcessSteps(processId) {
             const area = document.getElementById('process-steps-area');
-            const { data: steps, error } = await supabaseClient
-                .from('process_steps')
-                .select('*, assignee:assignee_id(full_name, department)')
-                .eq('process_id', processId)
-                .order('step_order', { ascending: true });
+            const { data: steps } = await supabaseClient.from('process_steps').select('*, assignee:assignee_id(full_name, department)').eq('process_id', processId).order('step_order', { ascending: true });
+            if (!steps || !steps.length) { area.innerHTML = '<div class="empty-state">Sem etapas no fluxo.</div>'; return; }
 
-            if (error) { area.innerHTML = 'Erro ao carregar etapas.'; return; }
-            
-            if (steps.length === 0) {
-                area.innerHTML = '<div class="empty-state" style="padding:1rem; border:1px dashed var(--color-border); border-radius:8px;">Este processo ainda não tem etapas. Comece adicionando a primeira.</div>';
-                return;
-            }
-
-            // Visualização em estilo "Timeline Vertical" (Simulando Fluxograma)
             area.innerHTML = steps.map((step, index) => `
                 <div style="display:flex; gap:1rem; position:relative;">
                     <div style="display:flex; flex-direction:column; align-items:center;">
                         <div style="width:30px; height:30px; background:var(--color-brand-primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:2;">${step.step_order}</div>
                         ${index < steps.length - 1 ? `<div style="width:2px; flex-grow:1; background:var(--color-border); min-height:30px;"></div>` : ''}
                     </div>
-                    <div class="card" style="flex-grow:1; padding:1rem; margin-bottom:1rem; border-left: 4px solid var(--color-brand-primary);">
+                    <div class="card" style="flex-grow:1; padding:1rem; margin-bottom:1rem;">
                         <h4 style="margin:0;">${step.task_title}</h4>
-                        <p style="margin:0.25rem 0; font-size:0.9rem; color:var(--color-text-secondary);">${step.task_description || ''}</p>
-                        <div style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; background:var(--color-background); padding:0.5rem; border-radius:6px;">
-                            <span class="material-icons" style="font-size:16px;">person</span> 
-                            <strong>Responsável:</strong> ${step.assignee?.full_name || 'N/A'} (${step.assignee?.department || ''})
-                        </div>
+                        <p style="margin:4px 0; font-size:0.85rem; color:var(--color-text-secondary);">${step.task_description || ''}</p>
+                        <small>👤 ${step.assignee?.full_name || 'N/A'}</small>
                     </div>
                 </div>
             `).join('');
-        }
-
-        async function loadMyProcessesPage() {
-            document.getElementById('my-processes-list').innerHTML = '<div class="empty-state">Em breve: Aqui você verá suas tarefas de processos.</div>';
         }
 
         function openNewProcessModal() {
@@ -1924,76 +1900,77 @@ if (permissions.includes('manage_routines')) {
         async function createProcess() {
             const title = document.getElementById('new-process-title').value;
             const desc = document.getElementById('new-process-desc').value;
-            
-            if (!title) { showToast('O nome do processo é obrigatório.', 'warning'); return; }
-
-            const { error } = await supabaseClient
-                .from('processes')
-                .insert({ title: title, description: desc, created_by: currentUserProfile.id });
-
-            if (error) {
-                showToast('Erro ao criar processo.', 'danger');
-                console.error(error);
-            } else {
-                showToast('Processo criado com sucesso!', 'success');
-                document.getElementById('new-process-modal').classList.remove('visible');
-                loadManageProcessesPage(); // Recarrega a lista
-            }
+            if (!title) return;
+            await supabaseClient.from('processes').insert({ title, description: desc, created_by: currentUserProfile.id });
+            document.getElementById('new-process-modal').classList.remove('visible');
+            loadManageProcessesPage();
         }
-        
+
         async function openAddStepModal(processId) {
             document.getElementById('step-process-id').value = processId;
-            document.getElementById('step-title').value = '';
-            document.getElementById('step-desc').value = '';
-            
-            // Tenta adivinhar a próxima ordem (lógica simples)
-            const stepsArea = document.getElementById('process-steps-area');
-            const currentStepsCount = stepsArea.querySelectorAll('.card').length;
-            document.getElementById('step-order').value = currentStepsCount + 1;
-
-            // Popula o select de usuários
             const select = document.getElementById('step-assignee');
-            select.innerHTML = '<option value="">Carregando...</option>';
-            
-            // Reutiliza a lista global 'allUsers' que já carregamos no início do app
-            if (allUsers.length > 0) {
-                select.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name} (${u.department || 'N/A'})</option>`).join('');
-            } else {
-                // Fallback se allUsers estiver vazio
-                const { data } = await supabaseClient.from('profiles').select('id, full_name, department');
-                select.innerHTML = data.map(u => `<option value="${u.id}">${u.full_name} (${u.department || 'N/A'})</option>`).join('');
-            }
-
+            select.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
             document.getElementById('add-step-modal').classList.add('visible');
         }
 
         async function createProcessStep() {
             const processId = document.getElementById('step-process-id').value;
-            const order = document.getElementById('step-order').value;
-            const assignee = document.getElementById('step-assignee').value;
-            const title = document.getElementById('step-title').value;
-            const desc = document.getElementById('step-desc').value;
+            await supabaseClient.from('process_steps').insert({
+                process_id: processId,
+                step_order: parseInt(document.getElementById('step-order').value),
+                assignee_id: document.getElementById('step-assignee').value,
+                task_title: document.getElementById('step-title').value,
+                task_description: document.getElementById('step-desc').value
+            });
+            document.getElementById('add-step-modal').classList.remove('visible');
+            loadProcessSteps(processId);
+        }
 
-            if (!title || !assignee || !order) { showToast('Preencha todos os campos obrigatórios.', 'warning'); return; }
+        async function startProcessInstance(processId) {
+            if(!confirm("Iniciar este processo agora?")) return;
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            await fetch(N8N_START_PROCESS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                body: JSON.stringify({ process_id: processId, started_by: currentUserProfile.id })
+            });
+            showToast('Processo iniciado!', 'success');
+        }
 
-            const { error } = await supabaseClient
-                .from('process_steps')
-                .insert({
-                    process_id: processId,
-                    step_order: parseInt(order),
-                    assignee_id: assignee,
-                    task_title: title,
-                    task_description: desc
-                });
+        async function loadMyProcessesPage() {
+            const container = document.getElementById('my-processes-list');
+            container.innerHTML = '<div class="empty-state">Buscando tarefas ativas...</div>';
+            
+            const { data: myTasks, error } = await supabaseClient.rpc('get_my_active_process_steps');
 
-            if (error) {
-                showToast('Erro ao adicionar etapa. Verifique se a ordem já existe.', 'danger');
-                console.error(error);
-            } else {
-                showToast('Etapa adicionada!', 'success');
-                document.getElementById('add-step-modal').classList.remove('visible');
-                selectProcess(processId, ''); // Recarrega a visualização das etapas (o título é opcional aqui pois já está na tela)
+            if (error || !myTasks || myTasks.length === 0) {
+                container.innerHTML = '<div class="empty-state">Você não tem tarefas de processos pendentes no momento.</div>';
+                return;
             }
+
+            container.innerHTML = myTasks.map(task => `
+                <div class="card" style="border-left:4px solid var(--color-info);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <small style="color:var(--color-info); font-weight:bold;">PROCESSO: ${task.process_title}</small>
+                            <h3 style="margin:5px 0;">${task.task_title}</h3>
+                            <p style="margin:0; color:var(--color-text-secondary);">${task.task_description || ''}</p>
+                        </div>
+                        <button class="btn btn-success" onclick="completeProcessTask('${task.instance_id}')">Concluir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function completeProcessTask(instanceId) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            await fetch(N8N_COMPLETE_PROCESS_STEP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                body: JSON.stringify({ instance_id: instanceId, completed_by: currentUserProfile.id })
+            });
+            showToast('Etapa concluída!', 'success');
+            loadMyProcessesPage();
         }
 
         async function loadAllDynamicData() { 
