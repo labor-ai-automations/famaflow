@@ -1023,7 +1023,7 @@
                 <input type="hidden" id="assign-routine-id">
                 <div class="recipient-table-container" style="padding: 1.5rem 1.5rem 0 1.5rem;">
                     <table class="data-table" style="width: 100%;">
-                        <thead><tr><th><input type="checkbox" id="select-all-users-routine"></th><th>Funcionário</th><th>Departamento</th></tr></thead>
+                        <thead><tr><th><input type="checkbox" id="select-all-users-routine"></th><th>Funcionário</th><th>Cargo</th><th>Departamento</th></tr></thead>
                         <tbody id="assign-users-table-body"></tbody>
                     </table>
                 </div>
@@ -5241,6 +5241,7 @@ const [tasksRes, assignmentsRes] = await Promise.all([
                     <tr>
                         <td><input type="checkbox" class="user-assign-checkbox" value="${user.id}" ${isChecked ? 'checked' : ''}></td>
                         <td>${user.full_name}</td>
+                        <td>${user.role || '-'}</td>
                         <td>${user.department || '-'}</td>
                     </tr>
                 `;
