@@ -926,6 +926,31 @@ body.fullscreen-flow .flowchart-wrapper {
     height: 100vh !important;
     border-radius: 0;
 }
+
+/* Fix Global para Modais em Fullscreen */
+body.fullscreen-flow .modal-overlay.visible { z-index: 100001 !important; }
+
+/* Quick Add Side Panel */
+#process-quick-panel {
+    position: fixed;
+    top: 0;
+    right: -400px; /* Escondido */
+    width: 380px;
+    height: 100vh;
+    background-color: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+    z-index: 100000;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+#process-quick-panel.open { right: 0; }
+.qp-header { padding: 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: var(--color-background); }
+.qp-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.qp-body { padding: 1.5rem; flex: 1; overflow-y: auto; }
+.qp-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--color-border); display: flex; gap: 0.75rem; background: var(--color-background); }
+.qp-footer .btn { flex: 1; }
 		
     </style>
 </head>
@@ -2279,34 +2304,73 @@ if (permissions.includes('manage_routines')) {
         }
 
         async function openAddStepModal(processId) {
-            document.getElementById('step-process-id').value = processId;
-            const select = document.getElementById('step-assignee');
-            select.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
-            document.getElementById('add-step-modal').classList.add('visible');
+            const panel = document.getElementById('process-quick-panel');
+            const titleInput = document.getElementById('qp-title');
+            const orderInput = document.getElementById('qp-order');
+            const assigneeSelect = document.getElementById('qp-assignee');
+            
+            document.getElementById('qp-process-id').value = processId;
+            
+            // 1. Busca automática da próxima ordem
+            const { count, error } = await supabaseClient
+                .from('process_steps')
+                .select('*', { count: 'exact', head: true })
+                .eq('process_id', processId);
+            
+            orderInput.value = (count || 0) + 1;
+
+            // 2. Popula responsáveis
+            assigneeSelect.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
+            
+            // 3. Abre painel e foca no título
+            panel.classList.add('open');
+            setTimeout(() => titleInput.focus(), 350);
+        }
+
+        function closeQuickPanel() {
+            document.getElementById('process-quick-panel').classList.remove('open');
+            document.getElementById('qp-title').value = '';
+            document.getElementById('qp-desc').value = '';
         }
 
         async function createProcessStep() {
-            const processId = document.getElementById('step-process-id').value;
-            const processTitle = document.querySelector('#flow-world').parentElement.parentElement.querySelector('h3').textContent.replace('Fluxo: ', '');
-            
+            const btn = document.getElementById('btn-qp-save');
+            const processId = document.getElementById('qp-process-id').value;
+            const title = document.getElementById('qp-title').value.trim();
+            const desc = document.getElementById('qp-desc').value.trim();
+            const assignee = document.getElementById('qp-assignee').value;
+            const order = document.getElementById('qp-order').value;
+
+            if (!title) { showToast("O título é obrigatório", "warning"); return; }
+
+            btn.disabled = true;
+            btn.textContent = "Adicionando...";
+
             const { error } = await supabaseClient.from('process_steps').insert({
                 process_id: processId,
-                step_order: parseInt(document.getElementById('step-order').value),
-                assignee_id: document.getElementById('step-assignee').value,
-                task_title: document.getElementById('step-title').value,
-                task_description: document.getElementById('step-desc').value
+                step_order: parseInt(order),
+                assignee_id: assignee,
+                task_title: title,
+                task_description: desc
             });
 
             if (error) {
-                showToast("Erro ao criar etapa: " + error.message, "danger");
+                showToast("Erro: " + error.message, "danger");
+                btn.disabled = false;
+                btn.textContent = "Adicionar Etapa";
                 return;
             }
 
-            showToast("Etapa adicionada com sucesso!", "success");
-            document.getElementById('add-step-modal').classList.remove('visible');
+            showToast("Etapa adicionada!", "success");
+            closeQuickPanel();
             
-            // Re-renderiza o fluxograma completo para atualizar posições e conexões
+            // Pega o título do processo atual para re-renderizar
+            const headerTitle = document.querySelector('#process-visualizer-container h3');
+            const processTitle = headerTitle ? headerTitle.textContent.replace('Fluxo: ', '').trim() : 'Processo';
             selectProcess(processId, processTitle);
+            
+            btn.disabled = false;
+            btn.textContent = "Adicionar Etapa";
         }
 
 async function startProcessInstance(processId) {
@@ -6425,6 +6489,39 @@ showToast('Tarefa adicionada!', 'success');
             `;
             modal.classList.add('visible');
         }
+
+    <!-- QUICK ADD SIDE PANEL (PROCESSOS) -->
+    <div id="process-quick-panel">
+        <div class="qp-header">
+            <h3><span class="material-icons" style="vertical-align: middle; color: var(--color-brand-primary);">add_circle</span> Nova Etapa</h3>
+            <button class="btn-icon" onclick="closeQuickPanel()"><span class="material-icons">close</span></button>
+        </div>
+        <div class="qp-body">
+            <input type="hidden" id="qp-process-id">
+            <div class="form-group">
+                <label>Título da Tarefa</label>
+                <input type="text" id="qp-title" class="input-field" placeholder="Ex: Coletar Assinaturas" autocomplete="off">
+            </div>
+            <div class="grid grid-cols-2">
+                <div class="form-group">
+                    <label>Ordem (#)</label>
+                    <input type="number" id="qp-order" class="input-field" readonly style="background: var(--color-background); cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label>Responsável</label>
+                    <select id="qp-assignee" class="input-field"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Instruções/Descrição</label>
+                <textarea id="qp-desc" class="input-field" rows="4" placeholder="O que deve ser feito nesta etapa?"></textarea>
+            </div>
+        </div>
+        <div class="qp-footer">
+            <button class="btn btn-secondary" onclick="closeQuickPanel()">Cancelar</button>
+            <button class="btn btn-danger" id="btn-qp-save" onclick="createProcessStep()">Adicionar Etapa</button>
+        </div>
+    </div>
 
     </script>
 </body>
