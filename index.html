@@ -2937,11 +2937,20 @@ async function startProcessInstance(processId) {
     );
 }
 
-        async function loadMyProcessesPage() {
+async function loadMyProcessesPage() {
             const container = document.getElementById('my-processes-list');
             if(!container) return;
             container.innerHTML = '<div class="empty-state"><span class="material-icons" style="animation: spin 2s linear infinite;">sync</span><br>Buscando suas tarefas...</div>';
-            
+
+            // Garante que temos a sessão e o perfil carregado antes de chamar a RPC
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                container.innerHTML = '<div class="empty-state">Sessão expirada. Faça login novamente.</div>';
+                return;
+            }
+            // Recarrega perfil se estiver nulo (corrige o erro do console)
+            if (!currentUserProfile) await fetchUserProfile(session.user);
+
             const { data: myTasks, error } = await supabaseClient.rpc('get_my_active_process_steps');
 
             if (error || !myTasks || myTasks.length === 0) {
