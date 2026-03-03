@@ -114,7 +114,17 @@
         .btn { padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; border: none; transition: background-color 0.2s, opacity 0.2s;}
         .btn:hover { opacity: 0.9; } .btn .material-icons { margin-right: 0.5rem; font-size: 20px; }
         .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-        .btn-icon { padding: 0.5rem; background: none; border: none; color: var(--color-text-secondary); border-radius: 50%; line-height: 1;} .btn-icon:hover { background-color: var(--color-background); color: var(--color-text-primary); }
+        .btn-icon { 
+            padding: 0.5rem; 
+            background: none; 
+            border: none; 
+            color: var(--color-text-secondary); 
+            border-radius: 50%; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;
+        } 
+        .btn-icon:hover { background-color: var(--color-background); color: var(--color-text-primary); }
         .btn-secondary { background-color: var(--color-surface); color: var(--color-text-primary); border: 1px solid var(--color-border); }
         .btn-danger { background-color: var(--color-brand-primary); color: white; }
         .btn-success { background-color: var(--color-success); color: white; } .btn-warning { background-color: var(--color-warning); color: white; }
@@ -1917,13 +1927,43 @@ if (permissions.includes('manage_routines')) {
             if (!processes.length) { listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>'; return; }
 
             listContainer.innerHTML = processes.map(p => `
-                <div class="routines-list-item" onclick="selectProcess('${p.id}', '${p.title}')">
+                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}')">
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-weight:600">${p.title}</span>
                     </div>
-                    <span class="material-icons" style="font-size:16px;">chevron_right</span>
+                    <span class="material-icons arrow-icon" style="font-size:16px; transition: transform 0.3s;">chevron_right</span>
                 </div>
             `).join('');
+        }
+		
+		let currentlyOpenProcessId = null;
+
+        function handleProcessClick(processId, title) {
+            const container = document.getElementById('process-visualizer-container');
+            const items = document.querySelectorAll('#process-list-sidebar .routines-list-item');
+            
+            // Se clicar no processo que já está aberto, fecha tudo
+            if (currentlyOpenProcessId === processId) {
+                container.innerHTML = '<div class="empty-state">Selecione um processo para editar o fluxo.</div>';
+                items.forEach(item => {
+                    item.classList.remove('active');
+                    item.querySelector('.arrow-icon').style.transform = 'rotate(0deg)';
+                });
+                currentlyOpenProcessId = null;
+                return;
+            }
+
+            // Caso contrário, abre o novo processo
+            selectProcess(processId, title);
+            currentlyOpenProcessId = processId;
+            
+            // Atualiza as setas e estados ativos
+            items.forEach(item => {
+                const isThis = item.id === `item-process-${processId}`;
+                item.classList.toggle('active', isThis);
+                const arrow = item.querySelector('.arrow-icon');
+                if (arrow) arrow.style.transform = isThis ? 'rotate(90deg)' : 'rotate(0deg)';
+            });
         }
 
         async function selectProcess(processId, title) {
