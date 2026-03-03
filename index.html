@@ -2287,7 +2287,8 @@ if (permissions.includes('manage_routines')) {
             localStepsData.sort((a, b) => a.step_order - b.step_order);
 
             nodesContainer.innerHTML = localStepsData.map((step, index) => {
-                const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
+                // Prioridade máxima para a posição salva no cache local
+                const pos = step.ui_metadata ? step.ui_metadata : { x: 100 + (index * 280), y: 150 };
                 return `
                     <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
                         <div class="node-label">Etapa ${step.step_order}</div>
@@ -2605,10 +2606,22 @@ if (permissions.includes('manage_routines')) {
                     }
                 };
                 
-                // Lógica de reordenação local (empurra os outros)
+                // 1. Identifica a posição do nó anterior para basear a nova coordenada
+                const prevStep = localStepsData.find(s => s.step_order === newStep.step_order - 1);
+                const baseX = prevStep ? (prevStep.ui_metadata?.x || 0) : 0;
+                const baseY = prevStep ? (prevStep.ui_metadata?.y || 150) : 150;
+
+                // 2. Lógica de "Push" Horizontal: empurra quem está na frente no gráfico
+                const offset = 280;
                 localStepsData.forEach(s => {
-                    if (s.step_order >= newStep.step_order) s.step_order++;
+                    if (s.step_order >= newStep.step_order) {
+                        s.step_order++;
+                        if (s.ui_metadata) s.ui_metadata.x += offset;
+                    }
                 });
+                
+                // 3. Define posição da nova etapa logo após a anterior
+                newStep.ui_metadata = { x: baseX + offset, y: baseY };
                 
                 localStepsData.push(newStep);
                 workflowHasChanges = true;
