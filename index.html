@@ -2630,31 +2630,44 @@ node.onmousedown = (e) => {
             document.getElementById('qp-assignee-name').textContent = 'Selecionar Responsável...';
         }
 
-        async function createProcessStep() {
+async function createProcessStep() {
             const btn = document.getElementById('btn-qp-save');
+            const panel = document.getElementById('process-quick-panel');
+            const editingId = panel.dataset.editingStepId;
             const processId = document.getElementById('qp-process-id').value;
             const title = document.getElementById('qp-title').value.trim();
             const desc = document.getElementById('qp-desc').value.trim();
             const assignee = document.getElementById('qp-assignee-id').value;
-            if (!assignee) { showToast("Selecione um responsável", "warning"); return; }
-            const order = document.getElementById('qp-order').value;
+            const order = parseInt(document.getElementById('qp-order').value);
 
             if (!title) { showToast("O título é obrigatório", "warning"); return; }
+            if (!assignee) { showToast("Selecione um responsável", "warning"); return; }
 
             btn.disabled = true;
-            const editingId = document.getElementById('process-quick-panel').dataset.editingStepId;
             btn.textContent = editingId ? "Salvando..." : "Adicionando...";
 
-            let error;
             if (editingId) {
-                // MODO EDIÇÃO
-                const res = await supabaseClient.from('process_steps').update({
-                    assignee_id: assignee,
-                    task_title: title,
-                    task_description: desc
-                }).eq('id', editingId);
-                error = res.error;
-} else {
+                // MODO EDIÇÃO: Atualiza o cache local (Draft Mode)
+                const stepIdx = localStepsData.findIndex(s => s.id == editingId || s.id == `node-${editingId}`);
+                const userFullData = allUsers.find(u => u.id === assignee);
+
+                if (stepIdx !== -1) {
+                    localStepsData[stepIdx].task_title = title;
+                    localStepsData[stepIdx].task_description = desc;
+                    localStepsData[stepIdx].assignee_id = assignee;
+                    localStepsData[stepIdx].assignee = { 
+                        full_name: document.getElementById('qp-assignee-name').textContent,
+                        role: userFullData?.role || '',
+                        department: userFullData?.department || ''
+                    };
+                    
+                    workflowHasChanges = true;
+                    showToast("Alterações aplicadas ao rascunho!", "info");
+                    renderLocalWorkflow();
+                    closeQuickPanel();
+                    return;
+                }
+            } else {
                 const assigneeName = document.getElementById('qp-assignee-name').textContent;
                 const userFullData = allUsers.find(u => u.id === assignee);
                 const stepOrder = parseInt(order);
@@ -2780,6 +2793,11 @@ try {
 
             if (error) { showToast("Erro ao carregar etapa", "danger"); return; }
 
+            // Efeito de Seleção Visual
+            document.querySelectorAll('.flow-node').forEach(n => n.style.borderColor = 'var(--color-border)');
+            const selectedCard = document.getElementById(`node-${stepId}`);
+            if (selectedCard) selectedCard.style.borderColor = 'var(--color-warning)';
+
             const panel = document.getElementById('process-quick-panel');
             panel.querySelector('h3').innerHTML = `<span class="material-icons" style="vertical-align: middle; color: var(--color-warning);">edit</span> Editar Etapa`;
             
@@ -2787,10 +2805,9 @@ try {
             document.getElementById('qp-title').value = step.task_title;
             document.getElementById('qp-order').value = step.step_order;
             document.getElementById('qp-desc').value = step.task_description || '';
-            document.getElementById('qp-assignee-name').textContent = step.assignee?.full_name || 'Selecionar...';
+            document.getElementById('qp-assignee-name').textContent = step.assignee?.full_name || 'Selecionar Responsável...';
             document.getElementById('qp-assignee-id').value = step.assignee_id || '';
             
-            // Atributo temporário para sabermos que é edição
             panel.dataset.editingStepId = stepId;
             document.getElementById('btn-qp-save').textContent = "Salvar Alterações";
 
