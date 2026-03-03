@@ -1988,7 +1988,14 @@ if (permissions.includes('manage_routines')) {
             if (!steps) return;
 
             nodesContainer.innerHTML = steps.map((step, index) => {
-                const pos = step.ui_metadata || { x: index * 280, y: 100 };
+                // Se não houver posição salva, ou se a posição for a padrão (100,100), calcula em cascata
+                const defaultX = 100 + (index * 280);
+                const defaultY = 150;
+                
+                const pos = (step.ui_metadata && (step.ui_metadata.x !== 100 || step.ui_metadata.y !== 100)) 
+                            ? step.ui_metadata 
+                            : { x: defaultX, y: defaultY };
+                            
                 const isActive = activeOrder !== null && step.step_order === activeOrder;
                 const isCompleted = activeOrder !== null && step.step_order < activeOrder;
                 
