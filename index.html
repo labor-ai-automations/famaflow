@@ -908,6 +908,24 @@
     background-color: var(--color-border);
     margin: 0 0.25rem;
 }
+
+/* Modo Tela Cheia para Fluxograma */
+body.fullscreen-flow .sidebar { display: none !important; }
+body.fullscreen-flow main.content { margin-left: 0 !important; padding: 0 !important; }
+body.fullscreen-flow #process-visualizer-container {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999;
+    border-radius: 0;
+    border: none;
+}
+body.fullscreen-flow .flowchart-wrapper {
+    height: 100vh !important;
+    border-radius: 0;
+}
 		
     </style>
 </head>
@@ -1981,6 +1999,7 @@ if (permissions.includes('manage_routines')) {
                 <div class="flowchart-floating-toolbar">
                     <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
                     <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
+                    <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
                     <div class="toolbar-separator"></div>
                     <button class="btn btn-success" onclick="startProcessInstance('${processId}')" title="Iniciar Nova Instância">
                         <span class="material-icons">play_arrow</span> Iniciar
@@ -2049,6 +2068,23 @@ if (permissions.includes('manage_routines')) {
         function zoomFlow(delta) {
             flowZoom = Math.max(0.3, Math.min(2, flowZoom + delta));
             updateFlowTransform();
+        }
+
+        function toggleFlowFullscreen() {
+            const body = document.body;
+            const isFullscreen = body.classList.toggle('fullscreen-flow');
+            const icon = document.getElementById('flow-fullscreen-icon');
+            
+            if (icon) {
+                icon.textContent = isFullscreen ? 'fullscreen_exit' : 'fullscreen';
+            }
+            
+            // Força o ajuste do canvas após a mudança de tamanho da tela
+            setTimeout(() => {
+                updateFlowTransform();
+                // Redesenha conexões para evitar desalinhamento no redimensionamento
+                updateFlowConnections();
+            }, 150);
         }
 
         function updateFlowTransform() {
