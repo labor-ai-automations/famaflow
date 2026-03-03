@@ -2071,6 +2071,9 @@ if (permissions.includes('manage_routines')) {
                     <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
                     <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
                     <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
+                    <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
+                        <span class="material-icons">auto_fix_high</span>
+                    </button>
                     <div class="toolbar-separator"></div>
                     <button class="btn btn-danger" id="btn-save-workflow" onclick="saveWorkflowChanges()" style="background-color: #FF4F4F; display: none;">
                         <span class="material-icons">save</span> Salvar
@@ -2273,6 +2276,46 @@ if (permissions.includes('manage_routines')) {
             document.querySelectorAll('.flow-node').forEach(node => {
                 node.ondblclick = () => openEditStepModal(node.dataset.id);
             });
+        }
+
+        function autoArrangeNodes() {
+            syncDOMToLocalData();
+
+            const GAP_X    = 280;  // distância horizontal entre nós
+            const START_X  = 80;   // margem esquerda
+            const START_Y  = 150;  // linha Y fixa para todos
+
+            const sorted = [...localStepsData].sort((a, b) => a.step_order - b.step_order);
+
+            sorted.forEach((step, index) => {
+                const x = START_X + index * GAP_X;
+                const y = START_Y;
+
+                // Atualiza cache
+                step.ui_metadata = { x, y };
+
+                // Atualiza DOM imediatamente (animação via CSS transition)
+                const node = document.getElementById(`node-${step.id}`);
+                if (node) {
+                    node.style.transition = 'left 0.35s ease, top 0.35s ease';
+                    node.style.left = x + 'px';
+                    node.style.top  = y + 'px';
+
+                    // Remove transition após animação para não interferir no drag
+                    setTimeout(() => { node.style.transition = ''; }, 380);
+                }
+            });
+
+            workflowHasChanges = true;
+            const saveBtn = document.getElementById('btn-save-workflow');
+            const saveSep = document.getElementById('save-separator');
+            if (saveBtn) saveBtn.style.display = 'flex';
+            if (saveSep) saveSep.style.display = 'block';
+
+            // Atualiza conexões durante e após animação
+            updateFlowConnections();
+            setTimeout(updateFlowConnections, 200);
+            setTimeout(updateFlowConnections, 400);
         }
 
         function syncDOMToLocalData() {
