@@ -2275,7 +2275,20 @@ if (permissions.includes('manage_routines')) {
             });
         }
 
-        function renderLocalWorkflow() {
+        function syncDOMToLocalData() {
+    localStepsData.forEach(step => {
+        const node = document.getElementById(`node-${step.id}`);
+        if (node) {
+            const x = parseInt(node.style.left);
+            const y = parseInt(node.style.top);
+            if (!isNaN(x) && !isNaN(y)) {
+                step.ui_metadata = { x, y };
+            }
+        }
+    });
+}
+
+function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
@@ -2284,9 +2297,12 @@ if (permissions.includes('manage_routines')) {
             if(saveBtn) saveBtn.style.display = 'flex';
             if(saveSep) saveSep.style.display = 'block';
 
-            localStepsData.sort((a, b) => a.step_order - b.step_order);
+// Persiste todas as posições visuais atuais do DOM no cache ANTES de destruir os nós
+        syncDOMToLocalData();
 
-            nodesContainer.innerHTML = localStepsData.map((step, index) => {
+        localStepsData.sort((a, b) => a.step_order - b.step_order);
+
+        nodesContainer.innerHTML = localStepsData.map((step, index) => {
                 // Se não houver ui_metadata (erro), gera uma baseada na ordem para não encavalar
                 if (!step.ui_metadata) {
                     step.ui_metadata = { x: 100 + (index * 280), y: 150 };
@@ -2325,32 +2341,46 @@ if (permissions.includes('manage_routines')) {
             if (!node) return;
             let startX, startY;
 
-            node.onmousedown = (e) => {
-                if (e.target.closest('.btn-icon')) return;
-                e.stopPropagation();
-                startX = e.clientX - node.offsetLeft * flowZoom;
-                startY = e.clientY - node.offsetTop * flowZoom;
-                
-                const onMouseMove = (de) => {
-                    const nx = (de.clientX - startX) / flowZoom;
-                    const ny = (de.clientY - startY) / flowZoom;
-                    node.style.left = nx + 'px';
-                    node.style.top = ny + 'px';
-                    updateFlowConnections();
-                };
+node.onmousedown = (e) => {
+            if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
+            e.stopPropagation();
 
-                const onMouseUp = async () => {
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
-                    await supabaseClient.from('process_steps').update({ 
-                        ui_metadata: { x: parseInt(node.style.left), y: parseInt(node.style.top) } 
-                    }).eq('id', stepId);
-                };
+            // Lê posição inicial diretamente do style (evita ambiguidade do offsetLeft com transforms no pai)
+            const nodeInitialX = parseInt(node.style.left) || 0;
+            const nodeInitialY = parseInt(node.style.top)  || 0;
+            const mouseStartX  = e.clientX;
+            const mouseStartY  = e.clientY;
 
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
+            const onMouseMove = (de) => {
+                // Delta do mouse em pixels de tela → converte para coordenadas do mundo via flowZoom
+                node.style.left = (nodeInitialX + (de.clientX - mouseStartX) / flowZoom) + 'px';
+                node.style.top  = (nodeInitialY + (de.clientY - mouseStartY) / flowZoom) + 'px';
+                updateFlowConnections();
             };
-        }
+
+            const onMouseUp = () => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+
+                // Persiste no cache imediatamente após soltar
+                const step = localStepsData.find(s => s.id === stepId);
+                if (step) {
+                    step.ui_metadata = {
+                        x: parseInt(node.style.left),
+                        y: parseInt(node.style.top)
+                    };
+                    workflowHasChanges = true;
+                    const saveBtn = document.getElementById('btn-save-workflow');
+                    const saveSep = document.getElementById('save-separator');
+                    if (saveBtn) saveBtn.style.display = 'flex';
+                    if (saveSep) saveSep.style.display = 'block';
+                }
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        };
+    }
 
         function makeNodeDraggableLocal(stepId) {
             const node = document.getElementById(`node-${stepId}`);
@@ -2587,27 +2617,37 @@ if (permissions.includes('manage_routines')) {
                 const stepOrder = parseInt(order);
                 const offset = 280;
 
-                // 1. Identifica a posição de referência (do nó que ocupava esse lugar ou do anterior)
-                const referenceStep = localStepsData.find(s => s.step_order === stepOrder) || 
-                                     localStepsData.find(s => s.step_order === stepOrder - 1);
-                
-                const baseX = referenceStep ? (referenceStep.ui_metadata?.x || 100) : 100;
-                const baseY = referenceStep ? (referenceStep.ui_metadata?.y || 150) : 150;
+                // 0. Garante que todas as posições visuais arrastadas estão no cache antes de qualquer manipulação
+                syncDOMToLocalData();
 
-                // 2. Empurra todos os nós que estão da nova ordem para frente
+                // 1. Identifica âncoras de posição ANTES de qualquer mutação
+                // displacedStep = etapa que vai ser empurrada para a direita (ocupa o slot alvo agora)
+                // prevStep      = etapa imediatamente anterior (define o alinhamento Y da linha)
+                const displacedStep = localStepsData.find(s => s.step_order === stepOrder);
+                const prevStep      = localStepsData.find(s => s.step_order === stepOrder - 1);
+
+                // Captura primitivos ANTES da mutação — imune a referências modificadas pelo forEach
+                const baseX = displacedStep
+                    ? (displacedStep.ui_metadata?.x ?? 100)
+                    : prevStep
+                        ? (prevStep.ui_metadata?.x ?? 100) + offset
+                        : 100;
+                const baseY = prevStep
+                    ? (prevStep.ui_metadata?.y ?? 150)
+                    : (displacedStep?.ui_metadata?.y ?? 150);
+
+                // 2. Empurra todos os nós a partir do slot alvo +offset para a direita,
+                //    preservando o Y individual de cada um (arrastar vertical fica intacto)
                 localStepsData.forEach(s => {
                     if (s.step_order >= stepOrder) {
                         s.step_order++;
-                        // Move visualmente para a direita
-                        if (s.ui_metadata) {
-                            s.ui_metadata = { ...s.ui_metadata, x: s.ui_metadata.x + offset };
-                        } else {
-                            s.ui_metadata = { x: (s.step_order - 1) * offset, y: 150 };
-                        }
+                        const currentX = s.ui_metadata?.x ?? (100 + (s.step_order - 2) * offset);
+                        const currentY = s.ui_metadata?.y ?? 150;
+                        s.ui_metadata = { x: currentX + offset, y: currentY };
                     }
                 });
 
-                // 3. Cria o novo objeto com sua própria coordenada única
+                // 3. Cria o novo nó com posição exclusiva (onde estava o displacedStep)
                 const newStep = {
                     id: 'temp-' + Date.now(),
                     process_id: processId,
@@ -2615,14 +2655,14 @@ if (permissions.includes('manage_routines')) {
                     assignee_id: assignee,
                     task_title: title,
                     task_description: desc,
-                    ui_metadata: { x: baseX, y: baseY }, // Ocupa o lugar X do que foi empurrado
-                    assignee: { 
+                    ui_metadata: { x: baseX, y: baseY },
+                    assignee: {
                         full_name: assigneeName,
                         role: userFullData?.role || '',
                         department: userFullData?.department || ''
                     }
                 };
-                
+
                 localStepsData.push(newStep);
                 workflowHasChanges = true;
                 renderLocalWorkflow();
