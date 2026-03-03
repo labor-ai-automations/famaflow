@@ -2743,25 +2743,14 @@ node.onmousedown = (e) => {
 
             // Transação 80/20: Deleta o que existe do processo e insere o novo layout
             // Isso resolve 100% dos erros de duplicidade e ordem
-            try {
-                // 1. Remove etapas antigas do banco
-                const { error: delError } = await supabaseClient.from('process_steps').delete().eq('process_id', processId);
-                if (delError) throw delError;
+try {
+                // MODO ATÔMICO: Envia tudo para a RPC salvar em uma única transação
+                const { error: rpcError } = await supabaseClient.rpc('save_process_steps', {
+                    p_process_id: processId,
+                    p_steps: localStepsData // O PostgreSQL vai converter o array JS em JSONB automaticamente
+                });
 
-                // 2. Prepara os dados do cache local (removendo IDs temporários de UI)
-                const finalData = localStepsData.map(s => ({
-                    process_id: s.process_id,
-                    step_order: s.step_order,
-                    assignee_id: s.assignee_id,
-                    task_title: s.task_title,
-                    task_description: s.task_description,
-                    ui_metadata: s.ui_metadata
-                }));
-
-                // 3. Insere o novo workflow completo em lote
-                const { error: insError } = await supabaseClient.from('process_steps').insert(finalData);
-                if (insError) throw insError;
-
+                if (rpcError) throw rpcError;
                 showToast("Fluxo salvo com sucesso!", "success");
                 workflowHasChanges = false;
                 
