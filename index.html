@@ -946,6 +946,10 @@ body.fullscreen-flow .modal-overlay.visible { z-index: 100001 !important; }
     flex-direction: column;
 }
 #process-quick-panel.open { right: 0; }
+
+/* Garante que o painel lateral só apareça se estivermos em fullscreen */
+#process-quick-panel { display: none; }
+body.fullscreen-flow #process-quick-panel { display: flex; }
 .qp-header { padding: 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: var(--color-background); }
 .qp-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
 .qp-body { padding: 1.5rem; flex: 1; overflow-y: auto; }
@@ -2304,27 +2308,32 @@ if (permissions.includes('manage_routines')) {
         }
 
         async function openAddStepModal(processId) {
-            const panel = document.getElementById('process-quick-panel');
-            const titleInput = document.getElementById('qp-title');
-            const orderInput = document.getElementById('qp-order');
-            const assigneeSelect = document.getElementById('qp-assignee');
-            
-            document.getElementById('qp-process-id').value = processId;
+            const isFullscreen = document.body.classList.contains('fullscreen-flow');
             
             // 1. Busca automática da próxima ordem
-            const { count, error } = await supabaseClient
+            const { count } = await supabaseClient
                 .from('process_steps')
                 .select('*', { count: 'exact', head: true })
                 .eq('process_id', processId);
-            
-            orderInput.value = (count || 0) + 1;
+            const nextOrder = (count || 0) + 1;
 
-            // 2. Popula responsáveis
-            assigneeSelect.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
-            
-            // 3. Abre painel e foca no título
-            panel.classList.add('open');
-            setTimeout(() => titleInput.focus(), 350);
+            if (isFullscreen) {
+                // MODO FULLSCREEN: Abre o Side Panel
+                const panel = document.getElementById('process-quick-panel');
+                document.getElementById('qp-process-id').value = processId;
+                document.getElementById('qp-order').value = nextOrder;
+                document.getElementById('qp-assignee').innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
+                panel.classList.add('open');
+                setTimeout(() => document.getElementById('qp-title').focus(), 350);
+            } else {
+                // MODO JANELA: Abre o Modal Centralizado antigo
+                document.getElementById('step-process-id').value = processId;
+                document.getElementById('step-order').value = nextOrder;
+                document.getElementById('step-assignee').innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
+                document.getElementById('step-title').value = '';
+                document.getElementById('step-desc').value = '';
+                document.getElementById('add-step-modal').classList.add('visible');
+            }
         }
 
         function closeQuickPanel() {
