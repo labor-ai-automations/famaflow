@@ -2921,6 +2921,12 @@ async function startProcessInstance(processId) {
                 
                 if (response.ok) {
                     showToast('Processo iniciado com sucesso!', 'success');
+                    // Recarrega a página ou a lista para mostrar o nó ativo
+                    setTimeout(() => {
+                        const titleEl = document.getElementById('current-workflow-title');
+                        const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
+                        selectProcess(processId, processTitle);
+                    }, 1000);
                 } else {
                     throw new Error('Falha ao iniciar processo');
                 }
