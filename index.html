@@ -2297,6 +2297,10 @@ if (permissions.includes('manage_routines')) {
                             ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
                             ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
+                        <!-- Botão de Excluir -->
+                        <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa">
+                            <span class="material-icons">delete</span>
+                        </div>
                         <!-- Botão Quick Add estilo n8n -->
                         <div class="node-quick-add" onclick="openAddStepModal('${processId}', ${step.step_order + 1})" title="Inserir etapa aqui">
                             <span class="material-icons">add</span>
@@ -2393,14 +2397,15 @@ function renderLocalWorkflow() {
                         <div class="node-label">Etapa ${step.step_order}</div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
-                        <div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+<div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
                             <div style="display: flex; align-items: center; gap: 5px; width: 100%;">
-                                <small style="font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">👤 ${step.assignee?.full_name || 'N/A'}</small>
+                                <small style="font-weight: 600; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">👤 ${step.assignee?.full_name || 'N/A'}</small>
                                 <button class="btn-icon" onclick="showStepHistory('${step.id}')" style="padding: 2px;"><span class="material-icons" style="font-size:16px;">history</span></button>
                             </div>
                             ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
                             ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
+                        <!-- Botão de Excluir (Rascunho) -->
                         <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa">
                             <span class="material-icons">delete</span>
                         </div>
