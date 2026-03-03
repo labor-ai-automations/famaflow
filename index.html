@@ -10,6 +10,47 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
+
+let currentSelectionTarget = null; // 'qp' para side panel ou 'modal' para central
+
+        function openAssigneeSelector(target) {
+            currentSelectionTarget = target;
+            
+            // Abre o seletor usando a infraestrutura que já temos
+            openUserSelectorModal({ 
+                title: 'Selecionar Responsável (Máx. 1)', 
+                targetArray: [], // Começa vazio para seleção única
+                onComplete: () => {
+                    // Esta função será chamada ao fechar o modal
+                }
+            });
+            
+            // Adiciona um aviso visual no modal (Tarefa 80/20)
+            const modalCount = document.getElementById('selected-count-display');
+            if (modalCount) modalCount.innerHTML = `⚠️ <strong>Seleção Única:</strong> O último clicado será o escolhido.`;
+        }
+
+        // Sobrescrever a função toggleRecipientSelection para suportar modo "Responsável Único"
+        const originalToggleSelection = toggleRecipientSelection;
+        toggleRecipientSelection = (user) => {
+            if (currentSelectionTarget) {
+                // Se estamos selecionando um responsável de processo (ÚNICO)
+                const nameDisplay = document.getElementById(`${currentSelectionTarget}-assignee-name`);
+                const idInput = document.getElementById(`${currentSelectionTarget}-assignee-id`);
+                
+                if (nameDisplay && idInput) {
+                    nameDisplay.textContent = user.full_name;
+                    idInput.value = user.id;
+                    showToast(`Responsável definido: ${user.full_name}`, 'info');
+                    closeRecipientModal();
+                    currentSelectionTarget = null; // Reseta o estado
+                }
+            } else {
+                // Comportamento normal para mensagens (Múltiplos)
+                originalToggleSelection(user);
+            }
+        };
+
   (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Re-referencing: ",d):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
     key: "AIzaSyDFgEhXMXR8pa8olYIEQ4QJXAVikag_lFE",
     v: "weekly"
@@ -2347,7 +2388,8 @@ if (permissions.includes('manage_routines')) {
             const processId = document.getElementById('qp-process-id').value;
             const title = document.getElementById('qp-title').value.trim();
             const desc = document.getElementById('qp-desc').value.trim();
-            const assignee = document.getElementById('qp-assignee').value;
+            const assignee = document.getElementById('qp-assignee-id').value;
+            if (!assignee) { showToast("Selecione um responsável", "warning"); return; }
             const order = document.getElementById('qp-order').value;
 
             if (!title) { showToast("O título é obrigatório", "warning"); return; }
@@ -6520,7 +6562,11 @@ showToast('Tarefa adicionada!', 'success');
                 </div>
                 <div class="form-group">
                     <label>Responsável</label>
-                    <select id="qp-assignee" class="input-field"></select>
+                    <div id="qp-assignee-display" class="input-field" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openAssigneeSelector('qp')">
+                        <span id="qp-assignee-name">Selecionar...</span>
+                        <span class="material-icons" style="font-size:18px; color:var(--color-text-secondary);">person_search</span>
+                    </div>
+                    <input type="hidden" id="qp-assignee-id">
                 </div>
             </div>
             <div class="form-group">
