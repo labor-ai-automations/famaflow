@@ -884,6 +884,38 @@ let currentSelectionTarget = null;
 @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
 #flow-connections { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; pointer-events: none; z-index: 1; }
 
+/* Botão Quick Add estilo n8n */
+.node-quick-add {
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    background-color: var(--color-brand-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 100;
+}
+.flow-node:hover .node-quick-add { 
+    opacity: 1; 
+    right: -15px; 
+}
+.node-quick-add .material-icons { 
+    font-size: 16px; 
+}
+.node-quick-add:hover { 
+    transform: translateY(-50%) scale(1.2); 
+    filter: brightness(1.1); 
+}
+
 /* Barra de Ferramentas Flutuante */
 .flowchart-floating-toolbar {
     position: absolute;
@@ -2035,6 +2067,7 @@ if (permissions.includes('manage_routines')) {
                 <div class="flowchart-floating-toolbar">
                     <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
                     <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
+                    <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
                     <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
                     <div class="toolbar-separator"></div>
                     <button class="btn btn-success" onclick="startProcessInstance('${processId}')" title="Iniciar Nova Instância">
@@ -2123,6 +2156,41 @@ if (permissions.includes('manage_routines')) {
             }, 150);
         }
 
+        function zoomToFit() {
+            const nodes = document.querySelectorAll('.flow-node');
+            if (nodes.length === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            nodes.forEach(node => {
+                const x = parseInt(node.style.left);
+                const y = parseInt(node.style.top);
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + 220); // largura do nó
+                maxY = Math.max(maxY, y + 120); // altura aproximada do nó
+            });
+
+            const wrapper = document.getElementById('flow-wrapper');
+            const padding = 50;
+            
+            const contentWidth = (maxX - minX) + (padding * 2);
+            const contentHeight = (maxY - minY) + (padding * 2);
+            
+            const zoomX = wrapper.offsetWidth / contentWidth;
+            const zoomY = wrapper.offsetHeight / contentHeight;
+            
+            flowZoom = Math.min(zoomX, zoomY, 1.0); // Limita zoom máximo a 100%
+            flowZoom = Math.max(flowZoom, 0.4);      // Limita zoom mínimo em 40%
+
+            // Centraliza o conteúdo no meio do wrapper
+            flowPanX = (wrapper.offsetWidth / 2) - ((minX + (maxX - minX) / 2) * flowZoom);
+            flowPanY = (wrapper.offsetHeight / 2) - ((minY + (maxY - minY) / 2) * flowZoom);
+
+            updateFlowTransform();
+            updateFlowConnections();
+        }
+
         function updateFlowTransform() {
             const world = document.getElementById('flow-world');
             if (world) world.style.transform = `translate(${flowPanX}px, ${flowPanY}px) scale(${flowZoom})`;
@@ -2171,6 +2239,10 @@ if (permissions.includes('manage_routines')) {
                         <div class="node-footer">
                             <small>👤 ${step.assignee?.full_name || 'N/A'}</small>
                             <button class="btn-icon" onclick="showStepHistory('${step.id}')"><span class="material-icons" style="font-size:16px;">history</span></button>
+                        </div>
+                        <!-- Botão Quick Add estilo n8n -->
+                        <div class="node-quick-add" onclick="openAddStepModal('${processId}')" title="Adicionar próxima etapa">
+                            <span class="material-icons">add</span>
                         </div>
                     </div>
                 `;
