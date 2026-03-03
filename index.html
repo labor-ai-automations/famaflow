@@ -2482,23 +2482,24 @@ if (permissions.includes('manage_routines')) {
                     task_description: desc
                 }).eq('id', editingId);
                 error = res.error;
-            } else {
+} else {
                 // MODO CRIAÇÃO COM REORDENAÇÃO AUTOMÁTICA
                 const stepOrder = parseInt(order);
                 
-                // 1. Abre espaço com lógica de incremento reverso
-                const { error: reorderError } = await supabaseClient.rpc('reorder_process_steps_on_insert', {
+                // Chamamos a RPC que já lida com o incremento reverso
+                // Com a constraint DEFERRABLE que rodamos no SQL, essa chamada não vai mais bugar
+                const { error: rpcError } = await supabaseClient.rpc('reorder_process_steps_on_insert', {
                     p_process_id: processId,
-                    p_new_order: parseInt(order)
+                    p_new_order: stepOrder
                 });
 
-                if (reorderError) {
-                    showToast("Erro ao reorganizar fluxo: " + reorderError.message, "danger");
+                if (rpcError) {
+                    showToast("Erro ao preparar espaço: " + rpcError.message, "danger");
                     btn.disabled = false;
                     return;
                 }
 
-                // 2. Insere a nova etapa agora que o "buraco" foi criado
+                // Agora inserimos no "buraco" aberto
                 const res = await supabaseClient.from('process_steps').insert({
                     process_id: processId,
                     step_order: stepOrder,
