@@ -2213,7 +2213,7 @@ if (permissions.includes('manage_routines')) {
 
             const { data: steps } = await supabaseClient
                 .from('process_steps')
-                .select('*, assignee:assignee_id(full_name)')
+                .select('*, assignee:assignee_id(full_name, role, department)')
                 .eq('process_id', processId)
                 .order('step_order', { ascending: true });
 
@@ -2236,9 +2236,13 @@ if (permissions.includes('manage_routines')) {
                         <div class="node-label">Etapa ${step.step_order}</div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
-                        <div class="node-footer">
-                            <small>👤 ${step.assignee?.full_name || 'N/A'}</small>
-                            <button class="btn-icon" onclick="showStepHistory('${step.id}')"><span class="material-icons" style="font-size:16px;">history</span></button>
+                        <div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                            <div style="display: flex; align-items: center; gap: 5px; width: 100%;">
+                                <small style="font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">👤 ${step.assignee?.full_name || 'N/A'}</small>
+                                <button class="btn-icon" onclick="showStepHistory('${step.id}')" style="padding: 2px;"><span class="material-icons" style="font-size:16px;">history</span></button>
+                            </div>
+                            ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
+                            ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
                         <!-- Botão Quick Add estilo n8n -->
                         <div class="node-quick-add" onclick="openAddStepModal('${processId}')" title="Adicionar próxima etapa">
