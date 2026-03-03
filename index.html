@@ -2939,7 +2939,8 @@ async function startProcessInstance(processId) {
 
         async function loadMyProcessesPage() {
             const container = document.getElementById('my-processes-list');
-            container.innerHTML = '<div class="empty-state">Buscando tarefas ativas...</div>';
+            if(!container) return;
+            container.innerHTML = '<div class="empty-state"><span class="material-icons" style="animation: spin 2s linear infinite;">sync</span><br>Buscando suas tarefas...</div>';
             
             const { data: myTasks, error } = await supabaseClient.rpc('get_my_active_process_steps');
 
