@@ -860,6 +860,34 @@
 .flow-node .node-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--color-brand-primary); }
 @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
 #flow-connections { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; pointer-events: none; z-index: 1; }
+
+/* Barra de Ferramentas Flutuante */
+.flowchart-floating-toolbar {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    z-index: 1000;
+    pointer-events: auto;
+}
+.flowchart-floating-toolbar .btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+    height: 36px;
+}
+.flowchart-floating-toolbar .toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: var(--color-border);
+    margin: 0 0.25rem;
+}
 		
     </style>
 </head>
@@ -1887,17 +1915,27 @@ if (permissions.includes('manage_routines')) {
         async function selectProcess(processId, title) {
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; position:absolute; top:1rem; left:1rem; right:1rem; z-index:100; pointer-events:none;">
-                    <div style="pointer-events:auto; background:var(--color-surface); padding:8px 15px; border-radius:8px; border:1px solid var(--color-border); box-shadow:var(--shadow);">
-                        <h3 style="margin:0; font-size:1.1rem;">Fluxo: ${title}</h3>
-                    </div>
-                    <div style="display:flex; gap:0.5rem; pointer-events:auto;">
-                        <button class="btn btn-secondary" onclick="zoomFlow(-0.1)"><span class="material-icons">zoom_out</span></button>
-                        <button class="btn btn-secondary" onclick="zoomFlow(0.1)"><span class="material-icons">zoom_in</span></button>
-                        <button class="btn btn-success" onclick="startProcessInstance('${processId}')"><span class="material-icons">play_arrow</span> Iniciar</button>
-                        <button class="btn btn-danger" onclick="openAddStepModal('${processId}')"><span class="material-icons">add</span> Etapa</button>
+                <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
+                    <div style="pointer-events:auto; background:var(--color-surface); padding:8px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
+                        <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary);">
+                            <span class="material-icons" style="vertical-align: middle; font-size: 18px; margin-right: 4px; color: var(--color-brand-primary);">hub</span>
+                            ${title}
+                        </h3>
                     </div>
                 </div>
+
+                <div class="flowchart-floating-toolbar">
+                    <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
+                    <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
+                    <div class="toolbar-separator"></div>
+                    <button class="btn btn-success" onclick="startProcessInstance('${processId}')" title="Iniciar Nova Instância">
+                        <span class="material-icons">play_arrow</span> Iniciar
+                    </button>
+                    <button class="btn btn-danger" onclick="openAddStepModal('${processId}')" title="Adicionar Nova Etapa">
+                        <span class="material-icons">add</span> Etapa
+                    </button>
+                </div>
+
                 <div class="flowchart-wrapper" id="flow-wrapper">
                     <div class="flowchart-world" id="flow-world">
                         <svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none;">
