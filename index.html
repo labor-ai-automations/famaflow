@@ -11,70 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 
-let currentSelectionTarget = null; // 'qp' para side panel ou 'modal' para central
-
-        function openAssigneeSelector(target) {
-            currentSelectionTarget = target;
-            
-            // Abre o modal de seleção
-            const modal = document.getElementById('recipient-modal');
-            modal.querySelector('.modal-header h3').textContent = 'Selecionar Responsável (Único)';
-            modal.classList.add('visible');
-            modal.style.zIndex = "100005";
-            
-            populateRecipientFilters();
-            applyRecipientFilters();
-
-            const modalCount = document.getElementById('selected-count-display');
-            if (modalCount) modalCount.innerHTML = `⚠️ Clique no nome para confirmar a seleção.`;
-        }
-
-        // Esta função substitui a lógica global quando estamos no modo "Processos"
-        const originalToggleSelection = toggleRecipientSelection;
-        toggleRecipientSelection = (user) => {
-            if (currentSelectionTarget === 'qp') {
-                // Seletor para o Side Panel de Processos
-                document.getElementById('qp-assignee-name').textContent = user.full_name;
-                document.getElementById('qp-assignee-id').value = user.id;
-                
-                showToast(`Responsável: ${user.full_name}`, 'success');
-                closeRecipientModal();
-                currentSelectionTarget = null;
-            } else {
-                // Comportamento original para Mensagens/Outros
-                const targetArray = (_selectorConfig && _selectorConfig.targetArray) ? _selectorConfig.targetArray : selectedRecipients;
-                const exists = targetArray.find(r => r.id === user.id);
-                if (exists) {
-                    const idx = targetArray.findIndex(r => r.id === user.id);
-                    targetArray.splice(idx, 1);
-                } else {
-                    targetArray.push(user);
-                }
-                document.getElementById('selected-count-display').textContent = `${targetArray.length} selecionados`;
-                applyRecipientFilters();
-            }
-        };
-
-        // Sobrescrever a função toggleRecipientSelection para suportar modo "Responsável Único"
-        const originalToggleSelection = toggleRecipientSelection;
-        toggleRecipientSelection = (user) => {
-            if (currentSelectionTarget) {
-                // Se estamos selecionando um responsável de processo (ÚNICO)
-                const nameDisplay = document.getElementById(`${currentSelectionTarget}-assignee-name`);
-                const idInput = document.getElementById(`${currentSelectionTarget}-assignee-id`);
-                
-                if (nameDisplay && idInput) {
-                    nameDisplay.textContent = user.full_name;
-                    idInput.value = user.id;
-                    showToast(`Responsável definido: ${user.full_name}`, 'info');
-                    closeRecipientModal();
-                    currentSelectionTarget = null; // Reseta o estado
-                }
-            } else {
-                // Comportamento normal para mensagens (Múltiplos)
-                originalToggleSelection(user);
-            }
-        };
+let currentSelectionTarget = null;
 
   (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Re-referencing: ",d):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
     key: "AIzaSyDFgEhXMXR8pa8olYIEQ4QJXAVikag_lFE",
@@ -3972,6 +3909,25 @@ async function submitRequest(event) {
             openUserSelectorModal({ title: 'Selecionar Destinatários', targetArray: selectedRecipients, onComplete: renderRecipientPills });
         }
 
+        function openAssigneeSelector(target) {
+            currentSelectionTarget = target;
+            const modal = document.getElementById('recipient-modal');
+            modal.querySelector('.modal-header h3').textContent = 'Selecionar Responsável';
+            modal.style.zIndex = '100005';
+            modal.classList.add('visible');
+            function show() {
+                populateRecipientFilters();
+                applyRecipientFilters();
+                const countEl = document.getElementById('selected-count-display');
+                if (countEl) countEl.innerHTML = '⚠️ Clique no nome para confirmar.';
+            }
+            if (!allUsers || allUsers.length === 0) {
+                fetchAllUsersForSearch().then(show);
+            } else {
+                show();
+            }
+        }
+
         function closeRecipientModal() {
             document.getElementById('recipient-modal').classList.remove('visible');
             if (_selectorConfig && typeof _selectorConfig.onComplete === 'function') {
@@ -4059,6 +4015,16 @@ async function submitRequest(event) {
         }
 
 function toggleRecipientSelection(user) {
+            if (currentSelectionTarget) {
+                const nameDisplay = document.getElementById(currentSelectionTarget + '-assignee-name');
+                const idInput     = document.getElementById(currentSelectionTarget + '-assignee-id');
+                if (nameDisplay) nameDisplay.textContent = user.full_name;
+                if (idInput)     idInput.value           = user.id;
+                showToast('Responsável: ' + user.full_name, 'success');
+                document.getElementById('recipient-modal').classList.remove('visible');
+                currentSelectionTarget = null;
+                return;
+            }
             const targetArray = (_selectorConfig && _selectorConfig.targetArray) ? _selectorConfig.targetArray : selectedRecipients;
             const exists = targetArray.find(r => r.id === user.id);
             if (exists) {
