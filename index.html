@@ -16,18 +16,19 @@ let currentSelectionTarget = null; // 'qp' para side panel ou 'modal' para centr
         function openAssigneeSelector(target) {
             currentSelectionTarget = target;
             
-            // Abre o seletor usando a infraestrutura que já temos
+            // Abre o seletor avançado
             openUserSelectorModal({ 
-                title: 'Selecionar Responsável (Máx. 1)', 
-                targetArray: [], // Começa vazio para seleção única
-                onComplete: () => {
-                    // Esta função será chamada ao fechar o modal
-                }
+                title: 'Selecionar Responsável (Seleção Única)', 
+                targetArray: [], 
+                onComplete: () => {}
             });
             
-            // Adiciona um aviso visual no modal (Tarefa 80/20)
+            // Força o modal a ter o Z-index correto via código para garantir
+            const modal = document.getElementById('recipient-modal');
+            if(modal) modal.style.zIndex = "100005";
+
             const modalCount = document.getElementById('selected-count-display');
-            if (modalCount) modalCount.innerHTML = `⚠️ <strong>Seleção Única:</strong> O último clicado será o escolhido.`;
+            if (modalCount) modalCount.innerHTML = `⚠️ <strong>Modo Responsável:</strong> Escolha um colaborador da lista.`;
         }
 
         // Sobrescrever a função toggleRecipientSelection para suportar modo "Responsável Único"
@@ -988,9 +989,13 @@ body.fullscreen-flow .modal-overlay.visible { z-index: 100001 !important; }
 }
 #process-quick-panel.open { right: 0; }
 
-/* Garante que o painel lateral só apareça se estivermos em fullscreen */
-#process-quick-panel { display: none; }
-body.fullscreen-flow #process-quick-panel { display: flex; }
+/* Side Panel visível em ambos os modos, mas com prioridade máxima */
+#process-quick-panel { display: flex; }
+
+/* Modal de Seleção de Destinatários - Forçar prioridade máxima no Fullscreen */
+body.fullscreen-flow #recipient-modal {
+    z-index: 100002 !important;
+}
 .qp-header { padding: 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: var(--color-background); }
 .qp-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
 .qp-body { padding: 1.5rem; flex: 1; overflow-y: auto; }
@@ -2349,8 +2354,10 @@ if (permissions.includes('manage_routines')) {
         }
 
         async function openAddStepModal(processId) {
-            const isFullscreen = document.body.classList.contains('fullscreen-flow');
-            
+            // Fecha qualquer modal central que possa estar aberto por erro
+            const oldModal = document.getElementById('add-step-modal');
+            if(oldModal) oldModal.classList.remove('visible');
+
             // 1. Busca automática da próxima ordem
             const { count } = await supabaseClient
                 .from('process_steps')
@@ -2358,33 +2365,21 @@ if (permissions.includes('manage_routines')) {
                 .eq('process_id', processId);
             const nextOrder = (count || 0) + 1;
 
-            if (isFullscreen) {
-                // MODO FULLSCREEN: Abre o Side Panel
-                const panel = document.getElementById('process-quick-panel');
-                document.getElementById('qp-process-id').value = processId;
-                document.getElementById('qp-order').value = nextOrder;
-                
-                // Reseta o seletor de responsável
-                document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
-                document.getElementById('qp-assignee-id').value = '';
-                
-                panel.classList.add('open');
-                setTimeout(() => document.getElementById('qp-title').focus(), 350);
-            } else {
-                // MODO JANELA: Abre o Modal Centralizado antigo
-                // Nota: Se você for usar o modal antigo (Janela), 
-                // ele também precisa do campo qp-assignee-display ou ser atualizado.
-                // Por segurança e 80/20, vamos forçar o uso do Side Panel em ambos os modos por enquanto:
-                
-                const panel = document.getElementById('process-quick-panel');
-                document.getElementById('qp-process-id').value = processId;
-                document.getElementById('qp-order').value = nextOrder;
-                document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
-                document.getElementById('qp-assignee-id').value = '';
-                
-                panel.classList.add('open');
-                setTimeout(() => document.getElementById('qp-title').focus(), 350);
-            }
+            // Usamos o Side Panel para ambos os casos, garantindo consistência
+            const panel = document.getElementById('process-quick-panel');
+            document.getElementById('qp-process-id').value = processId;
+            document.getElementById('qp-order').value = nextOrder;
+            
+            // Reseta campos e seletor
+            document.getElementById('qp-title').value = '';
+            document.getElementById('qp-desc').value = '';
+            document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
+            document.getElementById('qp-assignee-id').value = '';
+            
+            panel.classList.add('open');
+            
+            // Foco automático no título após a animação de deslizar
+            setTimeout(() => document.getElementById('qp-title').focus(), 350);
         }
 
         function closeQuickPanel() {
