@@ -587,7 +587,20 @@
         .selected-row .check-icon { color: var(--color-success); }
 
         /* Custom Confirmation Modal Styles */
-        #confirmation-modal .modal-content { max-width: 400px; text-align: center; }
+        #confirmation-modal .modal-content { 
+    max-width: 400px; 
+    text-align: center; 
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+}
+#confirmation-modal .confirm-message {
+    color: var(--color-text-secondary);
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+#confirmation-modal .confirm-title {
+    color: var(--color-text-primary);
+}
         .confirm-icon { font-size: 48px; color: var(--color-warning); margin-bottom: 1rem; }
         .confirm-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
         .confirm-message { color: var(--color-text-secondary); margin-bottom: 2rem; }
@@ -1926,16 +1939,30 @@ if (permissions.includes('manage_routines')) {
             loadProcessSteps(processId);
         }
 
-        async function startProcessInstance(processId) {
-            if(!confirm("Iniciar este processo agora?")) return;
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            await fetch(N8N_START_PROCESS_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ process_id: processId, started_by: currentUserProfile.id })
-            });
-            showToast('Processo iniciado!', 'success');
+async function startProcessInstance(processId) {
+    showConfirmation(
+        "Iniciar Processo",
+        "Deseja iniciar uma nova instância deste fluxo de trabalho agora?",
+        async () => {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch(N8N_START_PROCESS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ process_id: processId, started_by: currentUserProfile.id })
+                });
+                
+                if (response.ok) {
+                    showToast('Processo iniciado com sucesso!', 'success');
+                } else {
+                    throw new Error('Falha ao iniciar processo');
+                }
+            } catch (error) {
+                showToast(error.message, 'danger');
+            }
         }
+    );
+}
 
         async function loadMyProcessesPage() {
             const container = document.getElementById('my-processes-list');
