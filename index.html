@@ -2486,10 +2486,10 @@ if (permissions.includes('manage_routines')) {
                 // MODO CRIAÇÃO COM REORDENAÇÃO AUTOMÁTICA
                 const stepOrder = parseInt(order);
                 
-                // 1. Abre espaço: incrementa a ordem de todas as etapas seguintes
+                // 1. Abre espaço com lógica de incremento reverso
                 const { error: reorderError } = await supabaseClient.rpc('reorder_process_steps_on_insert', {
                     p_process_id: processId,
-                    p_new_order: stepOrder
+                    p_new_order: parseInt(order)
                 });
 
                 if (reorderError) {
