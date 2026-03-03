@@ -2351,8 +2351,9 @@ function renderLocalWorkflow() {
                     step.ui_metadata = { x: 100 + (index * 280), y: 150 };
                 }
                 const pos = step.ui_metadata;
+                const isEditingThis = document.getElementById('process-quick-panel').dataset.editingStepId == step.id;
                 return `
-                    <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
+                    <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px; border-color: ${isEditingThis ? 'var(--color-warning)' : 'var(--color-border)'}">
                         <div class="node-label">Etapa ${step.step_order}</div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
@@ -2621,9 +2622,21 @@ node.onmousedown = (e) => {
         function closeQuickPanel() {
             const panel = document.getElementById('process-quick-panel');
             panel.classList.remove('open');
+            
+            // Remove o efeito visual de seleção de todos os nós
+            document.querySelectorAll('.flow-node').forEach(n => n.style.borderColor = 'var(--color-border)');
+
+            // Reset do cabeçalho e botão para modo "Criação"
             panel.querySelector('h3').innerHTML = `<span class="material-icons" style="vertical-align: middle; color: var(--color-brand-primary);">add_circle</span> Nova Etapa`;
-            document.getElementById('btn-qp-save').textContent = "Adicionar Etapa";
-            delete panel.dataset.editingStepId; // Limpa o ID de edição
+            
+            const saveBtn = document.getElementById('btn-qp-save');
+            saveBtn.textContent = "Adicionar Etapa";
+            saveBtn.disabled = false; // DESBLOQUEIA O BOTÃO CASO ESTEJA TRAVADO
+            
+            // Limpeza de metadados de edição
+            delete panel.dataset.editingStepId; 
+            
+            // Limpeza dos campos
             document.getElementById('qp-title').value = '';
             document.getElementById('qp-desc').value = '';
             document.getElementById('qp-assignee-id').value = '';
@@ -2665,6 +2678,7 @@ async function createProcessStep() {
                     showToast("Alterações aplicadas ao rascunho!", "info");
                     renderLocalWorkflow();
                     closeQuickPanel();
+                    btn.disabled = false; // GARANTE QUE O BOTÃO VOLTE AO ESTADO ATIVO
                     return;
                 }
             } else {
