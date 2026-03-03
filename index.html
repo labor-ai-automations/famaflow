@@ -16,20 +16,44 @@ let currentSelectionTarget = null; // 'qp' para side panel ou 'modal' para centr
         function openAssigneeSelector(target) {
             currentSelectionTarget = target;
             
-            // Abre o seletor avançado
-            openUserSelectorModal({ 
-                title: 'Selecionar Responsável (Seleção Única)', 
-                targetArray: [], 
-                onComplete: () => {}
-            });
-            
-            // Força o modal a ter o Z-index correto via código para garantir
+            // Abre o modal de seleção
             const modal = document.getElementById('recipient-modal');
-            if(modal) modal.style.zIndex = "100005";
+            modal.querySelector('.modal-header h3').textContent = 'Selecionar Responsável (Único)';
+            modal.classList.add('visible');
+            modal.style.zIndex = "100005";
+            
+            populateRecipientFilters();
+            applyRecipientFilters();
 
             const modalCount = document.getElementById('selected-count-display');
-            if (modalCount) modalCount.innerHTML = `⚠️ <strong>Modo Responsável:</strong> Escolha um colaborador da lista.`;
+            if (modalCount) modalCount.innerHTML = `⚠️ Clique no nome para confirmar a seleção.`;
         }
+
+        // Esta função substitui a lógica global quando estamos no modo "Processos"
+        const originalToggleSelection = toggleRecipientSelection;
+        toggleRecipientSelection = (user) => {
+            if (currentSelectionTarget === 'qp') {
+                // Seletor para o Side Panel de Processos
+                document.getElementById('qp-assignee-name').textContent = user.full_name;
+                document.getElementById('qp-assignee-id').value = user.id;
+                
+                showToast(`Responsável: ${user.full_name}`, 'success');
+                closeRecipientModal();
+                currentSelectionTarget = null;
+            } else {
+                // Comportamento original para Mensagens/Outros
+                const targetArray = (_selectorConfig && _selectorConfig.targetArray) ? _selectorConfig.targetArray : selectedRecipients;
+                const exists = targetArray.find(r => r.id === user.id);
+                if (exists) {
+                    const idx = targetArray.findIndex(r => r.id === user.id);
+                    targetArray.splice(idx, 1);
+                } else {
+                    targetArray.push(user);
+                }
+                document.getElementById('selected-count-display').textContent = `${targetArray.length} selecionados`;
+                applyRecipientFilters();
+            }
+        };
 
         // Sobrescrever a função toggleRecipientSelection para suportar modo "Responsável Único"
         const originalToggleSelection = toggleRecipientSelection;
@@ -2373,7 +2397,7 @@ if (permissions.includes('manage_routines')) {
             // Reseta campos e seletor
             document.getElementById('qp-title').value = '';
             document.getElementById('qp-desc').value = '';
-            document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
+            document.getElementById('qp-assignee-name').textContent = 'Selecionar Responsável...';
             document.getElementById('qp-assignee-id').value = '';
             
             panel.classList.add('open');
