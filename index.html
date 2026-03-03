@@ -2363,17 +2363,27 @@ if (permissions.includes('manage_routines')) {
                 const panel = document.getElementById('process-quick-panel');
                 document.getElementById('qp-process-id').value = processId;
                 document.getElementById('qp-order').value = nextOrder;
-                document.getElementById('qp-assignee').innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
+                
+                // Reseta o seletor de responsável
+                document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
+                document.getElementById('qp-assignee-id').value = '';
+                
                 panel.classList.add('open');
                 setTimeout(() => document.getElementById('qp-title').focus(), 350);
             } else {
                 // MODO JANELA: Abre o Modal Centralizado antigo
-                document.getElementById('step-process-id').value = processId;
-                document.getElementById('step-order').value = nextOrder;
-                document.getElementById('step-assignee').innerHTML = allUsers.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
-                document.getElementById('step-title').value = '';
-                document.getElementById('step-desc').value = '';
-                document.getElementById('add-step-modal').classList.add('visible');
+                // Nota: Se você for usar o modal antigo (Janela), 
+                // ele também precisa do campo qp-assignee-display ou ser atualizado.
+                // Por segurança e 80/20, vamos forçar o uso do Side Panel em ambos os modos por enquanto:
+                
+                const panel = document.getElementById('process-quick-panel');
+                document.getElementById('qp-process-id').value = processId;
+                document.getElementById('qp-order').value = nextOrder;
+                document.getElementById('qp-assignee-name').textContent = 'Selecionar...';
+                document.getElementById('qp-assignee-id').value = '';
+                
+                panel.classList.add('open');
+                setTimeout(() => document.getElementById('qp-title').focus(), 350);
             }
         }
 
