@@ -2159,15 +2159,26 @@ if (permissions.includes('manage_routines')) {
 
         async function createProcessStep() {
             const processId = document.getElementById('step-process-id').value;
-            await supabaseClient.from('process_steps').insert({
+            const processTitle = document.querySelector('#flow-world').parentElement.parentElement.querySelector('h3').textContent.replace('Fluxo: ', '');
+            
+            const { error } = await supabaseClient.from('process_steps').insert({
                 process_id: processId,
                 step_order: parseInt(document.getElementById('step-order').value),
                 assignee_id: document.getElementById('step-assignee').value,
                 task_title: document.getElementById('step-title').value,
                 task_description: document.getElementById('step-desc').value
             });
+
+            if (error) {
+                showToast("Erro ao criar etapa: " + error.message, "danger");
+                return;
+            }
+
+            showToast("Etapa adicionada com sucesso!", "success");
             document.getElementById('add-step-modal').classList.remove('visible');
-            loadProcessSteps(processId);
+            
+            // Re-renderiza o fluxograma completo para atualizar posições e conexões
+            selectProcess(processId, processTitle);
         }
 
 async function startProcessInstance(processId) {
