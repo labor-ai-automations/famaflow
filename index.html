@@ -2483,10 +2483,25 @@ if (permissions.includes('manage_routines')) {
                 }).eq('id', editingId);
                 error = res.error;
             } else {
-                // MODO CRIAÇÃO (com reordenação automática via n8n ou banco no futuro)
+                // MODO CRIAÇÃO COM REORDENAÇÃO AUTOMÁTICA
+                const stepOrder = parseInt(order);
+                
+                // 1. Abre espaço: incrementa a ordem de todas as etapas seguintes
+                const { error: reorderError } = await supabaseClient.rpc('reorder_process_steps_on_insert', {
+                    p_process_id: processId,
+                    p_new_order: stepOrder
+                });
+
+                if (reorderError) {
+                    showToast("Erro ao reorganizar fluxo: " + reorderError.message, "danger");
+                    btn.disabled = false;
+                    return;
+                }
+
+                // 2. Insere a nova etapa agora que o "buraco" foi criado
                 const res = await supabaseClient.from('process_steps').insert({
                     process_id: processId,
-                    step_order: parseInt(order),
+                    step_order: stepOrder,
                     assignee_id: assignee,
                     task_title: title,
                     task_description: desc
