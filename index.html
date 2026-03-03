@@ -2851,14 +2851,20 @@ async function startProcessInstance(processId) {
             }
 
             container.innerHTML = myTasks.map(task => `
-                <div class="card" style="border-left:4px solid var(--color-info);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <small style="color:var(--color-info); font-weight:bold;">PROCESSO: ${task.process_title}</small>
-                            <h3 style="margin:5px 0;">${task.task_title}</h3>
-                            <p style="margin:0; color:var(--color-text-secondary);">${task.task_description || ''}</p>
+                <div class="card" style="border-left:4px solid var(--color-info); margin-bottom: 1rem; position: relative; overflow: hidden;">
+                    <div style="position: absolute; right: -20px; top: 10px; background: var(--color-info); color: white; padding: 2px 30px; transform: rotate(45deg); font-size: 0.7rem; font-weight: bold;">EM CURSO</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                                <span class="material-icons" style="font-size: 16px; color: var(--color-info);">hub</span>
+                                <small style="color:var(--color-info); font-weight:700; text-transform: uppercase; letter-spacing: 0.05em;">${task.process_title}</small>
+                            </div>
+                            <h3 style="margin:0 0 5px 0; font-size: 1.1rem;">${task.task_title}</h3>
+                            <p style="margin:0; font-size: 0.9rem; color: var(--color-text-secondary);">${task.task_description || 'Sem instruções adicionais.'}</p>
                         </div>
-                        <button class="btn btn-success" onclick="completeProcessTask('${task.instance_id}')">Concluir</button>
+                        <button class="btn btn-success" onclick="completeProcessTask('${task.instance_id}', this)" style="padding: 0.8rem 1.5rem;">
+                             <span class="material-icons">check_circle</span> Concluir Etapa
+                        </button>
                     </div>
                 </div>
             `).join('');
