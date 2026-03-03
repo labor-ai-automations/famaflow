@@ -2245,7 +2245,7 @@ if (permissions.includes('manage_routines')) {
                             ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
                         <!-- Botão Quick Add estilo n8n -->
-                        <div class="node-quick-add" onclick="openAddStepModal('${processId}')" title="Adicionar próxima etapa">
+                        <div class="node-quick-add" onclick="openAddStepModal('${processId}', ${step.step_order + 1})" title="Inserir etapa aqui">
                             <span class="material-icons">add</span>
                         </div>
                     </div>
@@ -2254,6 +2254,11 @@ if (permissions.includes('manage_routines')) {
 
             steps.forEach(step => makeNodeDraggable(step.id));
             updateFlowConnections();
+
+            // Adiciona evento de clique duplo para edição
+            document.querySelectorAll('.flow-node').forEach(node => {
+                node.ondblclick = () => openEditStepModal(node.dataset.id);
+            });
         }
 
         function makeNodeDraggable(stepId) {
@@ -2302,13 +2307,30 @@ if (permissions.includes('manage_routines')) {
                 const start = nodes[i];
                 const end = nodes[i+1];
                 
-                const x1 = parseInt(start.style.left) + 220;
-                const y1 = parseInt(start.style.top) + 60;
-                const x2 = parseInt(end.style.left);
-                const y2 = parseInt(end.style.top) + 60;
+                // Pega coordenadas reais dos elementos
+                const startRect = {
+                    x: parseInt(start.style.left),
+                    y: parseInt(start.style.top),
+                    w: 220,
+                    h: 120
+                };
+                const endRect = {
+                    x: parseInt(end.style.left),
+                    y: parseInt(end.style.top)
+                };
 
-                const cp1 = x1 + 60;
-                const cp2 = x2 - 60;
+                // Ponto de saída: Meio da borda direita do card anterior
+                const x1 = startRect.x + startRect.w;
+                const y1 = startRect.y + (startRect.h / 2);
+                
+                // Ponto de entrada: Meio da borda esquerda do card seguinte
+                const x2 = endRect.x;
+                const y2 = endRect.y + (startRect.h / 2);
+
+                // Ajuste dinâmico da curva Bezier para não bugar ao arrastar verticalmente
+                const distance = Math.abs(x2 - x1);
+                const cp1 = x1 + (distance * 0.4);
+                const cp2 = x2 - (distance * 0.4);
 
                 const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 path.setAttribute("d", `M ${x1} ${y1} C ${cp1} ${y1}, ${cp2} ${y2}, ${x2} ${y2}`);
@@ -2390,17 +2412,22 @@ if (permissions.includes('manage_routines')) {
             loadManageProcessesPage();
         }
 
-        async function openAddStepModal(processId) {
+        async function openAddStepModal(processId, suggestedOrder = null) {
             // Fecha qualquer modal central que possa estar aberto por erro
             const oldModal = document.getElementById('add-step-modal');
             if(oldModal) oldModal.classList.remove('visible');
 
-            // 1. Busca automática da próxima ordem
-            const { count } = await supabaseClient
-                .from('process_steps')
-                .select('*', { count: 'exact', head: true })
-                .eq('process_id', processId);
-            const nextOrder = (count || 0) + 1;
+            let nextOrder;
+            if (suggestedOrder) {
+                nextOrder = suggestedOrder;
+            } else {
+                // 1. Busca automática da próxima ordem (fim do fluxo)
+                const { count } = await supabaseClient
+                    .from('process_steps')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('process_id', processId);
+                nextOrder = (count || 0) + 1;
+            }
 
             // Usamos o Side Panel para ambos os casos, garantindo consistência
             const panel = document.getElementById('process-quick-panel');
@@ -2420,9 +2447,15 @@ if (permissions.includes('manage_routines')) {
         }
 
         function closeQuickPanel() {
-            document.getElementById('process-quick-panel').classList.remove('open');
+            const panel = document.getElementById('process-quick-panel');
+            panel.classList.remove('open');
+            panel.querySelector('h3').innerHTML = `<span class="material-icons" style="vertical-align: middle; color: var(--color-brand-primary);">add_circle</span> Nova Etapa`;
+            document.getElementById('btn-qp-save').textContent = "Adicionar Etapa";
+            delete panel.dataset.editingStepId; // Limpa o ID de edição
             document.getElementById('qp-title').value = '';
             document.getElementById('qp-desc').value = '';
+            document.getElementById('qp-assignee-id').value = '';
+            document.getElementById('qp-assignee-name').textContent = 'Selecionar Responsável...';
         }
 
         async function createProcessStep() {
@@ -2437,15 +2470,29 @@ if (permissions.includes('manage_routines')) {
             if (!title) { showToast("O título é obrigatório", "warning"); return; }
 
             btn.disabled = true;
-            btn.textContent = "Adicionando...";
+            const editingId = document.getElementById('process-quick-panel').dataset.editingStepId;
+            btn.textContent = editingId ? "Salvando..." : "Adicionando...";
 
-            const { error } = await supabaseClient.from('process_steps').insert({
-                process_id: processId,
-                step_order: parseInt(order),
-                assignee_id: assignee,
-                task_title: title,
-                task_description: desc
-            });
+            let error;
+            if (editingId) {
+                // MODO EDIÇÃO
+                const res = await supabaseClient.from('process_steps').update({
+                    assignee_id: assignee,
+                    task_title: title,
+                    task_description: desc
+                }).eq('id', editingId);
+                error = res.error;
+            } else {
+                // MODO CRIAÇÃO (com reordenação automática via n8n ou banco no futuro)
+                const res = await supabaseClient.from('process_steps').insert({
+                    process_id: processId,
+                    step_order: parseInt(order),
+                    assignee_id: assignee,
+                    task_title: title,
+                    task_description: desc
+                });
+                error = res.error;
+            }
 
             if (error) {
                 showToast("Erro: " + error.message, "danger");
@@ -2464,6 +2511,32 @@ if (permissions.includes('manage_routines')) {
             
             btn.disabled = false;
             btn.textContent = "Adicionar Etapa";
+        }
+		
+		async function openEditStepModal(stepId) {
+            const { data: step, error } = await supabaseClient
+                .from('process_steps')
+                .select('*, assignee:assignee_id(full_name)')
+                .eq('id', stepId)
+                .single();
+
+            if (error) { showToast("Erro ao carregar etapa", "danger"); return; }
+
+            const panel = document.getElementById('process-quick-panel');
+            panel.querySelector('h3').innerHTML = `<span class="material-icons" style="vertical-align: middle; color: var(--color-warning);">edit</span> Editar Etapa`;
+            
+            document.getElementById('qp-process-id').value = step.process_id;
+            document.getElementById('qp-title').value = step.task_title;
+            document.getElementById('qp-order').value = step.step_order;
+            document.getElementById('qp-desc').value = step.task_description || '';
+            document.getElementById('qp-assignee-name').textContent = step.assignee?.full_name || 'Selecionar...';
+            document.getElementById('qp-assignee-id').value = step.assignee_id || '';
+            
+            // Atributo temporário para sabermos que é edição
+            panel.dataset.editingStepId = stepId;
+            document.getElementById('btn-qp-save').textContent = "Salvar Alterações";
+
+            panel.classList.add('open');
         }
 
 async function startProcessInstance(processId) {
