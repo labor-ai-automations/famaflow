@@ -2059,9 +2059,9 @@ if (permissions.includes('manage_routines')) {
             container.innerHTML = `
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:8px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
-                        <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary);">
-                            <span class="material-icons" style="vertical-align: middle; font-size: 18px; margin-right: 4px; color: var(--color-brand-primary);">hub</span>
-                            ${title}
+                        <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center;">
+                            <span class="material-icons" style="font-size: 18px; margin-right: 8px; color: var(--color-brand-primary);">hub</span>
+                            <span id="current-workflow-title">${title}</span>
                         </h3>
                     </div>
                 </div>
@@ -2750,9 +2750,9 @@ async function createProcessStep() {
             showToast("Etapa adicionada!", "success");
             closeQuickPanel();
             
-            // Pega o título do processo atual para re-renderizar
-            const headerTitle = document.querySelector('#process-visualizer-container h3');
-            const processTitle = headerTitle ? headerTitle.textContent.replace('Fluxo: ', '').trim() : 'Processo';
+            // Pega o título limpo do processo atual para re-renderizar
+            const titleEl = document.getElementById('current-workflow-title');
+            const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
             selectProcess(processId, processTitle);
             
             btn.disabled = false;
@@ -2786,8 +2786,8 @@ try {
                 document.getElementById('save-separator').style.display = 'none';
                 
                 // 4. Recarrega do banco para garantir sincronia total
-                const headerTitle = document.querySelector('#process-visualizer-container h3');
-                const processTitle = headerTitle ? headerTitle.textContent.replace('Fluxo: ', '').trim() : 'Processo';
+                const titleEl = document.getElementById('current-workflow-title');
+                const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
                 selectProcess(processId, processTitle);
             } catch (e) {
                 console.error("Erro ao salvar fluxo:", e);
