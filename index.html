@@ -2281,6 +2281,13 @@ if (permissions.includes('manage_routines')) {
         }
 
         async function selectProcess(processId, title) {
+            // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
+            let displayTitle = title;
+            if (title === 'Processo' || !title) {
+                const activeItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
+                if (activeItem) displayTitle = activeItem.textContent.trim();
+            }
+
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
@@ -2288,7 +2295,7 @@ if (permissions.includes('manage_routines')) {
                         <div style="display: flex; flex-direction: column; gap: 4px;">
 <h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
     <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
-    <span id="current-workflow-title-label">${title.replace(/<[^>]*>?/gm, '').trim()}</span>
+    <span id="current-workflow-title-label">${displayTitle.replace(/<[^>]*>?/gm, '').trim()}</span>
 </h3>
                             <span id="current-workflow-desc" style="font-size: 0.75rem; font-weight: 400; color: var(--color-text-secondary); max-width: 400px; line-height: 1.3; margin-left: 26px;">Carregando descrição...</span>
                         </div>
@@ -7625,9 +7632,9 @@ async function refreshMonitorState(processId, instanceId, instanceName) {
                 // O separador e o botão salvar só aparecem se houver mudanças, então mantemos a lógica original
             }
 
-            // Recarrega o gráfico limpo (Modo Template)
-            const titleEl = document.getElementById('current-workflow-title');
-            const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
+            // Recarrega o gráfico limpo buscando o nome original na lista lateral para evitar o bug de renomeação
+            const activeItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
+            const processTitle = activeItem ? activeItem.textContent.trim() : 'Processo';
             selectProcess(processId, processTitle);
             
             showToast("Voltando para modo de edição.", "info");
