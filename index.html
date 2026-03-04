@@ -968,20 +968,28 @@ let currentSelectionTarget = null;
 /* Barra de Ferramentas Flutuante */
 .flowchart-floating-toolbar {
     position: absolute;
-    top: 1.5rem;
+    top: 1rem;
     right: 1rem;
-    flex-wrap: wrap; /* Permite quebrar linha se o espaço acabar */
-    justify-content: flex-end;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
     z-index: 1000;
-    pointer-events: auto;
+    max-width: calc(100% - 2rem);
+    flex-wrap: nowrap; 
+    overflow-x: auto;
+}
+
+#process-visualizer-container {
+    min-height: 600px;
+    height: 75vh;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-background);
 }
 .flowchart-floating-toolbar .btn {
     padding: 0.5rem 0.8rem;
@@ -1118,26 +1126,23 @@ body.fullscreen-flow .flowchart-monitor-bar {
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 25, 32, 0); }
 }
 
-/* Tag de Rascunho no Topo do Fluxo */
 .flowchart-draft-tag {
     position: absolute;
-    bottom: 1.5rem; /* Movido para a base */
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #FFFBEB;
+    top: 1rem;
+    left: 1.5rem;
+    background-color: #fef3c7;
     color: #92400e;
-    border: 1px solid #F59E0B;
-    border-radius: 12px; /* Menos arredondado para telas menores */
-    padding: 0.75rem 1.25rem;
-    font-size: 0.8rem; /* Ligeiramente menor */
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
     font-weight: 700;
     display: none;
     align-items: center;
-    gap: 10px;
-    z-index: 4000; /* Abaixo de modais, acima do canvas */
-    box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
-    max-width: 90%; /* Não estoura em telas pequenas */
-    text-align: center;
+    gap: 8px;
+    z-index: 900;
+    box-shadow: var(--shadow);
+    margin-top: 3.5rem; /* Posiciona logo abaixo do título do fluxo */
 }
 		
     </style>
@@ -2519,6 +2524,8 @@ updateDraftUIState();
     const saveBtn = document.getElementById('btn-save-workflow');
     const saveSep = document.getElementById('save-separator');
     const draftTag = document.getElementById('process-draft-tag');
+
+    if (!saveBtn && !draftTag) return;
 
     if (workflowHasChanges) {
         if (saveBtn) saveBtn.style.display = 'flex';
