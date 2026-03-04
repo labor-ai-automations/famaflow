@@ -2915,11 +2915,28 @@ async function showStepHistory(stepId) {
             `).join('');
         }
 
-        function openNewProcessModal() {
-            document.getElementById('new-process-title').value = '';
-            document.getElementById('new-process-desc').value = '';
-            document.getElementById('new-process-modal').classList.add('visible');
-        }
+function openNewProcessModal() {
+    const modal = document.getElementById('new-process-modal');
+    const titleInput = document.getElementById('new-process-title');
+    const descInput = document.getElementById('new-process-desc');
+    const saveBtn = modal.querySelector('.btn-danger');
+    
+    // Limpa os campos
+    titleInput.value = '';
+    descInput.value = '';
+    
+    // Seta os textos de CRIAR
+    modal.querySelector('h3').textContent = 'Novo Processo';
+    saveBtn.textContent = 'Criar Processo';
+    
+    // Vincula a função de CRIAÇÃO e garante reset do estado
+    saveBtn.onclick = (e) => { 
+        e.preventDefault(); 
+        createProcess(); 
+    };
+    
+    modal.classList.add('visible');
+}
 
         async function createProcess() {
             const title = document.getElementById('new-process-title').value;
@@ -7639,24 +7656,49 @@ async function refreshMonitorState(processId, instanceId, instanceName) {
         }
 		
 async function openEditProcessModal(id, title, desc) {
-    document.getElementById('new-process-title').value = title;
-    document.getElementById('new-process-desc').value = desc;
-    document.getElementById('new-process-modal').querySelector('h3').textContent = 'Editar Processo';
-    document.getElementById('new-process-modal').classList.add('visible');
+    const modal = document.getElementById('new-process-modal');
+    const titleInput = document.getElementById('new-process-title');
+    const descInput = document.getElementById('new-process-desc');
+    const saveBtn = modal.querySelector('.btn-danger');
+
+    // Preenche os campos com os dados atuais
+    titleInput.value = title;
+    descInput.value = desc;
     
-    // Altera o comportamento do botão "Criar" para "Salvar"
-    const saveBtn = document.getElementById('new-process-modal').querySelector('.btn-danger');
-    saveBtn.onclick = async () => {
-        const newTitle = document.getElementById('new-process-title').value;
-        const newDesc = document.getElementById('new-process-desc').value;
-        const { error } = await supabaseClient.from('processes').update({ title: newTitle, description: newDesc }).eq('id', id);
+    // Seta os textos de EDITAR
+    modal.querySelector('h3').textContent = 'Editar Processo';
+    saveBtn.textContent = 'Salvar Alterações';
+    
+    // Vincula a função de ATUALIZAÇÃO
+    saveBtn.onclick = async (e) => {
+        e.preventDefault();
+        const newTitle = titleInput.value;
+        const newDesc = descInput.value;
+        
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Salvando...';
+
+        const { error } = await supabaseClient.from('processes')
+            .update({ title: newTitle, description: newDesc })
+            .eq('id', id);
+
         if(!error) {
             showToast("Processo atualizado!", "success");
-            document.getElementById('new-process-modal').classList.remove('visible');
+            modal.classList.remove('visible');
             loadManageProcessesPage();
-            if(currentlyOpenProcessId === id) selectProcess(id, newTitle);
+            if(currentlyOpenProcessId === id) {
+                const titleNode = document.getElementById('current-workflow-title');
+                if(titleNode) titleNode.firstChild.textContent = newTitle;
+                const descNode = document.getElementById('current-workflow-desc');
+                if(descNode) descNode.textContent = newDesc;
+            }
+        } else {
+            showToast("Erro ao salvar: " + error.message, "danger");
         }
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar Alterações';
     };
+    modal.classList.add('visible');
 }		
 
     </script>
