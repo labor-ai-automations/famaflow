@@ -2401,7 +2401,7 @@ if (permissions.includes('manage_routines')) {
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                             <div class="node-label">Etapa ${step.step_order}</div>
                             ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">check</span> FEITO</span>' : ''}
-                            ${isActive ? '<span style="font-size: 0.6rem; background: var(--color-info); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"> ATIVO</span>' : ''}
+                            ${isActive ? '<span style="font-size: 0.6rem; background: var(--color-warning); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">pending</span> PENDENTE</span>' : ''}
                         </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
