@@ -2292,8 +2292,8 @@ if (permissions.includes('manage_routines')) {
 
 <div id="process-draft-tag" class="flowchart-draft-tag"></div>
 <div class="flowchart-floating-toolbar">
-    <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
-    <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
+<button class="btn btn-secondary" onclick="zoomFlow(-0.2)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
+                    <button class="btn btn-secondary" onclick="zoomFlow(0.2)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
     <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
     <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
     <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
@@ -2373,15 +2373,36 @@ if (permissions.includes('manage_routines')) {
             wrapper.onwheel = (e) => {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -0.05 : 0.05;
-                zoomFlow(delta);
+                zoomFlow(delta, e.clientX, e.clientY); // Passa coordenadas
+            };
+
+            // Zoom In no ponto clicado (Estilo n8n)
+            wrapper.ondblclick = (e) => {
+                if (e.target.closest('.flow-node')) return; // Não dispara se clicar no card
+                zoomFlow(0.3, e.clientX, e.clientY);
             };
             updateFlowTransform();
         }
 
-        function zoomFlow(delta) {
-            flowZoom = Math.max(0.3, Math.min(2, flowZoom + delta));
-            updateFlowTransform();
-        }
+        function zoomFlow(delta, clientX = null, clientY = null) {
+    const wrapper = document.getElementById('flow-wrapper');
+    if (!wrapper) return;
+
+    const oldZoom = flowZoom;
+    flowZoom = Math.max(0.3, Math.min(2, flowZoom + delta));
+
+    // Se houver coordenadas (mouse ou wheel), calcula o pivot
+    if (clientX !== null && clientY !== null) {
+        const rect = wrapper.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+
+        // Ajusta o Pan para manter o ponto sob o mouse no mesmo lugar após o zoom
+        flowPanX = mouseX - (mouseX - flowPanX) * (flowZoom / oldZoom);
+        flowPanY = mouseY - (mouseY - flowPanY) * (flowZoom / oldZoom);
+    }
+    updateFlowTransform();
+}
 
         function toggleFlowFullscreen() {
             const body = document.body;
