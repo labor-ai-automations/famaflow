@@ -2320,19 +2320,11 @@ if (permissions.includes('manage_routines')) {
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
                     <div class="flowchart-world" id="flow-world">
-<svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none;">
+<svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none; z-index: 1;">
     <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#6B7280" />
+        <marker id="arrowhead" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B7280" />
         </marker>
-        <linearGradient id="gradient-active" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
-        </linearGradient>
-        <linearGradient id="gradient-success" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
-        </linearGradient>
     </defs>
 </svg>
                         <div id="flow-nodes-container"></div>
@@ -2774,58 +2766,50 @@ updateDraftUIState();
             };
         }
 
-        function updateFlowConnections() {
-            const svg = document.getElementById('flow-connections');
-            if (!svg) return;
-            svg.querySelectorAll('path').forEach(p => p.remove());
+function updateFlowConnections() {
+    const svg = document.getElementById('flow-connections');
+    if (!svg) return;
+    svg.querySelectorAll('path').forEach(p => p.remove());
 
-            const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a,b) => {
-                return parseInt(a.querySelector('.node-label').textContent.replace('Etapa ', '')) - 
-                       parseInt(b.querySelector('.node-label').textContent.replace('Etapa ', ''));
-            });
+    const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a,b) => {
+        const orderA = parseInt(a.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
+        const orderB = parseInt(b.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
+        return orderA - orderB;
+    });
 
-            for(let i=0; i < nodes.length - 1; i++) {
-                const start = nodes[i];
-                const end = nodes[i+1];
-                
-                // Pega coordenadas reais dos elementos
-                const startRect = {
-                    x: parseInt(start.style.left),
-                    y: parseInt(start.style.top),
-                    w: 220,
-                    h: 120
-                };
-                const endRect = {
-                    x: parseInt(end.style.left),
-                    y: parseInt(end.style.top)
-                };
+    nodes.forEach((start, i) => {
+        if (i === nodes.length - 1) return;
+        const end = nodes[i+1];
+        
+        const x1 = parseInt(start.style.left) + 220; // Borda direita (largura fixa 220)
+        const y1 = parseInt(start.style.top) + 60;   // Centro vertical (altura aprox 120/2)
+        
+        const x2 = parseInt(end.style.left);        // Borda esquerda
+        const y2 = parseInt(end.style.top) + 60;    // Centro vertical
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        
+        // Desenha uma linha suave com Curva de Bézier
+        const offset = Math.max(40, Math.abs(x2 - x1) * 0.5);
+        path.setAttribute("d", `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`);
+        
+        const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
+        const isActivePath = start.classList.contains('active-step') || (start.classList.contains('completed-step') && end.classList.contains('active-step'));
+        
+        // Cores sólidas para garantir visibilidade (ajuste de governança)
+        let strokeColor = "#6B7280"; // Cinza padrão
+        if (isStepCompleted) strokeColor = "#10B981"; // Verde sucesso
+        if (isActivePath) strokeColor = "#3B82F6";    // Azul ativo
 
-                // Ponto de saída: Meio da borda direita do card anterior
-                const x1 = startRect.x + startRect.w;
-                const y1 = startRect.y + (startRect.h / 2);
-                
-                // Ponto de entrada: Meio da borda esquerda do card seguinte
-                const x2 = endRect.x;
-                const y2 = endRect.y + (startRect.h / 2);
-
-                // Ajuste dinâmico da curva Bezier para não bugar ao arrastar verticalmente
-                const distance = Math.abs(x2 - x1);
-                const cp1 = x1 + (distance * 0.4);
-                const cp2 = x2 - (distance * 0.4);
-
-const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                    path.setAttribute("d", `M ${x1} ${y1} C ${cp1} ${y1}, ${cp2} ${y2}, ${x2} ${y2}`);
-                    
-                    // Lógica de cor da conexão: Verde se ambos os nós estiverem concluídos
-                    const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
-                    path.setAttribute("stroke", isStepCompleted ? "url(#gradient-success)" : "url(#gradient-active)");
-path.setAttribute("stroke-width", isStepCompleted ? "3" : "4");
-                    path.setAttribute("stroke-width", "3");
-                    path.setAttribute("fill", "none");
-                    path.setAttribute("marker-end", "url(#arrowhead)");
-                    svg.appendChild(path);
-            }
-        }
+        path.setAttribute("stroke", strokeColor);
+        path.setAttribute("stroke-width", "3");
+        path.setAttribute("fill", "none");
+        path.setAttribute("marker-end", "url(#arrowhead)");
+        path.style.transition = "all 0.3s ease";
+        
+        svg.appendChild(path);
+    });
+}
 
 async function showStepHistory(stepId) {
             // Captura o ID da instância que está sendo monitorada no momento (se houver)
