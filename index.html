@@ -3160,9 +3160,12 @@ try {
 
                 if (rpcError) throw rpcError;
                 showToast("Fluxo publicado com sucesso!", "success");
-workflowHasChanges = false;
-updateDraftUIState();
-                if(draftTag) draftTag.style.display = 'none';
+                workflowHasChanges = false;
+                updateDraftUIState();
+                
+                // Correção de escopo: Busca o elemento diretamente pelo ID
+                const draftTagEl = document.getElementById('process-draft-tag');
+                if(draftTagEl) draftTagEl.style.display = 'none';
 
                 // Restaura a Toolbar original
                 const toolbar = document.querySelector('.flowchart-floating-toolbar');
