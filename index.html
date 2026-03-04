@@ -2286,10 +2286,10 @@ if (permissions.includes('manage_routines')) {
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:10px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
-                                <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
-                                <span id="current-workflow-title">${title.replace(/<[^>]*>?/gm, '').trim()}</span>
-                            </h3>
+<h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
+    <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
+    <span id="current-workflow-title-label">${title.replace(/<[^>]*>?/gm, '').trim()}</span>
+</h3>
                             <span id="current-workflow-desc" style="font-size: 0.75rem; font-weight: 400; color: var(--color-text-secondary); max-width: 400px; line-height: 1.3; margin-left: 26px;">Carregando descrição...</span>
                         </div>
                     </div>
@@ -7686,17 +7686,13 @@ saveBtn.onclick = async (e) => {
                 modal.classList.remove('visible');
                 loadManageProcessesPage();
                 
-                if(currentlyOpenProcessId === id) {
-                    const titleNode = document.getElementById('current-workflow-title');
+if(currentlyOpenProcessId === id) {
+                    const titleLabelNode = document.getElementById('current-workflow-title-label');
                     const descNode = document.getElementById('current-workflow-desc');
                     
-if(titleNode) {
-                        // Limpa qualquer tag HTML que possa estar vindo junto no título (incluindo ícones antigos)
-                        const cleanTitleOnly = newTitle.replace(/<[^>]*>?/gm, '').trim();
-                        titleNode.innerHTML = `
-                            <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary); margin-right: 8px;">hub</span>
-                            ${cleanTitleOnly}
-                        `;
+                    if(titleLabelNode) {
+                        // Atualiza apenas o texto, o ícone que está no H3 (pai) não é afetado
+                        titleLabelNode.textContent = newTitle.replace(/<[^>]*>?/gm, '').trim();
                     }
                     if(descNode) descNode.textContent = newDesc;
                 }
