@@ -2047,13 +2047,24 @@ if (permissions.includes('manage_routines')) {
             if (!processes.length) { listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>'; return; }
 
             listContainer.innerHTML = processes.map(p => `
-                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}')">
-                    <div style="display:flex; flex-direction:column;">
+                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}')" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
+                    <div style="display:flex; flex-direction:column; flex: 1;">
                         <span style="font-weight:600">${p.title}</span>
                     </div>
-                    <span class="material-icons arrow-icon" style="font-size:16px; transition: transform 0.3s;">chevron_right</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir Processo" style="color: var(--color-danger); opacity: 0.3; transition: opacity 0.2s;">
+                            <span class="material-icons" style="font-size: 18px;">delete</span>
+                        </button>
+                        <span class="material-icons arrow-icon" style="font-size:16px; transition: transform 0.3s;">chevron_right</span>
+                    </div>
                 </div>
             `).join('');
+
+            // Adiciona efeito de hover para mostrar a lixeira
+            document.querySelectorAll('.routines-list-item').forEach(item => {
+                item.onmouseenter = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '1'; };
+                item.onmouseleave = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '0.3'; };
+            });
         }
 		
 		let currentlyOpenProcessId = null;
@@ -2664,6 +2675,36 @@ node.onmousedown = (e) => {
             
             // Foco automático no título após a animação de deslizar
             setTimeout(() => document.getElementById('qp-title').focus(), 350);
+        }
+
+async function deleteEntireProcess(processId, processTitle) {
+            showConfirmation(
+                "Excluir Fluxo Completo",
+                `Tem certeza que deseja excluir o processo "${processTitle}"? Isso apagará permanentemente todas as etapas, conexões e instâncias vinculadas a este desenho.`,
+                async () => {
+                    try {
+                        const { error } = await supabaseClient
+                            .from('processes')
+                            .delete()
+                            .eq('id', processId);
+
+                        if (error) throw error;
+
+                        showToast("Processo removido com sucesso!", "success");
+                        
+                        // Se o processo excluído era o que estava aberto, limpa o canvas
+                        if (currentlyOpenProcessId === processId) {
+                            document.getElementById('process-visualizer-container').innerHTML = '<div class="empty-state">Selecione um processo para editar o fluxo.</div>';
+                            currentlyOpenProcessId = null;
+                        }
+                        
+                        loadManageProcessesPage(); // Recarrega a lista lateral
+                    } catch (e) {
+                        console.error("Erro ao excluir processo:", e);
+                        showToast("Erro ao excluir: " + e.message, "danger");
+                    }
+                }
+            );
         }
 
         function closeQuickPanel() {
