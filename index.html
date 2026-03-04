@@ -2131,6 +2131,9 @@ if (permissions.includes('manage_routines')) {
                     <button class="btn btn-secondary" onclick="showProcessInstances('${processId}')" title="Ver Instâncias Ativas">
                         <span class="material-icons">visibility</span> Execuções
                     </button>
+                    <button class="btn btn-secondary" onclick="resetProcessInstances('${processId}')" title="Resetar Histórico/Execuções">
+                        <span class="material-icons">restart_alt</span>
+                    </button>
                 </div>
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
@@ -2680,7 +2683,7 @@ node.onmousedown = (e) => {
 async function deleteEntireProcess(processId, processTitle) {
             showConfirmation(
                 "Excluir Fluxo Completo",
-                `Tem certeza que deseja excluir o processo "${processTitle}"? Isso apagará permanentemente todas as etapas, conexões e instâncias vinculadas a este desenho.`,
+                `Tem certeza que deseja excluir o processo "${processTitle}"? Isso apagará permanentemente todas as etapas, conexões e instâncias vinculadas.`,
                 async () => {
                     try {
                         const { error } = await supabaseClient
@@ -2692,16 +2695,46 @@ async function deleteEntireProcess(processId, processTitle) {
 
                         showToast("Processo removido com sucesso!", "success");
                         
-                        // Se o processo excluído era o que estava aberto, limpa o canvas
+                        // LIMPEZA FORÇADA DA UI
                         if (currentlyOpenProcessId === processId) {
                             document.getElementById('process-visualizer-container').innerHTML = '<div class="empty-state">Selecione um processo para editar o fluxo.</div>';
                             currentlyOpenProcessId = null;
                         }
                         
-                        loadManageProcessesPage(); // Recarrega a lista lateral
+                        // Limpa a lista antes de recarregar para evitar duplicados visuais
+                        const sidebarList = document.getElementById('process-list-sidebar');
+                        if(sidebarList) sidebarList.innerHTML = '<div class="empty-state">Atualizando...</div>';
+                        
+                        await loadManageProcessesPage(); 
                     } catch (e) {
-                        console.error("Erro ao excluir processo:", e);
                         showToast("Erro ao excluir: " + e.message, "danger");
+                    }
+                }
+            );
+        }
+
+        async function resetProcessInstances(processId) {
+            showConfirmation(
+                "Resetar Execuções",
+                "Isso apagará TODO o histórico de execuções e tarefas concluídas deste processo. O fluxo voltará ao estado original de rascunho. Deseja continuar?",
+                async () => {
+                    try {
+                        // Remove todas as instâncias (o cascade do banco cuidará do histórico)
+                        const { error } = await supabaseClient
+                            .from('process_instances')
+                            .delete()
+                            .eq('process_id', processId);
+
+                        if (error) throw error;
+
+                        showToast("Processo resetado com sucesso!", "success");
+                        
+                        // Atualiza o gráfico para refletir o estado limpo
+                        const titleEl = document.getElementById('current-workflow-title');
+                        const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
+                        selectProcess(processId, processTitle);
+                    } catch (e) {
+                        showToast("Erro ao resetar: " + e.message, "danger");
                     }
                 }
             );
