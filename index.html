@@ -2289,7 +2289,6 @@ if (permissions.includes('manage_routines')) {
                             <h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
                                 <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
                                 <span id="current-workflow-title">${title}</span>
-                                <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem;">V.1.0</span>
                             </h3>
                             <span id="current-workflow-desc" style="font-size: 0.75rem; font-weight: 400; color: var(--color-text-secondary); max-width: 400px; line-height: 1.3; margin-left: 26px;">Carregando descrição...</span>
                         </div>
@@ -7692,13 +7691,9 @@ saveBtn.onclick = async (e) => {
                     const descNode = document.getElementById('current-workflow-desc');
                     
                     if(titleNode) {
-                        // Limpa qualquer HTML residual e injeta apenas o texto puro + ícones novos
-                        // O uso de trim() e a remoção de tags garante que o título não duplique a versão
-                        const cleanTitle = newTitle.replace(/<[^>]*>?/gm, '').trim(); 
                         titleNode.innerHTML = `
                             <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary); margin-right: 8px;">hub</span>
-                            ${cleanTitle}
-                            <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem; margin-left: 8px;">V.1.0</span>
+                            ${newTitle}
                         `;
                     }
                     if(descNode) descNode.textContent = newDesc;
