@@ -1076,22 +1076,29 @@ body.fullscreen-flow .flowchart-monitor-bar {
 		
 .flowchart-draft-tag {
     position: absolute;
-    top: 1.5rem;
+    top: 1.2rem;
     left: 50%;
     transform: translateX(-50%);
-    background-color: var(--color-warning-bg);
-    color: var(--color-warning);
-    border: 1px solid var(--color-warning);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
+    background-color: #fef3c7; /* Amarelo rascunho forte */
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    border-radius: 50px;
+    padding: 0.6rem 1.5rem;
     font-size: 0.85rem;
-    display: flex;
+    font-weight: 700;
+    display: none; /* Começa escondida */
     align-items: center;
-    gap: 8px;
-    z-index: 1500;
-    box-shadow: var(--shadow);
+    gap: 10px;
+    z-index: 5000; /* Acima do Canvas e da Toolbar */
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    animation: fadeInDown 0.3s ease-out;
 }
-.flowchart-draft-tag .material-icons { font-size: 18px; }		
+.flowchart-draft-tag .material-icons { font-size: 20px; color: #d97706; }
+
+@keyframes fadeInDown {
+    from { transform: translate(-50%, -20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}		
 		
     </style>
 </head>
@@ -2484,22 +2491,23 @@ function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
-            // Remove barra de monitoramento se ela existir ao entrar em rascunho
-            const monitorBar = document.getElementById('process-monitor-header');
-            if(monitorBar) monitorBar.remove();
-
-            // Alerta de Modo Rascunho
+            // 1. Gerenciamento da Tag de Rascunho
             const container = document.getElementById('process-visualizer-container');
             let draftTag = document.getElementById('process-draft-tag');
             if (!draftTag) {
                 draftTag = document.createElement('div');
                 draftTag.id = 'process-draft-tag';
                 draftTag.className = 'flowchart-draft-tag';
-                // Garante que seja inserido antes do Canvas
-                container.insertBefore(draftTag, container.firstChild);
+                container.appendChild(draftTag);
             }
-            draftTag.style.display = 'flex'; // Força exibição
-            draftTag.innerHTML = `<span class="material-icons">edit_note</span> <strong>MODO RASCUNHO:</strong> Edite o fluxo e clique em "Salvar" para aplicar.`;
+            draftTag.style.display = 'flex';
+            draftTag.innerHTML = `<span class="material-icons">warning</span> MODO RASCUNHO ATIVO • Clique em "Salvar" para publicar as alterações.`;
+
+            // 2. Limpeza da Toolbar (Esconde Execuções e Reset no Rascunho)
+            const toolbar = document.querySelector('.flowchart-floating-toolbar');
+            if(toolbar) {
+                toolbar.querySelectorAll('button[onclick*="showProcessInstances"], button[onclick*="resetProcessInstances"]').forEach(b => b.style.display = 'none');
+            }
 
             // Mostra o botão salvar
             const saveBtn = document.getElementById('btn-save-workflow');
@@ -3025,10 +3033,18 @@ try {
                 });
 
                 if (rpcError) throw rpcError;
-                showToast("Fluxo salvo com sucesso!", "success");
+                showToast("Fluxo publicado com sucesso!", "success");
                 workflowHasChanges = false;
+                
+                // Remove a tag
                 const draftTag = document.getElementById('process-draft-tag');
-                if(draftTag) draftTag.remove();
+                if(draftTag) draftTag.style.display = 'none';
+
+                // Restaura a Toolbar original
+                const toolbar = document.querySelector('.flowchart-floating-toolbar');
+                if(toolbar) {
+                    toolbar.querySelectorAll('button').forEach(b => b.style.display = 'flex');
+                }
                 
                 // Oculta os controles de salvamento
                 document.getElementById('btn-save-workflow').style.display = 'none';
