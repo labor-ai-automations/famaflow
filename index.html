@@ -2362,16 +2362,23 @@ if (permissions.includes('manage_routines')) {
 
             if (!steps) return;
             
-            // Inicializa cache local para modo Draft
-            localStepsData = JSON.parse(JSON.stringify(steps));
+            // Inicializa cache local e marca os status de execução para os cards
+            localStepsData = steps.map(step => {
+                return {
+                    ...step,
+                    // Marca como concluído se a ordem for menor que a ativa
+                    is_completed: (activeOrder !== null && step.step_order < activeOrder),
+                    // Marca como ativo se for a ordem atual
+                    is_active: (activeOrder !== null && step.step_order === activeOrder)
+                };
+            });
             workflowHasChanges = false;
             const saveBtn = document.getElementById('btn-save-workflow');
             const saveSep = document.getElementById('save-separator');
             if(saveBtn) saveBtn.style.display = 'none';
             if(saveSep) saveSep.style.display = 'none';
 
-            nodesContainer.innerHTML = steps.map((step, index) => {
-                // Se não houver posição salva, ou se a posição for a padrão (100,100), calcula em cascata
+            nodesContainer.innerHTML = localStepsData.map((step, index) => {
                 const defaultX = 100 + (index * 280);
                 const defaultY = 150;
                 
@@ -2379,12 +2386,16 @@ if (permissions.includes('manage_routines')) {
                             ? step.ui_metadata 
                             : { x: defaultX, y: defaultY };
                             
-                const isActive = activeOrder !== null && step.step_order === activeOrder;
-                const isCompleted = activeOrder !== null && step.step_order < activeOrder;
+                const isActive = step.is_active || false;
+                const isCompleted = step.is_completed || false;
                 
                 return `
                     <div class="flow-node ${isActive ? 'active-step' : ''} ${isCompleted ? 'completed-step' : ''}" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
-                        <div class="node-label">Etapa ${step.step_order}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                            <div class="node-label">Etapa ${step.step_order}</div>
+                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">check</span> FEITO</span>' : ''}
+                            ${isActive ? '<span style="font-size: 0.6rem; background: var(--color-info); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"> ATIVO</span>' : ''}
+                        </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
                         <div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
