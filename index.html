@@ -1100,6 +1100,42 @@ body.fullscreen-flow .flowchart-monitor-bar {
     to { transform: translate(-50%, 0); opacity: 1; }
 }		
 		
+/* Estilo Pulsante do Botão Salvar */
+#btn-save-workflow {
+    background-color: var(--color-brand-primary) !important;
+    display: none; /* Controlado pelo JS */
+    animation: pulse-red 2s infinite;
+    box-shadow: 0 0 10px rgba(216, 25, 32, 0.5);
+    border: none;
+    color: white;
+}
+
+@keyframes pulse-red {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 25, 32, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(216, 25, 32, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 25, 32, 0); }
+}
+
+/* Tag de Rascunho no Topo do Fluxo */
+.flowchart-draft-tag {
+    position: absolute;
+    top: 1.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #FFFBEB;
+    color: #92400e;
+    border: 1px solid #F59E0B;
+    border-radius: 50px;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: none; /* Controlado pelo JS */
+    align-items: center;
+    gap: 10px;
+    z-index: 5000;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+}
+		
     </style>
 </head>
 <body>
@@ -2204,16 +2240,17 @@ if (permissions.includes('manage_routines')) {
                     </div>
                 </div>
 
-                <div class="flowchart-floating-toolbar">
-                    <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
-                    <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
-                    <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
-                    <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
-                    <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
-                        <span class="material-icons">auto_fix_high</span>
-                    </button>
+<div id="process-draft-tag" class="flowchart-draft-tag"></div>
+<div class="flowchart-floating-toolbar">
+    <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
+    <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
+    <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
+    <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
+    <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
+        <span class="material-icons">auto_fix_high</span>
+    </button>
                     <div class="toolbar-separator"></div>
-                    <button class="btn btn-danger" id="btn-save-workflow" onclick="saveWorkflowChanges()" style="background-color: #FF4F4F; display: none;">
+                    <button class="btn btn-danger" id="btn-save-workflow" onclick="saveWorkflowChanges()">
                         <span class="material-icons">save</span> Salvar
                     </button>
                     <div class="toolbar-separator" id="save-separator" style="display: none;"></div>
@@ -2462,8 +2499,8 @@ if (permissions.includes('manage_routines')) {
                 }
             });
 
-            workflowHasChanges = true;
-            const saveBtn = document.getElementById('btn-save-workflow');
+workflowHasChanges = true;
+updateDraftUIState();
             const saveSep = document.getElementById('save-separator');
             if (saveBtn) saveBtn.style.display = 'flex';
             if (saveSep) saveSep.style.display = 'block';
@@ -2474,7 +2511,26 @@ if (permissions.includes('manage_routines')) {
             setTimeout(updateFlowConnections, 400);
         }
 
-        function syncDOMToLocalData() {
+        function updateDraftUIState() {
+    const saveBtn = document.getElementById('btn-save-workflow');
+    const saveSep = document.getElementById('save-separator');
+    const draftTag = document.getElementById('process-draft-tag');
+
+    if (workflowHasChanges) {
+        if (saveBtn) saveBtn.style.display = 'flex';
+        if (saveSep) saveSep.style.display = 'block';
+        if (draftTag) {
+            draftTag.style.display = 'flex';
+            draftTag.innerHTML = `<span class="material-icons" style="color: #F59E0B">edit_note</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão vermelho.`;
+        }
+    } else {
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (saveSep) saveSep.style.display = 'none';
+        if (draftTag) draftTag.style.display = 'none';
+    }
+}
+
+function syncDOMToLocalData() {
     localStepsData.forEach(step => {
         const node = document.getElementById(`node-${step.id}`);
         if (node) {
@@ -2596,8 +2652,8 @@ node.onmousedown = (e) => {
                         x: parseInt(node.style.left),
                         y: parseInt(node.style.top)
                     };
-                    workflowHasChanges = true;
-                    const saveBtn = document.getElementById('btn-save-workflow');
+workflowHasChanges = true;
+updateDraftUIState();
                     const saveSep = document.getElementById('save-separator');
                     if (saveBtn) saveBtn.style.display = 'flex';
                     if (saveSep) saveSep.style.display = 'block';
@@ -2979,8 +3035,9 @@ async function createProcessStep() {
                 };
 
                 localStepsData.push(newStep);
-                workflowHasChanges = true;
-                renderLocalWorkflow();
+workflowHasChanges = true;
+renderLocalWorkflow();
+updateDraftUIState();
                 closeQuickPanel();
                 return;
             }
@@ -3034,10 +3091,8 @@ try {
 
                 if (rpcError) throw rpcError;
                 showToast("Fluxo publicado com sucesso!", "success");
-                workflowHasChanges = false;
-                
-                // Remove a tag
-                const draftTag = document.getElementById('process-draft-tag');
+workflowHasChanges = false;
+updateDraftUIState();
                 if(draftTag) draftTag.style.display = 'none';
 
                 // Restaura a Toolbar original
