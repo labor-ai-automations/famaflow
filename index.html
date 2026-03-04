@@ -1116,6 +1116,20 @@ body.fullscreen-flow .flowchart-monitor-bar {
     white-space: nowrap !important;
 }
 
+.draft-tag-close {
+    cursor: pointer;
+    background: rgba(0,0,0,0.05);
+    border-radius: 50%;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.draft-tag-close:hover {
+    background: rgba(0,0,0,0.1);
+}
+
 .refresh-spin {
     animation: spin 1s linear infinite;
 }
@@ -2233,6 +2247,7 @@ if (permissions.includes('manage_routines')) {
                         <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center;">
                             <span class="material-icons" style="font-size: 18px; margin-right: 8px; color: var(--color-brand-primary);">hub</span>
                             <span id="current-workflow-title">${title}</span>
+<span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); margin-left: 10px; font-size: 0.7rem;">V.1.0</span>
                         </h3>
                     </div>
                 </div>
@@ -2512,17 +2527,27 @@ function updateDraftUIState() {
     const saveBtn = document.getElementById('btn-save-workflow');
     const saveSep = document.getElementById('save-separator');
     const draftTag = document.getElementById('process-draft-tag');
+    const execBtn = document.querySelector('button[onclick*="showProcessInstances"]');
 
     if (!draftTag) return;
 
     if (workflowHasChanges) {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
+        if (execBtn) execBtn.disabled = true; // Bloqueia ver execuções no rascunho
+        
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons">warning_amber</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão Salvar.`;
+        draftTag.innerHTML = `
+            <span class="material-icons" style="font-size:18px;">warning</span> 
+            <span>RASCUNHO ATIVO • SALVE PARA APLICAR</span>
+            <div class="draft-tag-close" onclick="discardWorkflowChanges()" title="Descartar Alterações">
+                <span class="material-icons" style="font-size:16px;">close</span>
+            </div>
+        `;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
+        if (execBtn) execBtn.disabled = false;
         draftTag.style.display = 'none';
     }
 }
@@ -3129,6 +3154,20 @@ updateDraftUIState();
                 btn.textContent = "Salvar";
             }
         }
+
+function discardWorkflowChanges() {
+    showConfirmation(
+        "Descartar Alterações?",
+        "Todas as mudanças feitas neste rascunho serão perdidas. Deseja continuar?",
+        () => {
+            workflowHasChanges = false;
+            const processId = document.getElementById('qp-process-id').value;
+            const title = document.getElementById('current-workflow-title').textContent;
+            selectProcess(processId, title); // Recarrega o original
+            showToast("Alterações descartadas.", "info");
+        }
+    );
+}
 
         function confirmDeleteStep(stepId) {
             showConfirmation(
