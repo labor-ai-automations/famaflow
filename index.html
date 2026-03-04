@@ -1096,7 +1096,8 @@ body.fullscreen-flow .flowchart-monitor-bar {
 .flowchart-draft-tag {
     position: absolute !important;
     top: 15px !important;
-    left: 15px !important;
+    right: 15px !important; /* Movido para a direita */
+    left: auto !important;
     bottom: auto !important;
     width: max-content !important;
     background-color: #fef3c7 !important;
@@ -1109,7 +1110,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
     display: none;
     align-items: center;
     gap: 8px !important;
-    z-index: 2100 !important; /* Acima da barra azul se houver sobreposição */
+    z-index: 2100 !important; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
     pointer-events: none;
     white-space: nowrap !important;
