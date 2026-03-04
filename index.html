@@ -1146,24 +1146,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: fixed !important;
-    bottom: 30px !important;
-    left: 280px !important; /* Ajustado para ficar à direita da sidebar */
-    width: auto !important;
+    position: absolute !important;
+    bottom: 15px !important;
+    left: 15px !important;
+    top: auto !important;
+    right: auto !important;
+    width: max-content !important;
     height: auto !important;
     background-color: #fef3c7 !important;
     color: #92400e !important;
     border: 1px solid #f59e0b !important;
-    border-radius: 8px !important;
-    padding: 10px 20px !important;
-    font-size: 13px !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    display: none; /* Controlado pelo JS */
+    display: none;
     align-items: center !important;
-    justify-content: center !important;
-    gap: 10px !important;
-    z-index: 99999 !important; 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+    gap: 8px !important;
+    z-index: 1000 !important; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
     pointer-events: none !important;
     white-space: nowrap !important;
 }
@@ -1961,13 +1962,6 @@ body.fullscreen-flow .flowchart-monitor-bar {
             updateLogos(); 
             setupEventListeners(); 
             showApp(); 
-            // Injeção global da tag de rascunho para evitar bugs de escala/posicionamento
-            if(!document.getElementById('process-draft-tag')) {
-                const tag = document.createElement('div');
-                tag.id = 'process-draft-tag';
-                tag.className = 'flowchart-draft-tag';
-                document.body.appendChild(tag);
-            }
         }
 
         function setupEventListeners() {
@@ -2320,6 +2314,7 @@ if (permissions.includes('manage_routines')) {
                 </div>
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
+                    <div id="process-draft-tag" class="flowchart-draft-tag"></div>
                     <div class="flowchart-world" id="flow-world">
                         <svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none;">
                             <defs>
@@ -2573,7 +2568,7 @@ function updateDraftUIState() {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons">edit_note</span> MODO RASCUNHO ATIVO`;
+        draftTag.innerHTML = `<span class="material-icons" style="font-size:18px;">edit_note</span> RASCUNHO ATIVO • CLIQUE EM SALVAR ASSIM QUE FINALIZAR EDIÇÕES`;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
