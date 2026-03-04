@@ -1146,24 +1146,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: auto !important; /* Força o tamanho do conteúdo */
+    height: auto !important;
+    max-width: 350px;
     background-color: #fef3c7;
     color: #92400e;
     border: 2px solid #f59e0b;
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: 13px;
     font-weight: 700;
-    display: none;
+    display: none; /* Controlado pelo JS */
     align-items: center;
-    gap: 8px;
-    z-index: 950;
-    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
-    backdrop-filter: blur(10px);
-    animation: slideDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    gap: 10px;
+    z-index: 5000; /* Garante que fique acima de tudo no canvas */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    pointer-events: none; /* Não atrapalha cliques no canvas se estiver por cima */
 }
 
 @keyframes slideDown {
@@ -2546,20 +2547,20 @@ updateDraftUIState();
             setTimeout(updateFlowConnections, 400);
         }
 
-        function updateDraftUIState() {
+function updateDraftUIState() {
     const saveBtn = document.getElementById('btn-save-workflow');
     const saveSep = document.getElementById('save-separator');
     const draftTag = document.getElementById('process-draft-tag');
 
-    if (!saveBtn || !draftTag) return;
+    if (!draftTag) return;
 
     if (workflowHasChanges) {
-        saveBtn.style.display = 'flex';
+        if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons">warning_amber</span> <span><strong>MODO RASCUNHO ATIVO:</strong> Clique em "Salvar" para aplicar as mudanças.</span>`;
+        draftTag.innerHTML = `<span class="material-icons">edit_note</span> <span>RASCUNHO ATIVO: Clique em Salvar.</span>`;
     } else {
-        saveBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
         draftTag.style.display = 'none';
     }
