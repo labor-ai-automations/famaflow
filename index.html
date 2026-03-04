@@ -1146,24 +1146,30 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: absolute;
-    bottom: 15px;
-    left: 15px;
-    width: max-content;
-    background-color: #fef3c7;
-    color: #92400e;
-    border: 1px solid #f59e0b;
-    border-radius: 6px;
-    padding: 8px 14px;
-    font-size: 12px;
-    font-weight: 700;
+    position: fixed !important;
+    bottom: 30px !important;
+    left: 280px !important; /* Ajustado para ficar à direita da sidebar */
+    width: auto !important;
+    height: auto !important;
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
     display: none; /* Controlado pelo JS */
-    align-items: center;
-    gap: 8px;
-    z-index: 1000; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    pointer-events: none;
-    white-space: nowrap;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    z-index: 99999 !important; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+}
+
+@media (max-width: 768px) {
+    .flowchart-draft-tag { left: 20px !important; }
 }
 
 @keyframes slideDown {
@@ -1950,7 +1956,19 @@ body.fullscreen-flow .flowchart-monitor-bar {
         }
         
         function renderAuthLayout() { root.innerHTML = authHTML; updateLogos(); document.getElementById('login-form').addEventListener('submit', handleLogin); }
-        function renderAppLayout() { root.innerHTML = appHTML; updateLogos(); setupEventListeners(); showApp(); }
+        function renderAppLayout() { 
+            root.innerHTML = appHTML; 
+            updateLogos(); 
+            setupEventListeners(); 
+            showApp(); 
+            // Injeção global da tag de rascunho para evitar bugs de escala/posicionamento
+            if(!document.getElementById('process-draft-tag')) {
+                const tag = document.createElement('div');
+                tag.id = 'process-draft-tag';
+                tag.className = 'flowchart-draft-tag';
+                document.body.appendChild(tag);
+            }
+        }
 
         function setupEventListeners() {
             document.getElementById('logout-button').addEventListener('click', handleLogout);
@@ -2302,7 +2320,6 @@ if (permissions.includes('manage_routines')) {
                 </div>
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
-                    <div id="process-draft-tag" class="flowchart-draft-tag"></div>
                     <div class="flowchart-world" id="flow-world">
                         <svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none;">
                             <defs>
@@ -2556,7 +2573,7 @@ function updateDraftUIState() {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons" style="font-size:16px;">edit_note</span> RASCUNHO ATIVO • SALVE AS MUDANÇAS`;
+        draftTag.innerHTML = `<span class="material-icons">edit_note</span> MODO RASCUNHO ATIVO`;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
