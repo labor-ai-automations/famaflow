@@ -1074,25 +1074,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
     z-index: 100005; /* Garante visibilidade acima do painel lateral se necessário */
 }
 		
-.flowchart-draft-tag {
-    position: absolute;
-    top: 1.2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #fef3c7; /* Amarelo rascunho forte */
-    color: #92400e;
-    border: 1px solid #f59e0b;
-    border-radius: 50px;
-    padding: 0.6rem 1.5rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: none; /* Começa escondida */
-    align-items: center;
-    gap: 10px;
-    z-index: 5000; /* Acima do Canvas e da Toolbar */
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
-    animation: fadeInDown 0.3s ease-out;
-}
+
 .flowchart-draft-tag .material-icons { font-size: 20px; color: #d97706; }
 
 @keyframes fadeInDown {
@@ -1103,11 +1085,33 @@ body.fullscreen-flow .flowchart-monitor-bar {
 /* Estilo Pulsante do Botão Salvar */
 #btn-save-workflow {
     background-color: var(--color-brand-primary) !important;
-    display: none; /* Controlado pelo JS */
+    display: none;
     animation: pulse-red 2s infinite;
     box-shadow: 0 0 10px rgba(216, 25, 32, 0.5);
     border: none;
     color: white;
+}
+
+.flowchart-draft-tag {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    width: max-content !important;
+    height: auto !important;
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: none; /* Controlado pelo JS */
+    align-items: center;
+    gap: 10px;
+    z-index: 50; /* Garante que fique acima do grid mas abaixo de modais */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 @keyframes pulse-red {
@@ -1116,25 +1120,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 25, 32, 0); }
 }
 
-/* Tag de Rascunho no Topo do Fluxo */
-.flowchart-draft-tag {
-    position: absolute;
-    top: 1.2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #FFFBEB;
-    color: #92400e;
-    border: 1px solid #F59E0B;
-    border-radius: 50px;
-    padding: 0.6rem 1.5rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: none; /* Controlado pelo JS */
-    align-items: center;
-    gap: 10px;
-    z-index: 5000;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
-}
+
 		
     </style>
 </head>
@@ -2511,22 +2497,22 @@ updateDraftUIState();
             setTimeout(updateFlowConnections, 400);
         }
 
-        function updateDraftUIState() {
+function updateDraftUIState() {
     const saveBtn = document.getElementById('btn-save-workflow');
     const saveSep = document.getElementById('save-separator');
     const draftTag = document.getElementById('process-draft-tag');
 
+    if (!draftTag) return;
+
     if (workflowHasChanges) {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
-        if (draftTag) {
-            draftTag.style.display = 'flex';
-            draftTag.innerHTML = `<span class="material-icons" style="color: #F59E0B">edit_note</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão vermelho.`;
-        }
+        draftTag.style.display = 'flex';
+        draftTag.innerHTML = `<span class="material-icons">warning_amber</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão Salvar.`;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
-        if (draftTag) draftTag.style.display = 'none';
+        draftTag.style.display = 'none';
     }
 }
 
