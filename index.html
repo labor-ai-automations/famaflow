@@ -2686,10 +2686,9 @@ async function deleteEntireProcess(processId, processTitle) {
                 `Tem certeza que deseja excluir o processo "${processTitle}"? Isso apagará permanentemente todas as etapas, conexões e instâncias vinculadas.`,
                 async () => {
                     try {
+                        // MODO SEGURO: Chama a RPC que tem permissão total no banco
                         const { error } = await supabaseClient
-                            .from('processes')
-                            .delete()
-                            .eq('id', processId);
+                            .rpc('delete_process', { p_process_id: processId });
 
                         if (error) throw error;
 
