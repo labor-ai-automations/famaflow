@@ -1026,6 +1026,36 @@ body.fullscreen-flow #recipient-modal {
 .qp-body { padding: 1.5rem; flex: 1; overflow-y: auto; }
 .qp-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--color-border); display: flex; gap: 0.75rem; background: var(--color-background); }
 .qp-footer .btn { flex: 1; }
+
+/* Barra de Monitoramento de Execução */
+.flowchart-monitor-bar {
+    position: absolute;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    min-width: 420px;
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-info);
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2000;
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
+    animation: slideDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -100%); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* Sombra pulsante para o modo monitor */
+body.fullscreen-flow .flowchart-monitor-bar {
+    z-index: 100005; /* Garante visibilidade acima do painel lateral se necessário */
+}
 		
     </style>
 </head>
@@ -7091,7 +7121,7 @@ showToast('Tarefa adicionada!', 'success');
                                     <td>${i.started_by_profile?.full_name || 'N/A'}</td>
                                     <td>${new Date(i.started_at).toLocaleDateString('pt-BR')}</td>
                                     <td><span class="status-tag status-${i.status}">${i.status == 'active' ? 'Em curso' : 'Finalizado'}</span></td>
-                                    <td><button class="btn btn-secondary" onclick="closeRequestModal(); loadFlowSteps('${processId}', ${i.current_step_order})">Visualizar</button></td>
+                                    <td><button class="btn btn-secondary" onclick="closeRequestModal(); enterMonitorMode('${processId}', '${i.instance_name}', ${i.current_step_order})">Visualizar</button></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -7219,6 +7249,60 @@ showToast('Tarefa adicionada!', 'success');
                 </div>
             `;
             modal.classList.add('visible');
+        }
+
+function enterMonitorMode(processId, instanceName, currentStepOrder) {
+            // 1. Cria a barra de status do monitoramento
+            const container = document.getElementById('process-visualizer-container');
+            const monitorBar = document.createElement('div');
+            monitorBar.id = 'process-monitor-header';
+            monitorBar.className = 'flowchart-monitor-bar';
+            monitorBar.innerHTML = `
+                <div style="display:flex; align-items:center; gap: 15px;">
+                    <span class="material-icons" style="color:var(--color-info);">visibility</span>
+                    <div>
+                        <div style="font-size: 0.7rem; text-transform: uppercase; font-weight: 800; opacity: 0.8;">Modo Monitoramento</div>
+                        <div style="font-weight: 700;">${instanceName}</div>
+                    </div>
+                </div>
+                <button class="btn btn-danger" onclick="exitMonitorMode('${processId}')" style="padding: 0.4rem 1rem; font-size: 0.8rem;">
+                    <span class="material-icons" style="font-size: 16px;">edit</span> Voltar para Edição
+                </button>
+            `;
+            
+            // Remove barra antiga se existir e adiciona a nova
+            const oldBar = document.getElementById('process-monitor-header');
+            if(oldBar) oldBar.remove();
+            container.prepend(monitorBar);
+
+            // 2. Esconde botões de edição para não bugar o template
+            const toolbar = document.querySelector('.flowchart-floating-toolbar');
+            if(toolbar) {
+                toolbar.querySelectorAll('.btn-success, .btn-danger, #save-separator').forEach(b => b.style.display = 'none');
+            }
+
+            // 3. Carrega o gráfico com o destaque do passo atual
+            loadFlowSteps(processId, currentStepOrder);
+            showToast(`Monitorando: ${instanceName}`, 'info');
+        }
+
+        function exitMonitorMode(processId) {
+            const bar = document.getElementById('process-monitor-header');
+            if(bar) bar.remove();
+
+            // Reativa botões de edição
+            const toolbar = document.querySelector('.flowchart-floating-toolbar');
+            if(toolbar) {
+                toolbar.querySelectorAll('.btn-success, .btn-danger').forEach(b => b.style.display = 'flex');
+                // O separador e o botão salvar só aparecem se houver mudanças, então mantemos a lógica original
+            }
+
+            // Recarrega o gráfico limpo (Modo Template)
+            const titleEl = document.getElementById('current-workflow-title');
+            const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
+            selectProcess(processId, processTitle);
+            
+            showToast("Voltando para modo de edição.", "info");
         }
 
     </script>
