@@ -1147,24 +1147,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
 
 .flowchart-draft-tag {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
-    width: auto !important; /* Força o tamanho do conteúdo */
+    bottom: 1rem;
+    left: 1rem;
+    width: max-content !important; /* Garante que o fundo amarelo siga apenas o texto */
     height: auto !important;
-    max-width: 350px;
+    min-height: unset !important;
     background-color: #fef3c7;
     color: #92400e;
-    border: 2px solid #f59e0b;
-    border-radius: 8px;
-    padding: 10px 15px;
-    font-size: 13px;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     display: none; /* Controlado pelo JS */
     align-items: center;
-    gap: 10px;
-    z-index: 5000; /* Garante que fique acima de tudo no canvas */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    pointer-events: none; /* Não atrapalha cliques no canvas se estiver por cima */
+    gap: 8px;
+    z-index: 10005; /* Acima de absolutamente tudo */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    pointer-events: none;
+    line-height: 1;
 }
 
 @keyframes slideDown {
@@ -2267,7 +2268,8 @@ if (permissions.includes('manage_routines')) {
         async function selectProcess(processId, title) {
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
-<div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
+                <div id="process-draft-tag" class="flowchart-draft-tag"></div>
+                <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:8px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
                         <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center;">
                             <span class="material-icons" style="font-size: 18px; margin-right: 8px; color: var(--color-brand-primary);">hub</span>
@@ -2275,8 +2277,6 @@ if (permissions.includes('manage_routines')) {
                         </h3>
                     </div>
                 </div>
-
-<div id="process-draft-tag" class="flowchart-draft-tag"></div>
 <div class="flowchart-floating-toolbar">
     <button class="btn btn-secondary" onclick="zoomFlow(-0.1)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
     <button class="btn btn-secondary" onclick="zoomFlow(0.1)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
@@ -2558,7 +2558,7 @@ function updateDraftUIState() {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons">edit_note</span> <span>RASCUNHO ATIVO: Clique em Salvar.</span>`;
+        draftTag.innerHTML = `<span class="material-icons" style="font-size:16px;">edit_note</span> <span>ALTERAÇÕES PENDENTES • CLIQUE EM SALVAR</span>`;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
