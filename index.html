@@ -1279,6 +1279,27 @@ body.fullscreen-flow #recipient-modal {
         </div>
     </div>
 
+    <!-- START INSTANCE MODAL -->
+    <div id="start-instance-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>Identificar Execução</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="this.parentElement.parentElement.parentElement.classList.remove('visible')">close</span>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--color-text-secondary); margin-top: 0;">Dê um nome para identificar esta instância do processo (ex: Nome do Candidato, Cliente ou Projeto).</p>
+                <div class="form-group">
+                    <label for="new-instance-name">Nome da Execução</label>
+                    <input type="text" id="new-instance-name" class="input-field" placeholder="Ex: Admissão Mateus Júlio" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.classList.remove('visible')">Cancelar</button>
+                <button class="btn btn-success" id="btn-confirm-start-instance">Iniciar Agora</button>
+            </div>
+        </div>
+    </div>
+
     <!-- EDIT TASK MODAL -->
     <div id="edit-task-modal" class="modal-overlay">
         <div class="modal-content">
@@ -2977,51 +2998,54 @@ try {
         }
 
 async function startProcessInstance(processId) {
-    const instanceName = prompt("Dê um nome para esta execução (ex: Nome do Candidato):");
-    if (!instanceName) return;
+    const modal = document.getElementById('start-instance-modal');
+    const input = document.getElementById('new-instance-name');
+    const confirmBtn = document.getElementById('btn-confirm-start-instance');
+    
+    input.value = '';
+    modal.classList.add('visible');
+    setTimeout(() => input.focus(), 300);
 
-    showConfirmation(
-        "Iniciar Processo",
-        `Confirmar o início da execução: "${instanceName}"?`,
-        async () => {
-            // Feedback visual no botão de confirmação do modal
-            const confirmBtn = document.getElementById('btn-confirm-action');
-            const originalText = confirmBtn.textContent;
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = "Iniciando...";
-
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                const response = await fetch(N8N_START_PROCESS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                    body: JSON.stringify({ 
-                        process_id: processId, 
-                        started_by: currentUserProfile.id,
-                        instance_name: instanceName 
-                    })
-                });
-                
-                if (response.ok) {
-                    showToast(`Execução "${instanceName}" iniciada com sucesso!`, 'success');
-                    // Recarrega o gráfico para mostrar o nó ativo (se houver lógica de destaque)
-                    setTimeout(() => {
-                        const titleEl = document.getElementById('current-workflow-title');
-                        const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
-                        selectProcess(processId, processTitle);
-                    }, 1000);
-                } else {
-                    throw new Error('Falha na comunicação com o servidor de automação.');
-                }
-            } catch (error) {
-                showToast(error.message, 'danger');
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = originalText;
-                closeConfirmationModal();
-            }
+    confirmBtn.onclick = async () => {
+        const instanceName = input.value.trim();
+        if (!instanceName) {
+            showToast("Por favor, identifique a execução.", "warning");
+            return;
         }
-    );
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Iniciando...";
+
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const response = await fetch(N8N_START_PROCESS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                body: JSON.stringify({ 
+                    process_id: processId, 
+                    started_by: currentUserProfile.id,
+                    instance_name: instanceName 
+                })
+            });
+            
+            if (response.ok) {
+                showToast(`Execução "${instanceName}" iniciada!`, 'success');
+                modal.classList.remove('visible');
+                setTimeout(() => {
+                    const titleEl = document.getElementById('current-workflow-title');
+                    const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
+                    selectProcess(processId, processTitle);
+                }, 1000);
+            } else {
+                throw new Error('Falha ao iniciar processo via automação.');
+            }
+        } catch (error) {
+            showToast(error.message, 'danger');
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = "Iniciar Agora";
+        }
+    };
 }
 
 async function loadMyProcessesPage() {
