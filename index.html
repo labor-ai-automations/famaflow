@@ -2117,6 +2117,9 @@ if (permissions.includes('manage_routines')) {
                     <button class="btn btn-danger" onclick="openAddStepModal('${processId}')" title="Adicionar Nova Etapa">
                         <span class="material-icons">add</span> Etapa
                     </button>
+                    <button class="btn btn-secondary" onclick="showProcessInstances('${processId}')" title="Ver Instâncias Ativas">
+                        <span class="material-icons">visibility</span> Execuções
+                    </button>
                 </div>
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
@@ -6954,6 +6957,42 @@ showToast('Tarefa adicionada!', 'success');
                 modal.classList.add('visible');
                 sessionStorage.setItem('welcomeShown', 'true');
             }
+        }
+
+        async function showProcessInstances(processId) {
+            const { data: instances, error } = await supabaseClient
+                .from('process_instances')
+                .select('*, started_by_profile:started_by(full_name)')
+                .eq('process_id', processId)
+                .order('started_at', { ascending: false });
+
+            const modal = document.getElementById('request-modal');
+            const modalBody = document.getElementById('request-modal-body');
+            const modalFooter = document.getElementById('request-modal-footer');
+            
+            document.getElementById('request-modal-title').textContent = 'Instâncias em Execução';
+            
+            modalBody.innerHTML = instances && instances.length > 0 
+                ? `<div class="card" style="padding:0; background:var(--color-surface);">
+                    <table class="data-table">
+                        <thead><tr><th>ID</th><th>Iniciado por</th><th>Início</th><th>Status</th><th>Ação</th></tr></thead>
+                        <tbody>
+                            ${instances.map(i => `
+                                <tr>
+                                    <td><strong>#${i.id}</strong></td>
+                                    <td>${i.started_by_profile?.full_name || 'N/A'}</td>
+                                    <td>${new Date(i.started_at).toLocaleDateString('pt-BR')}</td>
+                                    <td><span class="status-tag status-${i.status}">${i.status == 'active' ? 'Em curso' : 'Finalizado'}</span></td>
+                                    <td><button class="btn btn-secondary" onclick="closeRequestModal(); loadFlowSteps('${processId}', ${i.current_step_order})">Visualizar</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                   </div>`
+                : `<div class="empty-state">Nenhuma instância iniciada para este processo.</div>`;
+
+            modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+            modal.classList.add('visible');
         }
 
         async function displayDailySummary() {
