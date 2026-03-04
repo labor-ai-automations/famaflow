@@ -7687,16 +7687,18 @@ saveBtn.onclick = async (e) => {
                 modal.classList.remove('visible');
                 loadManageProcessesPage();
                 
-                // Força a atualização visual imediata do header do fluxo
                 if(currentlyOpenProcessId === id) {
                     const titleNode = document.getElementById('current-workflow-title');
                     const descNode = document.getElementById('current-workflow-desc');
                     
                     if(titleNode) {
+                        // Limpa qualquer HTML residual e injeta apenas o texto puro + ícones novos
+                        // O uso de trim() e a remoção de tags garante que o título não duplique a versão
+                        const cleanTitle = newTitle.replace(/<[^>]*>?/gm, '').trim(); 
                         titleNode.innerHTML = `
-                            <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
-                            ${newTitle}
-                            <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem;">V.1.0</span>
+                            <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary); margin-right: 8px;">hub</span>
+                            ${cleanTitle}
+                            <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem; margin-left: 8px;">V.1.0</span>
                         `;
                     }
                     if(descNode) descNode.textContent = newDesc;
