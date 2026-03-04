@@ -7686,9 +7686,16 @@ async function openEditProcessModal(id, title, desc) {
             showToast("Processo atualizado!", "success");
             modal.classList.remove('visible');
             loadManageProcessesPage();
+            
+            // Correção: Atualiza a UI do Fluxo Aberto com seletores precisos
             if(currentlyOpenProcessId === id) {
                 const titleNode = document.getElementById('current-workflow-title');
-                if(titleNode) titleNode.firstChild.textContent = newTitle;
+                if(titleNode) {
+                    // Preserva o ícone e a tag de versão, muda apenas o texto do título
+                    titleNode.innerText = newTitle; 
+                    // Reinjeta a tag de versão que foi apagada pelo innerText
+                    titleNode.innerHTML += ` <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem;">V.1.0</span>`;
+                }
                 const descNode = document.getElementById('current-workflow-desc');
                 if(descNode) descNode.textContent = newDesc;
             }
