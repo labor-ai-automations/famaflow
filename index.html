@@ -2910,16 +2910,23 @@ try {
         }
 
 async function startProcessInstance(processId) {
+    const instanceName = prompt("Dê um nome para esta execução (ex: Nome do Candidato):");
+    if (!instanceName) return;
+
     showConfirmation(
         "Iniciar Processo",
-        "Deseja iniciar uma nova instância deste fluxo de trabalho agora?",
+        `Confirmar o início da execução: "${instanceName}"?`,
         async () => {
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const response = await fetch(N8N_START_PROCESS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                    body: JSON.stringify({ process_id: processId, started_by: currentUserProfile.id })
+                    body: JSON.stringify({ 
+                        process_id: processId, 
+                        started_by: currentUserProfile.id,
+                        instance_name: instanceName // Envia o nome customizado
+                    })
                 });
                 
                 if (response.ok) {
@@ -6975,11 +6982,11 @@ showToast('Tarefa adicionada!', 'success');
             modalBody.innerHTML = instances && instances.length > 0 
                 ? `<div class="card" style="padding:0; background:var(--color-surface);">
                     <table class="data-table">
-                        <thead><tr><th>ID</th><th>Iniciado por</th><th>Início</th><th>Status</th><th>Ação</th></tr></thead>
+                        <thead><tr><th>Execução</th><th>Iniciado por</th><th>Data</th><th>Status</th><th>Ação</th></tr></thead>
                         <tbody>
                             ${instances.map(i => `
                                 <tr>
-                                    <td><strong>#${i.id}</strong></td>
+                                    <td><strong>${i.instance_name || 'Sem nome'}</strong><br><small>ID: #${i.id}</small></td>
                                     <td>${i.started_by_profile?.full_name || 'N/A'}</td>
                                     <td>${new Date(i.started_at).toLocaleDateString('pt-BR')}</td>
                                     <td><span class="status-tag status-${i.status}">${i.status == 'active' ? 'Em curso' : 'Finalizado'}</span></td>
