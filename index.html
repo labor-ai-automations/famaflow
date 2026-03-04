@@ -7670,36 +7670,38 @@ async function openEditProcessModal(id, title, desc) {
     saveBtn.textContent = 'Salvar Alterações';
     
     // Vincula a função de ATUALIZAÇÃO
-    saveBtn.onclick = async (e) => {
-        e.preventDefault();
-        const newTitle = titleInput.value;
-        const newDesc = descInput.value;
-        
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Salvando...';
-
-        const { error } = await supabaseClient.from('processes')
-            .update({ title: newTitle, description: newDesc })
-            .eq('id', id);
-
-        if(!error) {
-            showToast("Processo atualizado!", "success");
-            modal.classList.remove('visible');
-            loadManageProcessesPage();
+saveBtn.onclick = async (e) => {
+            e.preventDefault();
+            const newTitle = titleInput.value;
+            const newDesc = descInput.value;
             
-            // Correção: Atualiza a UI do Fluxo Aberto com seletores precisos
-            if(currentlyOpenProcessId === id) {
-                const titleNode = document.getElementById('current-workflow-title');
-                if(titleNode) {
-                    // Preserva o ícone e a tag de versão, muda apenas o texto do título
-                    titleNode.innerText = newTitle; 
-                    // Reinjeta a tag de versão que foi apagada pelo innerText
-                    titleNode.innerHTML += ` <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem;">V.1.0</span>`;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Salvando...';
+
+            const { error } = await supabaseClient.from('processes')
+                .update({ title: newTitle, description: newDesc })
+                .eq('id', id);
+
+            if(!error) {
+                showToast("Processo atualizado!", "success");
+                modal.classList.remove('visible');
+                loadManageProcessesPage();
+                
+                // Força a atualização visual imediata do header do fluxo
+                if(currentlyOpenProcessId === id) {
+                    const titleNode = document.getElementById('current-workflow-title');
+                    const descNode = document.getElementById('current-workflow-desc');
+                    
+                    if(titleNode) {
+                        titleNode.innerHTML = `
+                            <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
+                            ${newTitle}
+                            <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); font-size: 0.65rem;">V.1.0</span>
+                        `;
+                    }
+                    if(descNode) descNode.textContent = newDesc;
                 }
-                const descNode = document.getElementById('current-workflow-desc');
-                if(descNode) descNode.textContent = newDesc;
-            }
-        } else {
+            } else {
             showToast("Erro ao salvar: " + error.message, "danger");
         }
         saveBtn.disabled = false;
