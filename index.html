@@ -2473,6 +2473,10 @@ function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
+            // Remove barra de monitoramento se ela existir ao entrar em rascunho
+            const monitorBar = document.getElementById('process-monitor-header');
+            if(monitorBar) monitorBar.remove();
+
             // Alerta de Modo Rascunho
             const container = document.getElementById('process-visualizer-container');
             let draftTag = document.getElementById('process-draft-tag');
@@ -2480,8 +2484,10 @@ function renderLocalWorkflow() {
                 draftTag = document.createElement('div');
                 draftTag.id = 'process-draft-tag';
                 draftTag.className = 'flowchart-draft-tag';
-                container.prepend(draftTag);
+                // Garante que seja inserido antes do Canvas
+                container.insertBefore(draftTag, container.firstChild);
             }
+            draftTag.style.display = 'flex'; // Força exibição
             draftTag.innerHTML = `<span class="material-icons">edit_note</span> <strong>MODO RASCUNHO:</strong> Edite o fluxo e clique em "Salvar" para aplicar.`;
 
             // Mostra o botão salvar
@@ -2502,9 +2508,13 @@ function renderLocalWorkflow() {
                 }
                 const pos = step.ui_metadata;
                 const isEditingThis = document.getElementById('process-quick-panel').dataset.editingStepId == step.id;
+                const isCompleted = step.is_completed || false; // Precisaremos passar esse status
                 return `
                     <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px; border-color: ${isEditingThis ? 'var(--color-warning)' : 'var(--color-border)'}">
-                        <div class="node-label">Etapa ${step.step_order}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="node-label">Etapa ${step.step_order}</div>
+                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">check</span> FEITO</span>' : ''}
+                        </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
 <div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
