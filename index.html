@@ -1116,6 +1116,15 @@ body.fullscreen-flow .flowchart-monitor-bar {
     white-space: nowrap !important;
 }
 
+.refresh-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 @keyframes pulse-red {
     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 25, 32, 0.7); }
     70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(216, 25, 32, 0); }
@@ -2251,8 +2260,8 @@ if (permissions.includes('manage_routines')) {
                     <button class="btn btn-secondary" onclick="showProcessInstances('${processId}')" title="Ver Instâncias Ativas">
                         <span class="material-icons">visibility</span> Execuções
                     </button>
-                    <button class="btn btn-secondary" onclick="resetProcessInstances('${processId}')" title="Resetar Histórico/Execuções">
-                        <span class="material-icons">restart_alt</span>
+<button class="btn btn-secondary" onclick="resetProcessInstances('${processId}')" title="Limpar Tudo (Perigoso)">
+                        <span class="material-icons" style="color:var(--color-danger);">delete_forever</span>
                     </button>
                 </div>
 
@@ -7398,14 +7407,19 @@ async function enterMonitorMode(processId, instanceId, instanceName, currentStep
             monitorBar.style.zIndex = "2000";
             monitorBar.style.width = "max-content";
 
-            monitorBar.innerHTML = `
+monitorBar.innerHTML = `
                 <div style="display:flex; align-items:center; gap: 15px;">
                     <div style="width:32px; height:32px; border-radius:50%; background:var(--color-info-bg); display:flex; align-items:center; justify-content:center;">
                         <span class="material-icons" style="color:var(--color-info); font-size:18px;">visibility</span>
                     </div>
-                    <div>
+                    <div style="display:flex; flex-direction:column;">
                         <div style="font-size: 0.6rem; text-transform: uppercase; font-weight: 800; color:var(--color-info);">ID #${instanceId} • MONITORAMENTO</div>
-                        <div style="font-weight: 700; font-size: 0.95rem; white-space: nowrap;">${instanceName}</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="font-weight: 700; font-size: 0.95rem; white-space: nowrap;">${instanceName}</div>
+                            <button class="btn-icon" onclick="refreshMonitorState('${processId}', '${instanceId}', '${instanceName}')" title="Atualizar Status" style="padding:2px;">
+                                <span class="material-icons" style="font-size:18px;">sync</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div style="width: 1px; height: 20px; background: var(--color-border); margin: 0 5px;"></div>
@@ -7438,6 +7452,28 @@ async function enterMonitorMode(processId, instanceId, instanceName, currentStep
 
             showToast(`Visualizando Instância #${instanceId}`, 'info');
         }
+		
+async function refreshMonitorState(processId, instanceId, instanceName) {
+            const btnIcon = event.currentTarget.querySelector('.material-icons');
+            btnIcon.classList.add('refresh-spin');
+            
+            try {
+                const { data: instance } = await supabaseClient
+                    .from('process_instances')
+                    .select('current_step_order')
+                    .eq('id', instanceId)
+                    .single();
+
+                if (instance) {
+                    await enterMonitorMode(processId, instanceId, instanceName, instance.current_step_order);
+                    showToast("Status atualizado.", "success");
+                }
+            } catch (e) {
+                console.error("Erro ao atualizar monitoramento:", e);
+            } finally {
+                setTimeout(() => btnIcon.classList.remove('refresh-spin'), 500);
+            }
+        }		
 
         function exitMonitorMode(processId) {
             const bar = document.getElementById('process-monitor-header');
