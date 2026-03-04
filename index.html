@@ -1146,26 +1146,30 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    width: max-content !important; /* Garante que o fundo amarelo siga apenas o texto */
+    position: absolute !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    top: auto !important;
+    right: auto !important;
+    width: fit-content !important;
     height: auto !important;
-    min-height: unset !important;
-    background-color: #fef3c7;
-    color: #92400e;
-    border: 1px solid #f59e0b;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
     display: none; /* Controlado pelo JS */
     align-items: center;
-    gap: 8px;
-    z-index: 10005; /* Acima de absolutamente tudo */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    justify-content: center;
+    gap: 10px;
+    z-index: 99999 !important; /* Prioridade máxima no sistema */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     pointer-events: none;
-    line-height: 1;
+    white-space: nowrap !important;
 }
 
 @keyframes slideDown {
@@ -2267,6 +2271,7 @@ if (permissions.includes('manage_routines')) {
 
         async function selectProcess(processId, title) {
             const container = document.getElementById('process-visualizer-container');
+            container.style.display = "block"; // Garante que o container não seja flex
             container.innerHTML = `
                 <div id="process-draft-tag" class="flowchart-draft-tag"></div>
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
@@ -2558,7 +2563,7 @@ function updateDraftUIState() {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons" style="font-size:16px;">edit_note</span> <span>ALTERAÇÕES PENDENTES • CLIQUE EM SALVAR</span>`;
+        draftTag.innerHTML = `<span class="material-icons" style="font-size:18px;">warning</span> <span>RASCUNHO ATIVO • SALVE PARA APLICAR</span>`;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
