@@ -874,14 +874,31 @@ let currentSelectionTarget = null;
 .flowchart-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .flow-node { position: absolute; width: 220px; background: var(--color-surface); border: 2px solid var(--color-border); border-radius: 10px; padding: 12px; cursor: move; box-shadow: var(--shadow); user-select: none; z-index: 10; transition: border-color 0.2s, box-shadow 0.2s; }
 .flow-node:hover { border-color: var(--color-info); }
-.flow-node.active-step { border-color: var(--color-info); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); animation: pulse-blue 2s infinite; }
-.flow-node.completed-step { border-color: var(--color-success); opacity: 0.7; border-style: dashed; }
-.flow-node.completed-step h4 { color: var(--color-success); }
+.flow-node.active-step { 
+    border-color: var(--color-info); 
+    border-width: 3px;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); 
+    animation: pulse-blue 1.5s infinite ease-in-out; 
+    z-index: 15;
+}
+.flow-node.completed-step { 
+    border-color: var(--color-success); 
+    background-color: var(--color-success-bg);
+    opacity: 0.85; 
+    border-style: solid;
+    border-width: 2px;
+}
+.flow-node.completed-step h4 { color: var(--color-success); font-weight: 700; }
+.flow-node.completed-step p { color: var(--color-text-primary); }
 .flow-node h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: var(--color-text-primary); }
 .flow-node p { margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.2; }
 .flow-node .node-footer { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-border); padding-top: 8px; }
 .flow-node .node-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--color-brand-primary); }
-@keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+@keyframes pulse-blue { 
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); } 
+    50% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0.2); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } 
+}
 #flow-connections { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; pointer-events: none; z-index: 1; }
 
 /* Botão Quick Add estilo n8n */
@@ -1056,6 +1073,25 @@ body.fullscreen-flow #recipient-modal {
 body.fullscreen-flow .flowchart-monitor-bar {
     z-index: 100005; /* Garante visibilidade acima do painel lateral se necessário */
 }
+		
+.flowchart-draft-tag {
+    position: absolute;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1500;
+    box-shadow: var(--shadow);
+}
+.flowchart-draft-tag .material-icons { font-size: 18px; }		
 		
     </style>
 </head>
@@ -2437,6 +2473,18 @@ function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
+            // Alerta de Modo Rascunho
+            const container = document.getElementById('process-visualizer-container');
+            let draftTag = document.getElementById('process-draft-tag');
+            if (!draftTag) {
+                draftTag = document.createElement('div');
+                draftTag.id = 'process-draft-tag';
+                draftTag.className = 'flowchart-draft-tag';
+                container.prepend(draftTag);
+            }
+            draftTag.innerHTML = `<span class="material-icons">edit_note</span> <strong>MODO RASCUNHO:</strong> Edite o fluxo e clique em "Salvar" para aplicar.`;
+
+            // Mostra o botão salvar
             const saveBtn = document.getElementById('btn-save-workflow');
             const saveSep = document.getElementById('save-separator');
             if(saveBtn) saveBtn.style.display = 'flex';
@@ -2611,13 +2659,16 @@ node.onmousedown = (e) => {
                 const cp1 = x1 + (distance * 0.4);
                 const cp2 = x2 - (distance * 0.4);
 
-                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                path.setAttribute("d", `M ${x1} ${y1} C ${cp1} ${y1}, ${cp2} ${y2}, ${x2} ${y2}`);
-                path.setAttribute("stroke", "#9CA3AF");
-                path.setAttribute("stroke-width", "2");
-                path.setAttribute("fill", "none");
-                path.setAttribute("marker-end", "url(#arrowhead)");
-                svg.appendChild(path);
+const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("d", `M ${x1} ${y1} C ${cp1} ${y1}, ${cp2} ${y2}, ${x2} ${y2}`);
+                    
+                    // Lógica de cor da conexão: Verde se ambos os nós estiverem concluídos
+                    const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
+                    path.setAttribute("stroke", isStepCompleted ? "var(--color-success)" : "var(--color-info)");
+                    path.setAttribute("stroke-width", "3");
+                    path.setAttribute("fill", "none");
+                    path.setAttribute("marker-end", "url(#arrowhead)");
+                    svg.appendChild(path);
             }
         }
 
@@ -2955,6 +3006,8 @@ try {
                 if (rpcError) throw rpcError;
                 showToast("Fluxo salvo com sucesso!", "success");
                 workflowHasChanges = false;
+                const draftTag = document.getElementById('process-draft-tag');
+                if(draftTag) draftTag.remove();
                 
                 // Oculta os controles de salvamento
                 document.getElementById('btn-save-workflow').style.display = 'none';
