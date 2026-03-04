@@ -2954,7 +2954,7 @@ async function showStepHistory(stepId) {
 async function deleteEntireProcess(processId, processTitle) {
             showConfirmation(
                 "Excluir Fluxo Completo",
-                `Tem certeza que deseja excluir o processo "${processTitle}"? Isso apagará permanentemente todas as etapas, conexões e instâncias vinculadas.`,
+                `Tem certeza que deseja excluir o processo "${processTitle}"? \n\nESTA AÇÃO IRÁ APAGAR PERMANENTEMENTE:\n- Todas as Etapas e Conexões\n- Todas as Execuções (Ativas e Finalizadas)\n- TODO O HISTÓRICO DE AUDITORIA vinculado.\n\nEsta operação não pode ser desfeita.`,
                 async () => {
                     try {
                         // MODO SEGURO: Chama a RPC que tem permissão total no banco
