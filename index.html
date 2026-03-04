@@ -2754,12 +2754,22 @@ const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             }
         }
 
-        async function showStepHistory(stepId) {
-            const { data: completions, error } = await supabaseClient
+async function showStepHistory(stepId) {
+            // Captura o ID da instância que está sendo monitorada no momento (se houver)
+            const monitorHeader = document.getElementById('process-monitor-header');
+            const currentInstanceId = monitorHeader ? monitorHeader.querySelector('div div').textContent.match(/ID #(\d+)/)?.[1] : null;
+
+            let query = supabaseClient
                 .from('process_step_completions')
-                .select('*, profiles(full_name)')
-                .eq('step_id', stepId)
-                .order('completed_at', { ascending: false });
+                .select('*, profiles(full_name), process_instances(instance_name)')
+                .eq('step_id', stepId);
+            
+            // Se estivermos em modo de monitoramento, filtramos apenas para ESTA execução
+            if (currentInstanceId) {
+                query = query.eq('instance_id', currentInstanceId);
+            }
+
+            const { data: completions, error } = await query.order('completed_at', { ascending: false });
 
             if (error) { showToast("Erro ao carregar histórico", "danger"); return; }
 
@@ -2768,22 +2778,27 @@ const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             const modalBody = document.getElementById('request-modal-body');
             const modalFooter = document.getElementById('request-modal-footer');
 
-            modalTitle.textContent = 'Histórico da Etapa';
+            modalTitle.textContent = currentInstanceId ? 'Histórico desta Execução' : 'Histórico Global da Etapa';
             modalBody.innerHTML = completions && completions.length > 0 
                 ? `<div class="card" style="padding:0; background:var(--color-surface);">
                     <table class="data-table">
-                        <thead><tr><th>Colaborador</th><th>Data/Hora</th></tr></thead>
+                        <thead><tr>
+                            ${!currentInstanceId ? '<th>Execução</th>' : ''}
+                            <th>Colaborador</th>
+                            <th>Data/Hora</th>
+                        </tr></thead>
                         <tbody>
                             ${completions.map(c => `
                                 <tr>
-                                    <td>${c.profiles?.full_name || 'N/A'}</td>
+                                    ${!currentInstanceId ? `<td><small>${c.process_instances?.instance_name || 'N/A'}</small></td>` : ''}
+                                    <td><strong>${c.profiles?.full_name.split(' ')[0] || 'N/A'}</strong></td>
                                     <td>${new Date(c.completed_at).toLocaleString('pt-BR')}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
                    </div>`
-                : `<div class="empty-state">Nenhuma conclusão registrada para esta etapa ainda.</div>`;
+                : `<div class="empty-state">Nenhuma conclusão registrada para esta etapa neste contexto.</div>`;
 
             modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
             modal.classList.add('visible');
