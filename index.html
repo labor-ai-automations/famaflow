@@ -2259,11 +2259,7 @@ if (permissions.includes('manage_routines')) {
             if (world) world.style.transform = `translate(${flowPanX}px, ${flowPanY}px) scale(${flowZoom})`;
         }
 
-        async function loadFlowSteps(processId) {
-            const nodesContainer = document.getElementById('flow-nodes-container');
-            if (!nodesContainer) return;
-            
-            async function loadFlowSteps(processId, forceStep = null) {
+        async function loadFlowSteps(processId, forceStep = null) {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
             
