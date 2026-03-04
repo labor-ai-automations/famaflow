@@ -1146,22 +1146,29 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: absolute;
-    top: 1rem;
-    left: 1.5rem;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
     background-color: #fef3c7;
     color: #92400e;
-    border: 1px solid #f59e0b;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.85rem;
     font-weight: 700;
     display: none;
     align-items: center;
     gap: 8px;
-    z-index: 900;
-    box-shadow: var(--shadow);
-    margin-top: 3.5rem; /* Posiciona logo abaixo do título do fluxo */
+    z-index: 950;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+    backdrop-filter: blur(10px);
+    animation: slideDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -30px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
 }
 		
     </style>
@@ -2259,8 +2266,7 @@ if (permissions.includes('manage_routines')) {
         async function selectProcess(processId, title) {
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
-                <div id="process-draft-tag" class="flowchart-draft-tag"></div>
-                <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
+<div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:8px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
                         <h3 style="margin:0; font-size:1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center;">
                             <span class="material-icons" style="font-size: 18px; margin-right: 8px; color: var(--color-brand-primary);">hub</span>
@@ -2551,7 +2557,7 @@ updateDraftUIState();
         saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
         draftTag.style.display = 'flex';
-        draftTag.innerHTML = `<span class="material-icons" style="font-size:24px;">warning_amber</span> <span><strong>MODO RASCUNHO ATIVO:</strong> Clique em "Salvar" para aplicar as mudanças.</span>`;
+        draftTag.innerHTML = `<span class="material-icons">warning_amber</span> <span><strong>MODO RASCUNHO ATIVO:</strong> Clique em "Salvar" para aplicar as mudanças.</span>`;
     } else {
         saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
@@ -7428,6 +7434,10 @@ showToast('Tarefa adicionada!', 'success');
 async function enterMonitorMode(processId, instanceId, instanceName, currentStepOrder) {
             const container = document.getElementById('process-visualizer-container');
             
+            // ESCONDE O AVISO DE RASCUNHO
+            const draftTag = document.getElementById('process-draft-tag');
+            if (draftTag) draftTag.style.display = 'none';
+            
             // 1. Header de Monitoramento Refinado
             const monitorBar = document.createElement('div');
             monitorBar.id = 'process-monitor-header';
@@ -7475,6 +7485,12 @@ async function enterMonitorMode(processId, instanceId, instanceName, currentStep
         function exitMonitorMode(processId) {
             const bar = document.getElementById('process-monitor-header');
             if(bar) bar.remove();
+
+            // Reativa o aviso de rascunho se houver mudanças
+            if (workflowHasChanges) {
+                const draftTag = document.getElementById('process-draft-tag');
+                if (draftTag) draftTag.style.display = 'flex';
+            }
 
             // Reativa botões de edição
             const toolbar = document.querySelector('.flowchart-floating-toolbar');
