@@ -2084,8 +2084,9 @@ if (permissions.includes('manage_routines')) {
                 return;
             }
 
-            // Caso contrário, abre o novo processo
+            // Caso contrário, abre o novo processo (sempre abre o template limpo)
             selectProcess(processId, title);
+            currentlyOpenProcessId = processId;
             currentlyOpenProcessId = processId;
             
             // Atualiza as setas e estados ativos
@@ -2262,16 +2263,13 @@ if (permissions.includes('manage_routines')) {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
             
-            // Busca a última instância ativa deste processo
-            const { data: instances } = await supabaseClient
-                .from('process_instances')
-                .select('current_step_order')
-                .eq('process_id', processId)
-                .eq('status', 'active')
-                .order('started_at', { ascending: false })
-                .limit(1);
-
-            const activeOrder = (instances && instances.length > 0) ? instances[0].current_step_order : null;
+            async function loadFlowSteps(processId, forceStep = null) {
+            const nodesContainer = document.getElementById('flow-nodes-container');
+            if (!nodesContainer) return;
+            
+            // Se forceStep for passado (pelo botão Visualizar), usamos ele. 
+            // Caso contrário, activeOrder é null e o gráfico fica limpo.
+            const activeOrder = forceStep;
 
             const { data: steps } = await supabaseClient
                 .from('process_steps')
