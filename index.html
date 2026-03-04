@@ -2917,6 +2917,12 @@ async function startProcessInstance(processId) {
         "Iniciar Processo",
         `Confirmar o início da execução: "${instanceName}"?`,
         async () => {
+            // Feedback visual no botão de confirmação do modal
+            const confirmBtn = document.getElementById('btn-confirm-action');
+            const originalText = confirmBtn.textContent;
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = "Iniciando...";
+
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const response = await fetch(N8N_START_PROCESS_URL, {
@@ -2925,23 +2931,27 @@ async function startProcessInstance(processId) {
                     body: JSON.stringify({ 
                         process_id: processId, 
                         started_by: currentUserProfile.id,
-                        instance_name: instanceName // Envia o nome customizado
+                        instance_name: instanceName 
                     })
                 });
                 
                 if (response.ok) {
-                    showToast('Processo iniciado com sucesso!', 'success');
-                    // Recarrega a página ou a lista para mostrar o nó ativo
+                    showToast(`Execução "${instanceName}" iniciada com sucesso!`, 'success');
+                    // Recarrega o gráfico para mostrar o nó ativo (se houver lógica de destaque)
                     setTimeout(() => {
                         const titleEl = document.getElementById('current-workflow-title');
                         const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
                         selectProcess(processId, processTitle);
                     }, 1000);
                 } else {
-                    throw new Error('Falha ao iniciar processo');
+                    throw new Error('Falha na comunicação com o servidor de automação.');
                 }
             } catch (error) {
                 showToast(error.message, 'danger');
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = originalText;
+                closeConfirmationModal();
             }
         }
     );
