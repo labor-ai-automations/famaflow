@@ -2288,7 +2288,7 @@ if (permissions.includes('manage_routines')) {
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
                                 <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
-                                <span id="current-workflow-title">${title}</span>
+                                <span id="current-workflow-title">${title.replace(/<[^>]*>?/gm, '').trim()}</span>
                             </h3>
                             <span id="current-workflow-desc" style="font-size: 0.75rem; font-weight: 400; color: var(--color-text-secondary); max-width: 400px; line-height: 1.3; margin-left: 26px;">Carregando descrição...</span>
                         </div>
@@ -7690,10 +7690,12 @@ saveBtn.onclick = async (e) => {
                     const titleNode = document.getElementById('current-workflow-title');
                     const descNode = document.getElementById('current-workflow-desc');
                     
-                    if(titleNode) {
+if(titleNode) {
+                        // Limpa qualquer tag HTML que possa estar vindo junto no título (incluindo ícones antigos)
+                        const cleanTitleOnly = newTitle.replace(/<[^>]*>?/gm, '').trim();
                         titleNode.innerHTML = `
                             <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary); margin-right: 8px;">hub</span>
-                            ${newTitle}
+                            ${cleanTitleOnly}
                         `;
                     }
                     if(descNode) descNode.textContent = newDesc;
