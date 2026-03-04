@@ -968,8 +968,9 @@ let currentSelectionTarget = null;
 /* Barra de Ferramentas Flutuante */
 .flowchart-floating-toolbar {
     position: absolute;
-    top: 1.5rem;
+    bottom: 1.5rem;
     right: 1.5rem;
+    top: auto;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -1093,25 +1094,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 
 .flowchart-draft-tag {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
+    position: absolute !important;
+    top: 15px !important;
+    left: 15px !important;
+    bottom: auto !important;
     width: max-content !important;
-    height: auto !important;
-    background-color: #fef3c7;
-    color: #92400e;
-    border: 1px solid #f59e0b;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: none; /* Controlado pelo JS */
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 6px !important;
+    padding: 8px 16px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    display: none;
     align-items: center;
-    gap: 10px;
-    z-index: 50; /* Garante que fique acima do grid mas abaixo de modais */
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    white-space: nowrap;
+    gap: 8px !important;
+    z-index: 2100 !important; /* Acima da barra azul se houver sobreposição */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
     pointer-events: none;
+    white-space: nowrap !important;
 }
 
 @keyframes pulse-red {
@@ -7385,28 +7386,36 @@ showToast('Tarefa adicionada!', 'success');
 async function enterMonitorMode(processId, instanceId, instanceName, currentStepOrder) {
             const container = document.getElementById('process-visualizer-container');
             
-            // 1. Header de Monitoramento Refinado
+            // 1. Header de Monitoramento Refinado (Posicionamento Absoluto no Topo Central)
             const monitorBar = document.createElement('div');
             monitorBar.id = 'process-monitor-header';
             monitorBar.className = 'flowchart-monitor-bar';
+            monitorBar.style.position = "absolute";
+            monitorBar.style.top = "15px";
+            monitorBar.style.left = "50%";
+            monitorBar.style.transform = "translateX(-50%)";
+            monitorBar.style.zIndex = "2000";
+            monitorBar.style.width = "max-content";
+
             monitorBar.innerHTML = `
                 <div style="display:flex; align-items:center; gap: 15px;">
-                    <div style="width:36px; height:36px; border-radius:50%; background:var(--color-info-bg); display:flex; align-items:center; justify-content:center;">
-                        <span class="material-icons" style="color:var(--color-info); font-size:20px;">visibility</span>
+                    <div style="width:32px; height:32px; border-radius:50%; background:var(--color-info-bg); display:flex; align-items:center; justify-content:center;">
+                        <span class="material-icons" style="color:var(--color-info); font-size:18px;">visibility</span>
                     </div>
                     <div>
-                        <div style="font-size: 0.65rem; text-transform: uppercase; font-weight: 800; color:var(--color-info);">ID #${instanceId} • Execução em Curso</div>
-                        <div style="font-weight: 700; font-size: 1.05rem;">${instanceName}</div>
+                        <div style="font-size: 0.6rem; text-transform: uppercase; font-weight: 800; color:var(--color-info);">ID #${instanceId} • MONITORAMENTO</div>
+                        <div style="font-weight: 700; font-size: 0.95rem; white-space: nowrap;">${instanceName}</div>
                     </div>
                 </div>
-                <button class="btn btn-danger" onclick="exitMonitorMode('${processId}')" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius:10px;">
-                    <span class="material-icons" style="font-size: 18px;">settings_backup_restore</span> Voltar p/ Edição
+                <div style="width: 1px; height: 20px; background: var(--color-border); margin: 0 5px;"></div>
+                <button class="btn btn-danger" onclick="exitMonitorMode('${processId}')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius:8px;">
+                    <span class="material-icons" style="font-size: 16px;">settings_backup_restore</span> Sair
                 </button>
             `;
             
             const oldBar = document.getElementById('process-monitor-header');
             if(oldBar) oldBar.remove();
-            container.prepend(monitorBar);
+            container.appendChild(monitorBar); // Usamos append para não empurrar o título do fluxo
 
             // 2. Esconder ferramentas de edição
             const toolbar = document.querySelector('.flowchart-floating-toolbar');
