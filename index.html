@@ -969,7 +969,9 @@ let currentSelectionTarget = null;
 .flowchart-floating-toolbar {
     position: absolute;
     top: 1.5rem;
-    right: 1.5rem;
+    right: 1rem;
+    flex-wrap: wrap; /* Permite quebrar linha se o espaço acabar */
+    justify-content: flex-end;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -1119,21 +1121,23 @@ body.fullscreen-flow .flowchart-monitor-bar {
 /* Tag de Rascunho no Topo do Fluxo */
 .flowchart-draft-tag {
     position: absolute;
-    top: 1.2rem;
+    bottom: 1.5rem; /* Movido para a base */
     left: 50%;
     transform: translateX(-50%);
     background-color: #FFFBEB;
     color: #92400e;
     border: 1px solid #F59E0B;
-    border-radius: 50px;
-    padding: 0.6rem 1.5rem;
-    font-size: 0.85rem;
+    border-radius: 12px; /* Menos arredondado para telas menores */
+    padding: 0.75rem 1.25rem;
+    font-size: 0.8rem; /* Ligeiramente menor */
     font-weight: 700;
-    display: none; /* Controlado pelo JS */
+    display: none;
     align-items: center;
     gap: 10px;
-    z-index: 5000;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+    z-index: 4000; /* Abaixo de modais, acima do canvas */
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+    max-width: 90%; /* Não estoura em telas pequenas */
+    text-align: center;
 }
 		
     </style>
@@ -2519,10 +2523,10 @@ updateDraftUIState();
     if (workflowHasChanges) {
         if (saveBtn) saveBtn.style.display = 'flex';
         if (saveSep) saveSep.style.display = 'block';
-        if (draftTag) {
-            draftTag.style.display = 'flex';
-            draftTag.innerHTML = `<span class="material-icons" style="color: #F59E0B">edit_note</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão vermelho.`;
-        }
+if (draftTag) {
+    draftTag.style.display = 'flex';
+    draftTag.innerHTML = `<span class="material-icons" style="color: #F59E0B">edit_note</span> MODO RASCUNHO: As alterações só serão salvas ao clicar no botão Salvar.`;
+}
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
         if (saveSep) saveSep.style.display = 'none';
