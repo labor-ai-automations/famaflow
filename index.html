@@ -1110,7 +1110,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
     display: none;
     align-items: center;
     gap: 8px !important;
-    z-index: 2100 !important; 
+    z-index: 5000 !important; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
     pointer-events: none;
     white-space: nowrap !important;
@@ -2537,12 +2537,13 @@ function updateDraftUIState() {
         if (execBtn) execBtn.disabled = true; // Bloqueia ver execuções no rascunho
         
         draftTag.style.display = 'flex';
+        draftTag.style.pointerEvents = 'auto'; // Garante que o clique funcione
         draftTag.innerHTML = `
-            <span class="material-icons" style="font-size:18px;">warning</span> 
-            <span>RASCUNHO ATIVO • SALVE PARA APLICAR</span>
-            <div class="draft-tag-close" onclick="discardWorkflowChanges()" title="Descartar Alterações">
-                <span class="material-icons" style="font-size:16px;">close</span>
-            </div>
+            <span class="material-icons" style="font-size:18px; color: #f59e0b;">warning</span> 
+            <span style="flex-grow:1;">RASCUNHO ATIVO • SALVE PARA APLICAR ALTERAÇÕES</span>
+            <button class="btn btn-secondary btn-icon" onclick="discardWorkflowChanges()" title="Descartar Alterações" style="width:24px; height:24px; padding:0; background:transparent; border:none; color:#92400e;">
+                <span class="material-icons" style="font-size:18px;">close</span>
+            </button>
         `;
     } else {
         if (saveBtn) saveBtn.style.display = 'none';
@@ -7546,6 +7547,27 @@ async function refreshMonitorState(processId, instanceId, instanceName) {
             selectProcess(processId, processTitle);
             
             showToast("Voltando para modo de edição.", "info");
+        }
+
+        function discardWorkflowChanges() {
+            showConfirmation(
+                "Descartar Alterações?",
+                "Todas as mudanças feitas neste rascunho serão perdidas. Deseja continuar?",
+                () => {
+                    workflowHasChanges = false;
+                    const processId = document.getElementById('qp-process-id').value;
+                    const titleEl = document.getElementById('current-workflow-title');
+                    const title = titleEl ? titleEl.textContent.trim() : 'Processo';
+                    
+                    // Reset visual imediato
+                    const draftTag = document.getElementById('process-draft-tag');
+                    if(draftTag) draftTag.style.display = 'none';
+                    
+                    // Recarrega do banco
+                    selectProcess(processId, title); 
+                    showToast("Alterações descartadas com sucesso.", "info");
+                }
+            );
         }
 
     </script>
