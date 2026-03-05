@@ -2757,43 +2757,24 @@ function makeNodeDraggable(stepId) {
 
     let isDragging = false;
     let initialX, initialY, offsetX, offsetY;
-    let hasScheduledUpdate = false;
-
-    const scheduleConnectionUpdate = () => {
-        if (hasScheduledUpdate || !window.flowConnectionSystem) return;
-        
-        hasScheduledUpdate = true;
-        window.flowConnectionSystem.markDirty();
-        
-        requestAnimationFrame(() => {
-            updateFlowConnectionsOptimized();
-            hasScheduledUpdate = false;
-        });
-    };
-
-    node.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
-        e.stopPropagation();
-
-        isDragging = true;
-        node.style.zIndex = 1000;
-        document.body.style.cursor = 'grabbing';
-
-        initialX = parseInt(node.style.left) || 0;
-        initialY = parseInt(node.style.top) || 0;
-        offsetX = e.clientX / flowZoom;
-        offsetY = e.clientY / flowZoom;
-
-        window.addEventListener('mousemove', onMouseMove, { passive: true });
-        window.addEventListener('mouseup', onMouseUp, { once: true });
-    }, false);
+    let rafId = null;
 
     const onMouseMove = (e) => {
         if (!isDragging) return;
+        
         const dx = e.clientX / flowZoom - offsetX;
         const dy = e.clientY / flowZoom - offsetY;
+
+        // Movimentação otimizada com transform (acelerado por GPU)
         node.style.transform = `translate(${dx}px, ${dy}px)`;
-        scheduleConnectionUpdate();
+        
+        // Só redesenha as linhas uma vez por frame
+        if (!rafId) {
+            rafId = requestAnimationFrame(() => {
+                updateFlowConnections();
+                rafId = null;
+            });
+        }
     };
 
     const onMouseUp = () => {
@@ -2801,14 +2782,13 @@ function makeNodeDraggable(stepId) {
         isDragging = false;
         
         window.removeEventListener('mousemove', onMouseMove);
-        document.body.style.cursor = '';
         
         const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(node).transform);
         const finalX = initialX + currentTransform.m41;
         const finalY = initialY + currentTransform.m42;
         
-        node.style.left = finalX + 'px';
-        node.style.top = finalY + 'px';
+        node.style.left = `${finalX}px`;
+        node.style.top = `${finalY}px`;
         node.style.transform = '';
         node.style.zIndex = 10;
         
@@ -2818,9 +2798,23 @@ function makeNodeDraggable(stepId) {
             workflowHasChanges = true;
             updateDraftUIState();
         }
-        
-        window.flowConnectionSystem.markDirty();
-        updateFlowConnectionsOptimized();
+        updateFlowConnections(); // Última atualização
+    };
+
+    node.onmousedown = (e) => {
+        if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
+        e.stopPropagation();
+
+        isDragging = true;
+        node.style.zIndex = 1000;
+
+        initialX = parseInt(node.style.left) || 0;
+        initialY = parseInt(node.style.top) || 0;
+        offsetX = e.clientX / flowZoom;
+        offsetY = e.clientY / flowZoom;
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp, { once: true });
     };
 }
 
@@ -2864,44 +2858,37 @@ function makeNodeDraggable(stepId) {
             };
         }
 
-function updateFlowConnectionsOptimized() {
+function updateFlowConnections() {
     const svg = document.getElementById('flow-connections');
-    if (!svg || !window.flowConnectionSystem || !window.flowConnectionSystem.isDirty) return;
-
-    const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a, b) => {
-        const orderA = parseInt(a.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
-        const orderB = parseInt(b.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
-        return orderA - orderB;
-    });
+    if (!svg) return;
 
     let pathsHTML = '';
+    const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a,b) => (a.querySelector('.node-label')?.textContent || '').localeCompare(b.querySelector('.node-label')?.textContent || ''));
+
     for (let i = 0; i < nodes.length - 1; i++) {
         const start = nodes[i];
-        const end = nodes[i + 1];
-        
+        const end = nodes[i+1];
+
         const startTransform = new WebKitCSSMatrix(window.getComputedStyle(start).transform);
-        const endTransform = new WebKitCSSMatrix(window.getComputedStyle(end).transform);
-
         const x1 = (parseInt(start.style.left) + startTransform.m41) + 220;
-        const y1 = (parseInt(start.style.top) + startTransform.m42) + 60;
+        const y1 = (parseInt(start.style.top) + startTransform.m42) + (start.offsetHeight / 2);
+        
+        const endTransform = new WebKitCSSMatrix(window.getComputedStyle(end).transform);
         const x2 = parseInt(end.style.left) + endTransform.m41;
-        const y2 = parseInt(end.style.top) + endTransform.m42 + 60;
-        
-        const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
-        const isActivePath = start.classList.contains('active-step') || (start.classList.contains('completed-step') && end.classList.contains('active-step'));
-        
-        let strokeColor = "#6B7280";
-        if (isStepCompleted) strokeColor = "#10B981";
-        if (isActivePath) strokeColor = "#3B82F6";
-        
-        const offset = Math.max(40, Math.abs(x2 - x1) * 0.5);
-        const pathD = `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
-        
-        pathsHTML += `<path d="${pathD}" stroke="${strokeColor}" stroke-width="3" fill="none" marker-end="url(#arrowhead)" class="flow-connection-line"></path>`;
-    }
+        const y2 = (parseInt(end.style.top) + endTransform.m42) + (end.offsetHeight / 2);
 
+        let strokeColor = "var(--color-border)";
+        if(start.classList.contains('completed-step')) strokeColor = "var(--color-success)";
+        if(start.classList.contains('active-step')) strokeColor = "var(--color-info)";
+
+        const offset = Math.max(50, Math.abs(x2 - x1) * 0.5);
+        const d = `M${x1},${y1} C${x1 + offset},${y1} ${x2 - offset},${y2} ${x2},${y2}`;
+        
+        pathsHTML += `<path d="${d}" stroke="${strokeColor}" stroke-width="3" fill="none" marker-end="url(#arrowhead)"></path>`;
+    }
+    
+    // Atualiza o SVG de uma vez só, o que é muito mais rápido
     svg.innerHTML = svg.querySelector('defs').outerHTML + pathsHTML;
-    window.flowConnectionSystem.isDirty = false;
 }
 
 async function showStepHistory(stepId) {
