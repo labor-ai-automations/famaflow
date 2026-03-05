@@ -7620,23 +7620,29 @@ async function refreshMonitorState(processId, instanceId, instanceName) {
                 setTimeout(() => btnIcon.classList.remove('refresh-spin'), 500);
             }
         }		
-
 function exitMonitorMode(processId) {
-            const bar = document.getElementById('process-monitor-header');
-            if(bar) bar.remove();
+    const bar = document.getElementById('process-monitor-header');
+    if(bar) bar.remove();
 
-            const toolbar = document.querySelector('.flowchart-floating-toolbar');
-            if(toolbar) {
-                toolbar.querySelectorAll('.btn-success, .btn-danger').forEach(b => b.style.display = 'flex');
-            }
+    const toolbar = document.querySelector('.flowchart-floating-toolbar');
+    if(toolbar) {
+        toolbar.querySelectorAll('.btn-success, .btn-danger').forEach(b => b.style.display = 'flex');
+    }
 
-            // BUSCA O NOME REAL NA SIDEBAR: Resolve o bug de "Processo" genérico
-            const sidebarItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
-            const realTitle = sidebarItem ? sidebarItem.textContent.trim() : 'Processo';
-
-            selectProcess(processId, realTitle);
-            showToast("Voltando para modo de edição.", "info");
+    // BUSCA O NOME REAL NA SIDEBAR com melhor seleção
+    const sidebarItem = document.querySelector(`#process-list-sidebar .routines-list-item[data-routine-id="${processId}"]`);
+    let realTitle = 'Processo';
+    
+    if(sidebarItem) {
+        const titleElement = sidebarItem.querySelector('span:first-child');
+        if(titleElement) {
+            realTitle = titleElement.textContent.trim();
         }
+    }
+
+    selectProcess(processId, realTitle);
+    showToast("Voltando para modo de edição.", "info");
+}
 
         function discardWorkflowChanges() {
             showConfirmation(
