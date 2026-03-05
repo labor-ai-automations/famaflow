@@ -2293,9 +2293,12 @@ if (permissions.includes('manage_routines')) {
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:10px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-<h3 style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
-    <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
-    <span id="current-workflow-title-label">${displayTitle.replace(/<[^>]*>?/gm, '').trim()}</span>
+<h3 id="current-workflow-title" style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
+                                <span id="current-workflow-title-label">${displayTitle.replace(/<[^>]*>?/gm, '').trim()}</span>
+                            </h3>
+<span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
+<span id="current-workflow-title-label">${displayTitle.replace(/<[^>]*>?/gm, '').trim()}</span>
 </h3>
                             <span id="current-workflow-desc" style="font-size: 0.75rem; font-weight: 400; color: var(--color-text-secondary); max-width: 400px; line-height: 1.3; margin-left: 26px;">Carregando descrição...</span>
                         </div>
@@ -7621,22 +7624,20 @@ async function refreshMonitorState(processId, instanceId, instanceName) {
             }
         }		
 
-        function exitMonitorMode(processId) {
+function exitMonitorMode(processId) {
             const bar = document.getElementById('process-monitor-header');
             if(bar) bar.remove();
 
-            // Reativa botões de edição
             const toolbar = document.querySelector('.flowchart-floating-toolbar');
             if(toolbar) {
                 toolbar.querySelectorAll('.btn-success, .btn-danger').forEach(b => b.style.display = 'flex');
-                // O separador e o botão salvar só aparecem se houver mudanças, então mantemos a lógica original
             }
 
-            // Recarrega o gráfico limpo buscando o nome original na lista lateral para evitar o bug de renomeação
-            const activeItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
-            const processTitle = activeItem ? activeItem.textContent.trim() : 'Processo';
-            selectProcess(processId, processTitle);
-            
+            // BUSCA O NOME REAL NA SIDEBAR: Resolve o bug de "Processo" genérico
+            const sidebarItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
+            const realTitle = sidebarItem ? sidebarItem.textContent.trim() : 'Processo';
+
+            selectProcess(processId, realTitle);
             showToast("Voltando para modo de edição.", "info");
         }
 
