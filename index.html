@@ -3448,14 +3448,41 @@ async function loadMyProcessesPage() {
         }
 
         async function completeProcessTask(instanceId) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            await fetch(N8N_COMPLETE_PROCESS_STEP_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ instance_id: instanceId, completed_by: currentUserProfile.id })
-            });
-            showToast('Etapa concluída!', 'success');
-            loadMyProcessesPage();
+            try {
+                // Busca a etapa atual ANTES de completar, para saber o que gravar no histórico
+                const { data: instanceData } = await supabaseClient
+                    .from('process_instances')
+                    .select('current_step_order, process_id')
+                    .eq('id', instanceId)
+                    .single();
+
+                const { data: stepData } = await supabaseClient
+                    .from('process_steps')
+                    .select('id')
+                    .eq('process_id', instanceData.process_id)
+                    .eq('step_order', instanceData.current_step_order)
+                    .single();
+
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                const response = await fetch(N8N_COMPLETE_PROCESS_STEP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ 
+                        instance_id: instanceId, 
+                        completed_by: currentUserProfile.id,
+                        step_id: stepData.id // AGORA O N8N SABE QUAL ETAPA FOI FEITA
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Etapa concluída e registrada!', 'success');
+                    loadMyProcessesPage();
+                }
+            } catch (e) {
+                console.error("Erro ao completar tarefa:", e);
+                showToast("Erro ao processar conclusão.", "danger");
+            }
         }
 
         async function loadAllDynamicData() { 
