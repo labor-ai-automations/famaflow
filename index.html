@@ -879,10 +879,16 @@ let currentSelectionTarget = null;
     border-radius: 12px;
     background: var(--color-surface);
     border: 1.5px solid var(--color-border);
-    cursor: move;
+    cursor: grab;
     z-index: 10;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(0, 0, 0, 0.08), 0 12px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+.flow-node:active {
+    cursor: grabbing;
 }
 
 .flow-node:hover {
@@ -2728,21 +2734,28 @@ function makeNodeDraggable(stepId) {
 
     let isDragging = false;
     let initialX, initialY, offsetX, offsetY;
-    let animationFrameId = null;
+    let rafId = null;
+
+    const scheduleConnectionUpdate = () => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+            updateFlowConnections();
+            rafId = null;
+        });
+    };
 
     node.onmousedown = (e) => {
         if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
         e.stopPropagation();
 
         isDragging = true;
-        node.style.zIndex = 1000; // Coloca o card arrastado no topo
-
+        node.style.zIndex = 1000;
+        
         initialX = parseInt(node.style.left) || 0;
         initialY = parseInt(node.style.top) || 0;
         offsetX = e.clientX / flowZoom;
         offsetY = e.clientY / flowZoom;
 
-        // Anexa os eventos à janela para um arrasto mais suave
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', onMouseUp, { once: true });
     };
@@ -2753,25 +2766,19 @@ function makeNodeDraggable(stepId) {
         const dx = e.clientX / flowZoom - offsetX;
         const dy = e.clientY / flowZoom - offsetY;
 
-        // Atualiza a posição via transform para alta performance
         node.style.transform = `translate(${dx}px, ${dy}px)`;
-
-        // Otimização: Só pede para redesenhar as linhas uma vez por frame
-        if (!animationFrameId) {
-            animationFrameId = requestAnimationFrame(() => {
-                updateFlowConnections();
-                animationFrameId = null;
-            });
-        }
+        scheduleConnectionUpdate();
     };
 
     const onMouseUp = () => {
         if (!isDragging) return;
         isDragging = false;
         
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        
         window.removeEventListener('mousemove', onMouseMove);
         
-        // Finaliza o movimento: aplica o transform ao 'left' e 'top' e reseta o transform
         const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(node).transform);
         const finalX = initialX + currentTransform.m41;
         const finalY = initialY + currentTransform.m42;
@@ -2781,7 +2788,6 @@ function makeNodeDraggable(stepId) {
         node.style.transform = '';
         node.style.zIndex = 10;
         
-        // Persiste no cache e atualiza a UI
         const step = localStepsData.find(s => s.id === stepId);
         if (step) {
             step.ui_metadata = { x: finalX, y: finalY };
@@ -2789,7 +2795,6 @@ function makeNodeDraggable(stepId) {
             updateDraftUIState();
         }
 
-        // Garante que as conexões fiquem na posição final correta
         updateFlowConnections();
     };
 }
@@ -2837,46 +2842,42 @@ function makeNodeDraggable(stepId) {
 function updateFlowConnections() {
     const svg = document.getElementById('flow-connections');
     if (!svg) return;
-    svg.querySelectorAll('path').forEach(p => p.remove());
 
-    const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a,b) => {
+    let pathsHTML = '';
+    
+    const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a, b) => {
         const orderA = parseInt(a.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
         const orderB = parseInt(b.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
         return orderA - orderB;
     });
 
-    nodes.forEach((start, i) => {
-        if (i === nodes.length - 1) return;
-        const end = nodes[i+1];
+    for (let i = 0; i < nodes.length - 1; i++) {
+        const start = nodes[i];
+        const end = nodes[i + 1];
         
-        const x1 = parseInt(start.style.left) + 220; // Borda direita (largura fixa 220)
-        const y1 = parseInt(start.style.top) + 60;   // Centro vertical (altura aprox 120/2)
-        
-        const x2 = parseInt(end.style.left);        // Borda esquerda
-        const y2 = parseInt(end.style.top) + 60;    // Centro vertical
-        
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        
-        // Desenha uma linha suave com Curva de Bézier
-        const offset = Math.max(40, Math.abs(x2 - x1) * 0.5);
-        path.setAttribute("d", `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`);
+        // Aplica o transform temporário no cálculo se o nó estiver sendo arrastado
+        const startTransform = new WebKitCSSMatrix(window.getComputedStyle(start).transform);
+        const endTransform = new WebKitCSSMatrix(window.getComputedStyle(end).transform);
+
+        const x1 = (parseInt(start.style.left) + startTransform.m41) + 220;
+        const y1 = (parseInt(start.style.top) + startTransform.m42) + 60;
+        const x2 = parseInt(end.style.left) + endTransform.m41;
+        const y2 = parseInt(end.style.top) + endTransform.m42 + 60;
         
         const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
         const isActivePath = start.classList.contains('active-step') || (start.classList.contains('completed-step') && end.classList.contains('active-step'));
         
-        // Cores sólidas para garantir visibilidade (ajuste de governança)
-        let strokeColor = "#6B7280"; // Cinza padrão
-        if (isStepCompleted) strokeColor = "#10B981"; // Verde sucesso
-        if (isActivePath) strokeColor = "#3B82F6";    // Azul ativo
-
-        path.setAttribute("stroke", strokeColor);
-        path.setAttribute("stroke-width", "3");
-        path.setAttribute("fill", "none");
-        path.setAttribute("marker-end", "url(#arrowhead)");
-        path.style.transition = "all 0.3s ease";
+        let strokeColor = "#6B7280";
+        if (isStepCompleted) strokeColor = "#10B981";
+        if (isActivePath) strokeColor = "#3B82F6";
         
-        svg.appendChild(path);
-    });
+        const offset = Math.max(40, Math.abs(x2 - x1) * 0.5);
+        const pathD = `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
+        
+        pathsHTML += `<path d="${pathD}" stroke="${strokeColor}" stroke-width="3" fill="none" marker-end="url(#arrowhead)"></path>`;
+    }
+
+    svg.innerHTML = svg.querySelector('defs').outerHTML + pathsHTML;
 }
 
 async function showStepHistory(stepId) {
