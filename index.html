@@ -2722,51 +2722,77 @@ function renderLocalWorkflow() {
             });
         }
 
-        function makeNodeDraggable(stepId) {
-            const node = document.getElementById(`node-${stepId}`);
-            if (!node) return;
-            let startX, startY;
+function makeNodeDraggable(stepId) {
+    const node = document.getElementById(`node-${stepId}`);
+    if (!node) return;
 
-node.onmousedown = (e) => {
-            if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
-            e.stopPropagation();
+    let isDragging = false;
+    let initialX, initialY, offsetX, offsetY;
+    let animationFrameId = null;
 
-            // Lê posição inicial diretamente do style (evita ambiguidade do offsetLeft com transforms no pai)
-            const nodeInitialX = parseInt(node.style.left) || 0;
-            const nodeInitialY = parseInt(node.style.top)  || 0;
-            const mouseStartX  = e.clientX;
-            const mouseStartY  = e.clientY;
+    node.onmousedown = (e) => {
+        if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
+        e.stopPropagation();
 
-            const onMouseMove = (de) => {
-                // Delta do mouse em pixels de tela → converte para coordenadas do mundo via flowZoom
-                node.style.left = (nodeInitialX + (de.clientX - mouseStartX) / flowZoom) + 'px';
-                node.style.top  = (nodeInitialY + (de.clientY - mouseStartY) / flowZoom) + 'px';
+        isDragging = true;
+        node.style.zIndex = 1000; // Coloca o card arrastado no topo
+
+        initialX = parseInt(node.style.left) || 0;
+        initialY = parseInt(node.style.top) || 0;
+        offsetX = e.clientX / flowZoom;
+        offsetY = e.clientY / flowZoom;
+
+        // Anexa os eventos à janela para um arrasto mais suave
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp, { once: true });
+    };
+
+    const onMouseMove = (e) => {
+        if (!isDragging) return;
+        
+        const dx = e.clientX / flowZoom - offsetX;
+        const dy = e.clientY / flowZoom - offsetY;
+
+        // Atualiza a posição via transform para alta performance
+        node.style.transform = `translate(${dx}px, ${dy}px)`;
+
+        // Otimização: Só pede para redesenhar as linhas uma vez por frame
+        if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(() => {
                 updateFlowConnections();
-            };
+                animationFrameId = null;
+            });
+        }
+    };
 
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
+    const onMouseUp = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        window.removeEventListener('mousemove', onMouseMove);
+        
+        // Finaliza o movimento: aplica o transform ao 'left' e 'top' e reseta o transform
+        const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(node).transform);
+        const finalX = initialX + currentTransform.m41;
+        const finalY = initialY + currentTransform.m42;
+        
+        node.style.left = finalX + 'px';
+        node.style.top = finalY + 'px';
+        node.style.transform = '';
+        node.style.zIndex = 10;
+        
+        // Persiste no cache e atualiza a UI
+        const step = localStepsData.find(s => s.id === stepId);
+        if (step) {
+            step.ui_metadata = { x: finalX, y: finalY };
+            workflowHasChanges = true;
+            updateDraftUIState();
+        }
 
-                // Persiste no cache imediatamente após soltar
-                const step = localStepsData.find(s => s.id === stepId);
-                if (step) {
-                    step.ui_metadata = {
-                        x: parseInt(node.style.left),
-                        y: parseInt(node.style.top)
-                    };
-workflowHasChanges = true;
-updateDraftUIState();
-                    const saveSep = document.getElementById('save-separator');
-                    if (saveBtn) saveBtn.style.display = 'flex';
-                    if (saveSep) saveSep.style.display = 'block';
-                }
-            };
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-        };
-    }
+        // Garante que as conexões fiquem na posição final correta
+        updateFlowConnections();
+    };
+}
 
         function makeNodeDraggableLocal(stepId) {
             const node = document.getElementById(`node-${stepId}`);
