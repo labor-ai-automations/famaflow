@@ -7668,43 +7668,39 @@ async function openEditProcessModal(id, title, desc) {
     const descInput = document.getElementById('new-process-desc');
     const saveBtn = modal.querySelector('.btn-danger');
 
-    // Preenche os campos com os dados atuais
-    titleInput.value = title;
+    // BLINDAGEM: Limpa o título de qualquer HTML antes de preencher o formulário
+    const cleanTitle = title.replace(/<[^>]*>?/gm, '').trim();
+    titleInput.value = cleanTitle;
     descInput.value = desc;
     
-    // Seta os textos de EDITAR
     modal.querySelector('h3').textContent = 'Editar Processo';
     saveBtn.textContent = 'Salvar Alterações';
     
-    // Vincula a função de ATUALIZAÇÃO
-saveBtn.onclick = async (e) => {
-            e.preventDefault();
-            const newTitle = titleInput.value;
-            const newDesc = descInput.value;
+    saveBtn.onclick = async (e) => {
+        e.preventDefault();
+        
+        // BLINDAGEM: Limpa o título de novo antes de enviar ao banco
+        const newCleanTitle = titleInput.value.replace(/<[^>]*>?/gm, '').trim();
+        const newDesc = descInput.value;
+        
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Salvando...';
+
+        // Envia apenas o texto limpo para o banco de dados
+        const { error } = await supabaseClient.from('processes')
+            .update({ title: newCleanTitle, description: newDesc })
+            .eq('id', id);
+
+        if(!error) {
+            showToast("Processo atualizado!", "success");
+            modal.classList.remove('visible');
+            loadManageProcessesPage(); // Recarrega a lista da esquerda com os dados limpos
             
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Salvando...';
-
-            const { error } = await supabaseClient.from('processes')
-                .update({ title: newTitle, description: newDesc })
-                .eq('id', id);
-
-            if(!error) {
-                showToast("Processo atualizado!", "success");
-                modal.classList.remove('visible');
-                loadManageProcessesPage();
-                
-if(currentlyOpenProcessId === id) {
-                    const titleLabelNode = document.getElementById('current-workflow-title-label');
-                    const descNode = document.getElementById('current-workflow-desc');
-                    
-                    if(titleLabelNode) {
-                        // Atualiza apenas o texto, o ícone que está no H3 (pai) não é afetado
-                        titleLabelNode.textContent = newTitle.replace(/<[^>]*>?/gm, '').trim();
-                    }
-                    if(descNode) descNode.textContent = newDesc;
-                }
-            } else {
+            // Atualiza a UI do fluxo aberto com os dados limpos
+            if(currentlyOpenProcessId === id) {
+                selectProcess(id, newCleanTitle);
+            }
+        } else {
             showToast("Erro ao salvar: " + error.message, "danger");
         }
         saveBtn.disabled = false;
