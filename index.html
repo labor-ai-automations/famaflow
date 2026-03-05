@@ -2231,7 +2231,7 @@ if (permissions.includes('manage_routines')) {
                         <span style="font-weight:600">${p.title}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-<button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', '${p.title.replace(/'/g, "\\'")}', \`${(p.description || '').replace(/`/g, "\\`")}\`)" title="Editar Nome/Descrição" style="color: var(--color-text-secondary); opacity: 0.5;">
+<button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/<[^>]*>?/gm, '').trim().replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`)" title="Editar Nome/Descrição" style="color: var(--color-text-secondary); opacity: 0.5;">
     <span class="material-icons" style="font-size: 18px;">settings</span>
 </button>
 <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir Processo" style="color: var(--color-danger); opacity: 0.3; transition: opacity 0.2s;">
