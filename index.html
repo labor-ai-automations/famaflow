@@ -2280,13 +2280,15 @@ if (permissions.includes('manage_routines')) {
             });
         }
 
-        async function selectProcess(processId, title) {
-            // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
-            let displayTitle = title;
-            if (title === 'Processo' || !title) {
-                const activeItem = document.querySelector(`.routines-list-item[data-routine-id="${processId}"] span`);
-                if (activeItem) displayTitle = activeItem.textContent.trim();
-            }
+async function selectProcess(processId, title) {
+    // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
+    let displayTitle = title;
+    if (title === 'Processo' || !title) {
+        const activeItem = document.querySelector(`#process-list-sidebar .routines-list-item[data-routine-id="${processId}"] span:first-child`);
+        if (activeItem) {
+            displayTitle = activeItem.textContent.trim();
+        }
+    }
 
             const container = document.getElementById('process-visualizer-container');
             container.innerHTML = `
