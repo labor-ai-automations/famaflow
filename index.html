@@ -2892,9 +2892,9 @@ function updateFlowConnections() {
 }
 
 async function showStepHistory(stepId) {
-            // Captura o ID da instância que está sendo monitorada no momento (se houver)
+            // Captura o ID da instância de forma segura via data-attribute
             const monitorHeader = document.getElementById('process-monitor-header');
-            const currentInstanceId = monitorHeader ? monitorHeader.querySelector('div div').textContent.match(/ID #(\d+)/)?.[1] : null;
+            const currentInstanceId = monitorHeader ? monitorHeader.dataset.instanceId : null;
 
             let query = supabaseClient
                 .from('process_step_completions')
@@ -7586,6 +7586,7 @@ async function enterMonitorMode(processId, instanceId, instanceName, currentStep
             const monitorBar = document.createElement('div');
             monitorBar.id = 'process-monitor-header';
             monitorBar.className = 'flowchart-monitor-bar';
+            monitorBar.dataset.instanceId = instanceId; // Armazena o ID aqui!
             monitorBar.style.position = "absolute";
             monitorBar.style.top = "15px";
             monitorBar.style.left = "50%";
