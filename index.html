@@ -2287,7 +2287,24 @@ if (permissions.includes('manage_routines')) {
         }
 
 async function selectProcess(processId, title) {
-    // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
+            // 🔧 SISTEMA DE CACHE INTELIGENTE PARA CONEXÕES
+            const flowConnectionSystem = {
+                nodePositionCache: new Map(),
+                pathCache: new Map(),
+                isDirty: true,
+                rafId: null,
+                nodeStatesCache: new Map(),
+                markDirty() { this.isDirty = true; },
+                clear() {
+                    this.nodePositionCache.clear();
+                    this.pathCache.clear();
+                    this.nodeStatesCache.clear();
+                    this.isDirty = true;
+                }
+            };
+            window.flowConnectionSystem = flowConnectionSystem; // Torna acessível globalmente
+
+            // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
     let displayTitle = title;
     if (title === 'Processo' || !title) {
         const activeItem = document.querySelector(`#process-list-sidebar .routines-list-item[data-routine-id="${processId}"] span:first-child`);
@@ -2356,8 +2373,14 @@ async function selectProcess(processId, title) {
             const qpProcessId = document.getElementById('qp-process-id');
             if(qpProcessId) qpProcessId.value = processId;
 
+            if (window.flowConnectionSystem) window.flowConnectionSystem.clear();
             initFlowPanZoom();
             loadFlowSteps(processId);
+
+            setTimeout(() => {
+                if (window.flowConnectionSystem) window.flowConnectionSystem.markDirty();
+                updateFlowConnectionsOptimized();
+            }, 100);
         }
 
         let flowZoom = 1.0;
@@ -2734,38 +2757,41 @@ function makeNodeDraggable(stepId) {
 
     let isDragging = false;
     let initialX, initialY, offsetX, offsetY;
-    let rafId = null;
+    let hasScheduledUpdate = false;
 
     const scheduleConnectionUpdate = () => {
-        if (rafId) return;
-        rafId = requestAnimationFrame(() => {
-            updateFlowConnections();
-            rafId = null;
+        if (hasScheduledUpdate || !window.flowConnectionSystem) return;
+        
+        hasScheduledUpdate = true;
+        window.flowConnectionSystem.markDirty();
+        
+        requestAnimationFrame(() => {
+            updateFlowConnectionsOptimized();
+            hasScheduledUpdate = false;
         });
     };
 
-    node.onmousedown = (e) => {
+    node.addEventListener('mousedown', (e) => {
         if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
         e.stopPropagation();
 
         isDragging = true;
         node.style.zIndex = 1000;
-        
+        document.body.style.cursor = 'grabbing';
+
         initialX = parseInt(node.style.left) || 0;
         initialY = parseInt(node.style.top) || 0;
         offsetX = e.clientX / flowZoom;
         offsetY = e.clientY / flowZoom;
 
-        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mousemove', onMouseMove, { passive: true });
         window.addEventListener('mouseup', onMouseUp, { once: true });
-    };
+    }, false);
 
     const onMouseMove = (e) => {
         if (!isDragging) return;
-        
         const dx = e.clientX / flowZoom - offsetX;
         const dy = e.clientY / flowZoom - offsetY;
-
         node.style.transform = `translate(${dx}px, ${dy}px)`;
         scheduleConnectionUpdate();
     };
@@ -2774,10 +2800,8 @@ function makeNodeDraggable(stepId) {
         if (!isDragging) return;
         isDragging = false;
         
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = null;
-        
         window.removeEventListener('mousemove', onMouseMove);
+        document.body.style.cursor = '';
         
         const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(node).transform);
         const finalX = initialX + currentTransform.m41;
@@ -2794,8 +2818,9 @@ function makeNodeDraggable(stepId) {
             workflowHasChanges = true;
             updateDraftUIState();
         }
-
-        updateFlowConnections();
+        
+        window.flowConnectionSystem.markDirty();
+        updateFlowConnectionsOptimized();
     };
 }
 
@@ -2839,23 +2864,21 @@ function makeNodeDraggable(stepId) {
             };
         }
 
-function updateFlowConnections() {
+function updateFlowConnectionsOptimized() {
     const svg = document.getElementById('flow-connections');
-    if (!svg) return;
+    if (!svg || !window.flowConnectionSystem || !window.flowConnectionSystem.isDirty) return;
 
-    let pathsHTML = '';
-    
     const nodes = Array.from(document.querySelectorAll('.flow-node')).sort((a, b) => {
         const orderA = parseInt(a.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
         const orderB = parseInt(b.querySelector('.node-label')?.textContent.replace('Etapa ', '') || 0);
         return orderA - orderB;
     });
 
+    let pathsHTML = '';
     for (let i = 0; i < nodes.length - 1; i++) {
         const start = nodes[i];
         const end = nodes[i + 1];
         
-        // Aplica o transform temporário no cálculo se o nó estiver sendo arrastado
         const startTransform = new WebKitCSSMatrix(window.getComputedStyle(start).transform);
         const endTransform = new WebKitCSSMatrix(window.getComputedStyle(end).transform);
 
@@ -2874,10 +2897,11 @@ function updateFlowConnections() {
         const offset = Math.max(40, Math.abs(x2 - x1) * 0.5);
         const pathD = `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
         
-        pathsHTML += `<path d="${pathD}" stroke="${strokeColor}" stroke-width="3" fill="none" marker-end="url(#arrowhead)"></path>`;
+        pathsHTML += `<path d="${pathD}" stroke="${strokeColor}" stroke-width="3" fill="none" marker-end="url(#arrowhead)" class="flow-connection-line"></path>`;
     }
 
     svg.innerHTML = svg.querySelector('defs').outerHTML + pathsHTML;
+    window.flowConnectionSystem.isDirty = false;
 }
 
 async function showStepHistory(stepId) {
