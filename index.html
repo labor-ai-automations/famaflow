@@ -3447,7 +3447,12 @@ async function loadMyProcessesPage() {
             `).join('');
         }
 
-        async function completeProcessTask(instanceId) {
+        async function completeProcessTask(instanceId, btnElement) {
+            // 🛡️ Bloqueio Anti-Clique Duplo
+            if (btnElement.disabled) return;
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<span class="material-icons refresh-spin" style="font-size:16px;">sync</span> Gravando...';
+
             try {
                 // Busca a etapa atual ANTES de completar, para saber o que gravar no histórico
                 const { data: instanceData } = await supabaseClient
@@ -3477,7 +3482,14 @@ async function loadMyProcessesPage() {
 
                 if (response.ok) {
                     showToast('Etapa concluída e registrada!', 'success');
-                    loadMyProcessesPage();
+                    // Aguarda 2 segundos antes de recarregar para evitar conflitos de rede
+                    setTimeout(() => {
+                        loadMyProcessesPage();
+                    }, 2000);
+                } else {
+                    // Se der erro no n8n, reabilita o botão
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = '<span class="material-icons">check_circle</span> Concluir Etapa';
                 }
             } catch (e) {
                 console.error("Erro ao completar tarefa:", e);
