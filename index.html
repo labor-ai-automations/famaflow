@@ -2789,6 +2789,7 @@ function makeNodeDraggable(stepId) {
         node.style.top = `${finalY}px`;
         node.style.transform = '';
         node.style.zIndex = 10;
+        node.style.transition = '';
         
         const step = localStepsData.find(s => s.id === stepId);
         if (step) {
@@ -2805,6 +2806,7 @@ function makeNodeDraggable(stepId) {
 
         isDragging = true;
         node.style.zIndex = 1000;
+        node.style.transition = 'none';
 
         initialX = parseInt(node.style.left) || 0;
         initialY = parseInt(node.style.top) || 0;
@@ -2824,6 +2826,7 @@ function makeNodeDraggable(stepId) {
             node.onmousedown = (e) => {
                 if (e.target.closest('.btn-icon') || e.target.closest('.node-quick-add')) return;
                 e.stopPropagation();
+                node.style.transition = 'none';
                 startX = e.clientX - node.offsetLeft * flowZoom;
                 startY = e.clientY - node.offsetTop * flowZoom;
                 
@@ -2845,6 +2848,7 @@ function makeNodeDraggable(stepId) {
                 const onMouseUp = () => {
                     window.removeEventListener('mousemove', onMouseMove);
                     window.removeEventListener('mouseup', onMouseUp);
+                    node.style.transition = '';
                     
                     // Atualiza no cache local
                     const step = localStepsData.find(s => s.id === stepId);
@@ -2873,24 +2877,36 @@ function updateFlowConnections() {
         return orderA - orderB;
     });
 
-    let pathsHTML = '';
-    for (let i = 0; i < nodes.length - 1; i++) {
-        const start = nodes[i];
-        const end = nodes[i + 1];
-        
-        const startStyles = window.getComputedStyle(start);
-        const endStyles = window.getComputedStyle(end);
-        const startMat = new WebKitCSSMatrix(startStyles.transform);
-        const endMat = new WebKitCSSMatrix(endStyles.transform);
+    const nodeData = nodes.map(node => {
+        const transformStr = node.style.transform;
+        let dx = 0, dy = 0;
+        if (transformStr && transformStr.includes('translate')) {
+            const match = transformStr.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+            if (match) {
+                dx = parseFloat(match[1]);
+                dy = parseFloat(match[2]);
+            }
+        }
+        return {
+            x: parseFloat(node.style.left || 0) + dx,
+            y: parseFloat(node.style.top || 0) + dy,
+            isCompleted: node.classList.contains('completed-step'),
+            isActive: node.classList.contains('active-step')
+        };
+    });
 
-        // Cálculo preciso: Posição Base + Transformação de Arraste
-        const x1 = (parseFloat(start.style.left) + startMat.m41) + 220;
-        const y1 = (parseFloat(start.style.top) + startMat.m42) + 60;
-        const x2 = (parseFloat(end.style.left) + endMat.m41);
-        const y2 = (parseFloat(end.style.top) + endMat.m42) + 60;
+    let pathsHTML = '';
+    for (let i = 0; i < nodeData.length - 1; i++) {
+        const start = nodeData[i];
+        const end = nodeData[i + 1];
         
-        const isStepCompleted = start.classList.contains('completed-step') && end.classList.contains('completed-step');
-        const isActivePath = start.classList.contains('active-step') || (start.classList.contains('completed-step') && end.classList.contains('active-step'));
+        const x1 = start.x + 220;
+        const y1 = start.y + 60;
+        const x2 = end.x;
+        const y2 = end.y + 60;
+        
+        const isStepCompleted = start.isCompleted && end.isCompleted;
+        const isActivePath = start.isActive || (start.isCompleted && end.isActive);
         
         let strokeColor = "#6B7280";
         if (isStepCompleted) strokeColor = "#10B981";
