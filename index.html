@@ -3447,14 +3447,20 @@ async function loadMyProcessesPage() {
             `).join('');
         }
 
+// Variável de controle global para impedir execuções paralelas
+        let isProcessingTask = false;
+
         async function completeProcessTask(instanceId, btnElement) {
-            // 🛡️ Bloqueio Anti-Clique Duplo
-            if (btnElement.disabled) return;
+            // 🛡️ Trava de Segurança Nível 1: Variável de Estado
+            if (isProcessingTask) return;
+            
+            // 🛡️ Trava de Segurança Nível 2: Desativação do Botão
+            isProcessingTask = true;
             btnElement.disabled = true;
+            btnElement.style.opacity = "0.5";
             btnElement.innerHTML = '<span class="material-icons refresh-spin" style="font-size:16px;">sync</span> Gravando...';
 
             try {
-                // Busca a etapa atual ANTES de completar, para saber o que gravar no histórico
                 const { data: instanceData } = await supabaseClient
                     .from('process_instances')
                     .select('current_step_order, process_id')
@@ -3476,24 +3482,27 @@ async function loadMyProcessesPage() {
                     body: JSON.stringify({ 
                         instance_id: instanceId, 
                         completed_by: currentUserProfile.id,
-                        step_id: stepData.id // AGORA O N8N SABE QUAL ETAPA FOI FEITA
+                        step_id: stepData.id
                     })
                 });
 
                 if (response.ok) {
-                    showToast('Etapa concluída e registrada!', 'success');
-                    // Aguarda 2 segundos antes de recarregar para evitar conflitos de rede
+                    showToast('Etapa registrada com sucesso!', 'success');
+                    // Recarrega a página após o delay de segurança
                     setTimeout(() => {
+                        isProcessingTask = false; // Libera a trava global
                         loadMyProcessesPage();
-                    }, 2000);
+                    }, 1500);
                 } else {
-                    // Se der erro no n8n, reabilita o botão
-                    btnElement.disabled = false;
-                    btnElement.innerHTML = '<span class="material-icons">check_circle</span> Concluir Etapa';
+                    throw new Error("Falha no servidor");
                 }
             } catch (e) {
-                console.error("Erro ao completar tarefa:", e);
-                showToast("Erro ao processar conclusão.", "danger");
+                console.error("Erro:", e);
+                showToast("Erro ao gravar. Tente novamente.", "danger");
+                isProcessingTask = false; // Libera em caso de erro
+                btnElement.disabled = false;
+                btnElement.style.opacity = "1";
+                btnElement.innerHTML = '<span class="material-icons">check_circle</span> Concluir Etapa';
             }
         }
 
