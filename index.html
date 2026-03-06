@@ -2766,12 +2766,12 @@ function makeNodeDraggable(stepId) {
         // Movimentação otimizada com transform (acelerado por GPU)
         node.style.transform = `translate(${dx}px, ${dy}px)`;
         
-        // Só redesenha as linhas uma vez por frame
+        // Só redesenha as linhas uma vez por frame (CORRIGIDO)
         if (!rafId) {
-requestAnimationFrame(() => {
-            updateFlowConnections();
-            hasScheduledUpdate = false;
-        });
+            rafId = requestAnimationFrame(() => {
+                updateFlowConnections();
+                rafId = null;
+            });
         }
     };
 
@@ -2827,12 +2827,19 @@ requestAnimationFrame(() => {
                 startX = e.clientX - node.offsetLeft * flowZoom;
                 startY = e.clientY - node.offsetTop * flowZoom;
                 
+                let rafIdLocal = null;
                 const onMouseMove = (de) => {
                     const nx = (de.clientX - startX) / flowZoom;
                     const ny = (de.clientY - startY) / flowZoom;
                     node.style.left = nx + 'px';
                     node.style.top = ny + 'px';
-                    updateFlowConnections();
+                    
+                    if (!rafIdLocal) {
+                        rafIdLocal = requestAnimationFrame(() => {
+                            updateFlowConnections();
+                            rafIdLocal = null;
+                        });
+                    }
                 };
 
                 const onMouseUp = () => {
