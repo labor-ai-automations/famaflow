@@ -2315,7 +2315,6 @@ async function submitKBContent() {
 
             if (!title) { showToast("Título obrigatório", "warning"); return; }
             
-            // Na edição, o arquivo é opcional (pode manter o antigo). Na criação, é obrigatório se o tipo for file.
             if (!currentEditingKBId && type === 'file' && !fileInput.files[0]) { 
                 showToast("Selecione um arquivo", "warning"); 
                 return; 
@@ -2341,14 +2340,17 @@ async function submitKBContent() {
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 
-                // Escolhe o Webhook: Se está editando, vai para o 'kb-manage'. Se é novo, vai para 'base-conhecimento'.
                 const url = currentEditingKBId ? 
                     'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
                     'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
 
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${session.access_token}` },
+                    headers: { 
+                        // IMPORTANTE: Não definimos 'Content-Type' manualmente aqui. 
+                        // O navegador definirá como multipart/form-data automaticamente ao ver o formData.
+                        'Authorization': `Bearer ${session.access_token}` 
+                    },
                     body: formData
                 });
                 
@@ -2365,7 +2367,7 @@ async function submitKBContent() {
                 showToast("Erro na operação", "danger"); 
             } finally {
                 btn.disabled = false;
-                btn.textContent = originalText;
+                btn.textContent = "Publicar";
             }
         }
 
