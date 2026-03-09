@@ -5189,14 +5189,15 @@ async function submitRequest(event) {
             const others = filteredUsers.filter(u => u.department !== myDept);
 
             const generateCardHTML = (user) => {
-                let avatarHTML = '';
-                if (user.avatar_url && user.avatar_url !== '') {
-                    const src = `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
-                    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; width: 64px; height: 64px; margin-bottom: 1rem;"></div>`;
-                } else {
-                    const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
-                    avatarHTML = `<div class="user-avatar" style="width: 64px; height: 64px; margin-bottom: 1rem;">${initial}</div>`;
-                }
+// ✅ CORRETO
+const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+let avatarHTML = '';
+if (profile.avatar_url && profile.avatar_url !== '') {
+    const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
+    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+} else {
+    avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
+}
 
                 const score = user.score || 100;
                 let scoreClass = 'good';
@@ -5450,14 +5451,18 @@ function toggleRecipientSelection(user) {
                 promises.push(supabaseClient.rpc('get_created_pendencies', { creator_user_id: targetId }));
             }
 
-            const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all(promises);
+const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all(promises);
 
-            const { data: profile, error: profileError } = profileRes;
-            if (profileError || !profile) {
-                container.innerHTML = '<p>Erro ao carregar perfil.</p>';
-                console.error(profileError);
-                return;
-            }
+const { data: profile, error: profileError } = profileRes;
+const { data: pendencies, error: pendenciesError } = pendenciesRes;
+const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
+const { data: createdPendencies, error: createdPendenciesError } = createdPendenciesRes || { data: null };
+
+if (profileError || !profile) {
+    container.innerHTML = '<p>Erro ao carregar perfil.</p>';
+    console.error(profileError);
+    return;
+}
 
             const { data: pendencies, error: pendenciesError } = pendenciesRes;
             const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
