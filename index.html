@@ -133,8 +133,23 @@ let currentSelectionTarget = null;
         .btn-success { background-color: var(--color-success); color: white; } .btn-warning { background-color: var(--color-warning); color: white; }
         .fab { position: fixed; right: 3rem; bottom: 3rem; width: 56px; height: 56px; background-color: var(--color-brand-primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.15); cursor: pointer; border: none; z-index: 100; transition: transform 0.2s; } .fab:hover { transform: scale(1.05); }
         .fab.hidden { display: none; }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-overlay.visible { display: flex; }
+        .modal-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.5); 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 2000; 
+            pointer-events: none; /* Impede que o modal oculte o clique no fundo */
+        }
+        .modal-overlay.visible { 
+            display: flex; 
+            pointer-events: all; /* Habilita o clique apenas quando visível */
+        }
         #recipient-modal { z-index: 2500 !important; }
         #recipient-modal.visible { display: flex !important; z-index: 2500 !important; }
         .modal-content { background-color: var(--color-surface); padding: 0; border-radius: 12px; width: 100%; max-width: 500px; overflow: hidden; }
@@ -1510,7 +1525,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="document.getElementById('kb-modal').classList.remove('visible')">Cancelar</button>
+                <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
                 <button class="btn btn-danger" onclick="submitKBContent()">Publicar</button>
             </div>
         </div>
@@ -4243,8 +4258,9 @@ return `
 
         function closeRequestModal() {
             document.getElementById('request-modal').classList.remove('visible');
+            document.getElementById('kb-modal').classList.remove('visible'); // Garante o fechamento do modal KB
             currentRequestType = null;
-            currentEditingRequest = null; // Limpa a variável global ao fechar
+            currentEditingRequest = null;
         }
 
         function renderRequestForm(type) {
