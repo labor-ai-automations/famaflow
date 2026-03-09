@@ -2306,7 +2306,7 @@ async function loadKBPage() {
         }
 
 async function submitKBContent() {
-            const btn = event.target; // Captura o botão clicado
+            const btn = event.target;
             const title = document.getElementById('kb-title').value;
             const category = document.getElementById('kb-category').value;
             const type = document.getElementById('kb-type').value;
@@ -2314,40 +2314,56 @@ async function submitKBContent() {
             const contentBody = document.getElementById('kb-content-body').value;
 
             if (!title) { showToast("Título obrigatório", "warning"); return; }
-            if (type === 'file' && !fileInput.files[0]) { showToast("Selecione um arquivo", "warning"); return; }
+            
+            // Na edição, o arquivo é opcional (pode manter o antigo). Na criação, é obrigatório se o tipo for file.
+            if (!currentEditingKBId && type === 'file' && !fileInput.files[0]) { 
+                showToast("Selecione um arquivo", "warning"); 
+                return; 
+            }
 
-            // Bloqueia o botão para evitar cliques duplos
             btn.disabled = true;
             const originalText = btn.textContent;
-            btn.textContent = "Publicando...";
+            btn.textContent = "Processando...";
 
             const formData = new FormData();
+            formData.append('action', currentEditingKBId ? 'update' : 'create');
+            if (currentEditingKBId) formData.append('id', currentEditingKBId);
             formData.append('title', title);
             formData.append('category', category);
             formData.append('content_type', type);
-            if (type === 'file' && fileInput.files[0]) formData.append('file', fileInput.files[0]);
-            if (type === 'text') formData.append('content_body', contentBody);
+            
+            if (type === 'file' && fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            } else if (type === 'text') {
+                formData.append('content_body', contentBody);
+            }
 
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
-                const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento', {
+                
+                // Escolhe o Webhook: Se está editando, vai para o 'kb-manage'. Se é novo, vai para 'base-conhecimento'.
+                const url = currentEditingKBId ? 
+                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
+                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${session.access_token}` },
                     body: formData
                 });
                 
                 if (response.ok) {
-                    showToast("Conteúdo publicado com sucesso!", "success");
+                    showToast(currentEditingKBId ? "Alterações salvas!" : "Conteúdo publicado!", "success");
                     document.getElementById('kb-modal').classList.remove('visible');
-                    document.getElementById('kb-form').reset(); // Limpa o formulário para a próxima vez
+                    document.getElementById('kb-form').reset();
+                    currentEditingKBId = null;
                     loadKBPage();
                 } else {
                     throw new Error("Erro no servidor");
                 }
             } catch (e) { 
-                showToast("Erro ao publicar conteúdo", "danger"); 
+                showToast("Erro na operação", "danger"); 
             } finally {
-                // Desbloqueia o botão
                 btn.disabled = false;
                 btn.textContent = originalText;
             }
