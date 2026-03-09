@@ -2160,24 +2160,83 @@ body.fullscreen-flow .flowchart-monitor-bar {
             else { console.error("Perfil não encontrado:", error); currentUserProfile = { id: user.id, email: user.email, full_name: 'Usuário' }; }
         }
 
-        async function showApp() { 
+async function showApp() { 
             const appContainer = document.getElementById('app-container'); if (!appContainer) return;
             appContainer.classList.add('visible'); 
 
-            displayUserBriefing(); // <-- CHAMA O NOVO BRIEFING 
+            displayUserBriefing(); 
 
+            // Busca permissões reais do banco
             const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
-            if (permissionsError) {
-                console.error('Erro ao buscar permissões:', permissionsError);
-                currentUserProfile.permissions = [];
-            } else {
-                currentUserProfile.permissions = permissions;
+            currentUserProfile.permissions = permissionsError ? [] : permissions;
+
+            // 1. DEFINE ACESSO MESTRE (Nomes exatos conforme sua imagem do banco)
+            const hasMasterAccess = currentUserProfile && (
+                currentUserProfile.role === 'Admin' || 
+                currentUserProfile.department === 'Recursos Humanos' || 
+                currentUserProfile.department === 'Departamento Pessoal'
+            );
+
+            // 2. Atalhos para permissões específicas (Lógica Híbrida)
+            const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || hasMasterAccess;
+            const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || hasMasterAccess;
+            const canManageHR = currentUserProfile.permissions.includes('manage_hr') || hasMasterAccess;
+            const canManageUsers = currentUserProfile.permissions.includes('manage_users') || hasMasterAccess;
+
+            // 3. Filtra o Menu Lateral Principal (LINKS BÁSICOS)
+            document.querySelectorAll('.nav-menu .nav-link').forEach(link => {
+                const page = link.getAttribute('data-page');
+                
+                // Se o usuário NÃO for RH/DP/Admin, ele só vê estes 4 links:
+                const basicPages = ['dashboard-page', 'requests-page', 'kb-page', 'profile-page'];
+                
+                if (hasMasterAccess) {
+                    // Acesso Total vê tudo
+                    link.parentElement.style.display = 'block';
+                } else {
+                    // Usuário comum vê apenas os 4 básicos
+                    link.parentElement.style.display = basicPages.includes(page) ? 'block' : 'none';
+                }
+            });
+
+            // 4. Monta e Filtra a Seção Administrativa
+            const adminSection = document.getElementById('admin-section');
+            const adminMenuUl = adminSection ? adminSection.querySelector('ul') : null;
+            
+            if (adminSection && adminMenuUl) {
+                let adminMenuHTML = '';
+
+                // Só entra aqui se tiver permissão específica ou for Master
+                if (canManageUsers) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
+                }
+                if (canManageHR) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
+                }
+                if (canManageTravel) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
+                }
+                if (canManageRoutines) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
+                }
+
+                adminMenuUl.innerHTML = adminMenuHTML;
+
+                // Atribui eventos de clique
+                adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showPage(e.currentTarget.dataset.page);
+                    });
+                });
+
+                // Exibe a seção ADMINISTRAÇÃO apenas se houver conteúdo nela
+                adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
             }
 
-            const hasAdminPermissions = currentUserProfile && currentUserProfile.permissions && currentUserProfile.permissions.length > 0;
-            const adminSection = document.getElementById('admin-section');
-            if (adminSection) adminSection.style.display = hasAdminPermissions ? 'block' : 'none';
-            
+            // 5. Atualiza Perfil
             const profileShortcut = document.getElementById('profile-shortcut');
             const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
             profileShortcut.innerHTML = `
@@ -2192,44 +2251,6 @@ body.fullscreen-flow .flowchart-monitor-bar {
             showPage('dashboard-page'); 
             loadAllDynamicData();
             document.getElementById('dashboard-title').textContent = `Dashboard de ${currentUserProfile.full_name.split(' ')[0]}`;
-
-            const adminMenuUl = document.querySelector('#admin-section .nav-menu');
-            if (adminMenuUl && currentUserProfile.permissions) {
-                let menuHTML = '';
-                const permissions = currentUserProfile.permissions;
-
-if (permissions.includes('manage_users') || permissions.includes('manage_requests') || permissions.includes('manage_routines') || permissions.includes('manage_travel')) {
-                
-                    if (permissions.includes('manage_users')) {
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
-                    }
-                    if (permissions.includes('manage_requests')) {
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
-                    }
-                    if (permissions.includes('manage_travel') || permissions.includes('manage_requests')) {
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
-                    }
-if (permissions.includes('manage_routines')) {
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas Pontuais</a></li>`;
-                        menuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
-                    }
-
-                    adminMenuUl.innerHTML = menuHTML;
-                    
-                    document.querySelectorAll('#admin-section .nav-link').forEach(link => {
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            showPage(e.currentTarget.dataset.page);
-                        });
-                    });
-
-                    document.getElementById('admin-section').style.display = 'block';
-
-                } else {
-                    document.getElementById('admin-section').style.display = 'none';
-                }
-            }
         }
         
         function showPage(pageId, targetUserId = null) { 
