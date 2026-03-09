@@ -12,6 +12,7 @@
 <script>
 
 let currentSelectionTarget = null;
+let currentEditingKBId = null; // Controle para saber se estamos editando na KB
 
   (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Re-referencing: ",d):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
     key: "AIzaSyDFgEhXMXR8pa8olYIEQ4QJXAVikag_lFE",
@@ -1780,7 +1781,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                 <div id="kb-page" class="page-content">
     <div class="page-header">
         <div><h1>Base de Conhecimento</h1><p>Manuais, normas e procedimentos internos.</p></div>
-        <div class="page-header-actions"><button class="btn btn-danger" onclick="document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div>
+        <div class="page-header-actions"><button class="btn btn-danger" onclick="currentEditingKBId = null; document.querySelector('#kb-modal h3').textContent = 'Novo Conteúdo'; document.getElementById('kb-form').reset(); toggleKBFields(); document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div>
     </div>
     <div class="card" style="padding:0;">
         <table class="data-table">
@@ -2280,20 +2281,26 @@ if (permissions.includes('manage_routines')) {
             document.getElementById('kb-text-group').style.display = type === 'text' ? 'block' : 'none';
         }
 
-        async function loadKBPage() {
+async function loadKBPage() {
             const tbody = document.getElementById('kb-table-body');
+            if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Carregando documentos...</td></tr>';
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('is_active', true).order('created_at', { ascending: false });
-            if (error || !data.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum documento encontrado.</td></tr>'; return; }
+            if (error || !data || !data.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum documento encontrado.</td></tr>'; return; }
+            
             tbody.innerHTML = data.map(item => `
                 <tr>
                     <td><strong>${item.title}</strong></td>
                     <td><span class="tag-fino" style="background:var(--color-info-bg); color:var(--color-info);">${item.category}</span></td>
                     <td>${item.content_type === 'text' ? '📝 Texto' : '📄 Arquivo'}</td>
                     <td>
-                        ${item.google_drive_file_id 
-                            ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.4rem 0.8rem;">Visualizar</a>`
-                            : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.4rem 0.8rem;">Ler Texto</button>`}
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            ${item.google_drive_file_id 
+                                ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ver</a>`
+                                : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ler</button>`}
+                            <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>
+                            <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
+                        </div>
                     </td>
                 </tr>`).join('');
         }
@@ -8023,6 +8030,98 @@ async function openEditProcessModal(id, title, desc) {
     };
     modal.classList.add('visible');
 }		
+
+async function openKBEditModal(id) {
+            const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
+            if (error || !data) return;
+
+            currentEditingKBId = id; // Define que estamos em modo edição
+            document.getElementById('kb-title').value = data.title;
+            document.getElementById('kb-category').value = data.category;
+            document.getElementById('kb-type').value = data.content_type;
+            document.getElementById('kb-content-body').value = data.content_body || '';
+            
+            toggleKBFields(); // Ajusta campos visíveis (arquivo ou texto)
+            
+            const modalTitle = document.querySelector('#kb-modal h3');
+            if (modalTitle) modalTitle.textContent = 'Editar Conteúdo';
+            
+            document.getElementById('kb-modal').classList.add('visible');
+        }
+
+        async function deleteKBItem(id, title) {
+            showConfirmation(
+                "Excluir Conteúdo?",
+                `Tem certeza que deseja remover "${title}" da Base de Conhecimento?`,
+                async () => {
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                            body: JSON.stringify({ action: 'delete', id: id })
+                        });
+                        if (response.ok) {
+                            showToast("Conteúdo removido!", "success");
+                            loadKBPage();
+                        }
+                    } catch (e) { showToast("Erro ao excluir", "danger"); }
+                }
+            );
+        }
+
+        // ATUALIZAÇÃO: Modificar submitKBContent para suportar Edição
+        // Por favor, localize a submitKBContent que alteramos anteriormente e substitua por esta:
+        async function submitKBContent() {
+            const btn = event.target;
+            const title = document.getElementById('kb-title').value;
+            const category = document.getElementById('kb-category').value;
+            const type = document.getElementById('kb-type').value;
+            const contentBody = document.getElementById('kb-content-body').value;
+
+            if (!title) { showToast("Título obrigatório", "warning"); return; }
+
+            btn.disabled = true;
+            btn.textContent = "Processando...";
+
+            const payload = {
+                action: currentEditingKBId ? 'update' : 'create',
+                id: currentEditingKBId,
+                title,
+                category,
+                content_type: type,
+                content_body: contentBody
+            };
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                // Se for criação com arquivo, o n8n antigo ainda funciona.
+                // Se for update, usamos o novo webhook 'kb-manage'
+                const url = currentEditingKBId ? 
+                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
+                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    showToast(currentEditingKBId ? "Alterações salvas!" : "Conteúdo publicado!", "success");
+                    document.getElementById('kb-modal').classList.remove('visible');
+                    document.getElementById('kb-form').reset();
+                    currentEditingKBId = null;
+                    loadKBPage();
+                }
+            } catch (e) { 
+                showToast("Erro na operação", "danger"); 
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Publicar";
+            }
+        }
 
     </script>
 
