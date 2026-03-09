@@ -2287,7 +2287,8 @@ if (permissions.includes('manage_routines')) {
                 </tr>`).join('');
         }
 
-        async function submitKBContent() {
+async function submitKBContent() {
+            const btn = event.target; // Captura o botão clicado
             const title = document.getElementById('kb-title').value;
             const category = document.getElementById('kb-category').value;
             const type = document.getElementById('kb-type').value;
@@ -2295,6 +2296,12 @@ if (permissions.includes('manage_routines')) {
             const contentBody = document.getElementById('kb-content-body').value;
 
             if (!title) { showToast("Título obrigatório", "warning"); return; }
+            if (type === 'file' && !fileInput.files[0]) { showToast("Selecione um arquivo", "warning"); return; }
+
+            // Bloqueia o botão para evitar cliques duplos
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = "Publicando...";
 
             const formData = new FormData();
             formData.append('title', title);
@@ -2310,19 +2317,37 @@ if (permissions.includes('manage_routines')) {
                     headers: { 'Authorization': `Bearer ${session.access_token}` },
                     body: formData
                 });
+                
                 if (response.ok) {
-                    showToast("Conteúdo publicado!", "success");
+                    showToast("Conteúdo publicado com sucesso!", "success");
                     document.getElementById('kb-modal').classList.remove('visible');
+                    document.getElementById('kb-form').reset(); // Limpa o formulário para a próxima vez
                     loadKBPage();
+                } else {
+                    throw new Error("Erro no servidor");
                 }
-            } catch (e) { showToast("Erro ao publicar", "danger"); }
+            } catch (e) { 
+                showToast("Erro ao publicar conteúdo", "danger"); 
+            } finally {
+                // Desbloqueia o botão
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         }
 
         async function viewKBText(id) {
-            const { data } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
+            const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
+            if (error || !data) return;
+
             const modal = document.getElementById('request-modal');
             document.getElementById('request-modal-title').textContent = data.title;
-            document.getElementById('request-modal-body').innerHTML = `<div style="white-space: pre-wrap;">${data.content_body}</div>`;
+            
+            // Se for arquivo, mostra aviso, se for texto, mostra o texto
+            const displayContent = data.content_type === 'file' 
+                ? `<div class="empty-state">Este conteúdo é um arquivo e deve ser visualizado pelo link direto.</div>`
+                : `<div style="white-space: pre-wrap; padding: 1rem; background: var(--color-background); border-radius: 8px;">${data.content_body || 'Sem conteúdo disponível.'}</div>`;
+
+            document.getElementById('request-modal-body').innerHTML = displayContent;
             document.getElementById('request-modal-footer').innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
             modal.classList.add('visible');
         }
