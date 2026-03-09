@@ -2176,7 +2176,7 @@ async function showApp() {
             const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
             currentUserProfile.permissions = permissionsError ? [] : permissions;
 
-            // 1. DEFINE ACESSO MESTRE (RH, DP ou Admin)
+            // 1. DEFINE ACESSO MESTRE
             const hasMasterAccess = currentUserProfile && (
                 currentUserProfile.role === 'Admin' || 
                 currentUserProfile.department === 'Recursos Humanos' || 
@@ -2184,43 +2184,42 @@ async function showApp() {
             );
 
             // 2. Atalhos para permissões administrativas
-            const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || hasMasterAccess;
-            const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || hasMasterAccess;
-            const canManageHR = currentUserProfile.permissions.includes('manage_hr') || hasMasterAccess;
-            const canManageUsers = currentUserProfile.permissions.includes('manage_users') || hasMasterAccess;
+            const canManageRoutines = currentUserProfile.permissions.includes('manage_routines');
+            const canManageTravel = currentUserProfile.permissions.includes('manage_travel');
+            const canManageHR = currentUserProfile.permissions.includes('manage_hr');
+            const canManageUsers = currentUserProfile.permissions.includes('manage_users');
 
-            // 3. Filtra o Menu Lateral Principal (Links Básicos)
+            // 3. Filtra o Menu Lateral Principal (Diego vê apenas Requisições, KB e Perfil)
             document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
                 const page = link.getAttribute('data-page');
-                const allowedForEveryone = ['requests-page', 'kb-page', 'profile-page', 'dashboard-page', 'messages-page', 'my-routines-page', 'my-processes-page', 'team-page', 'organograma-page', 'mural-page', 'channels-page', 'rankings-page'];
+                const basicPages = ['requests-page', 'kb-page', 'profile-page'];
                 
                 if (hasMasterAccess) {
                     link.parentElement.style.display = 'block';
                 } else {
-                    // Supervisores comuns vêem apenas estes 3
-                    const supervisorOnly = ['requests-page', 'kb-page', 'profile-page'];
-                    link.parentElement.style.display = supervisorOnly.includes(page) ? 'block' : 'none';
+                    link.parentElement.style.display = basicPages.includes(page) ? 'block' : 'none';
                 }
             });
 
-            // 4. Monta a Seção Administrativa do Zero
+            // 4. Monta a Seção Administrativa do Zero (TRAVA DE SEGURANÇA)
             const adminSection = document.getElementById('admin-section');
             const adminMenuUl = document.getElementById('admin-menu-list');
             
             if (adminSection && adminMenuUl) {
                 let adminMenuHTML = '';
 
-                if (canManageUsers) {
+                // Só adiciona os itens se o usuário for Master ou tiver a permissão específica
+                if (canManageUsers || hasMasterAccess) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
                 }
-                if (canManageHR) {
+                if (canManageHR || hasMasterAccess) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
                 }
-                if (canManageTravel) {
+                if (canManageTravel || hasMasterAccess) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
                 }
-                if (canManageRoutines) {
+                if (canManageRoutines || hasMasterAccess) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
                 }
@@ -2234,10 +2233,16 @@ async function showApp() {
                     });
                 });
 
-                adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
+                // SEÇÃO ADMIN SÓ APARECE SE HOUVER ITENS (Diego não verá nada aqui)
+                adminSection.style.display = (adminMenuHTML !== '' && !hasMasterAccess) || hasMasterAccess ? 'block' : 'none';
+                
+                // Força ocultação se for o Diego (Supervisor sem permissões Master)
+                if (!hasMasterAccess && !canManageUsers && !canManageHR && !canManageTravel && !canManageRoutines) {
+                    adminSection.style.display = 'none';
+                }
             }
 
-            // 5. Atualiza Perfil e Avatar
+            // 5. Atualiza Perfil e Avatar (Com o novo tamanho de 44px)
             const profileShortcut = document.getElementById('profile-shortcut');
             const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
             
@@ -2266,71 +2271,6 @@ async function showApp() {
             }
 
             loadAllDynamicData();
-        }
-        
-        function showPage(pageId, targetUserId = null) { 
-            const appContainer = document.getElementById('app-container'); if (!appContainer) return;
-            appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
-            const targetPage = appContainer.querySelector(`#${pageId}`); 
-            if (targetPage) targetPage.classList.add('active'); 
-            appContainer.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active')); 
-
-            const profileShortcut = document.getElementById('profile-shortcut');
-            profileShortcut.classList.remove('active');
-
-            if (pageId === 'profile-page' && (!targetUserId || targetUserId === currentUserProfile.id)) {
-                 profileShortcut.classList.add('active');
-                 appContainer.querySelector('.nav-link.active')?.classList.remove('active');
-            } else {
-                const activeLink = appContainer.querySelector(`.nav-link[data-page="${pageId}"]`); 
-                if (activeLink) activeLink.classList.add('active');
-            }
-            
-const fabMessage = document.getElementById('fab-new-message');
-            const fabPost = document.getElementById('fab-new-post');
-            
-            fabMessage.classList.add('hidden');
-            fabPost.classList.add('hidden');
-
-            // Verifica acesso mestre para exibição dos botões flutuantes
-            const hasMasterAccess = currentUserProfile && (
-                currentUserProfile.role === 'Admin' || 
-                currentUserProfile.department === 'Recursos Humanos' || 
-                currentUserProfile.department === 'Departamento Pessoal'
-            );
-            
-            if (pageId === 'mural-page' && hasMasterAccess) {
-                fabPost.classList.remove('hidden');
-            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page'].includes(pageId) && hasMasterAccess) {
-                // O botão de "Nova Mensagem" agora só aparece para quem tem acesso mestre
-                fabMessage.classList.remove('hidden');
-            }
-
-            if (pageId === 'messages-page') loadMessages();
-            if (pageId === 'requests-page') loadRequests();
-            if (pageId === 'team-page') {
-                document.getElementById('team-search-name').value = '';
-                document.getElementById('team-filter-dept').value = '';
-                document.getElementById('team-filter-role').value = '';
-                loadTeamPage();
-            }
-            if (pageId === 'profile-page') loadUserProfileData(targetUserId);
-            if (pageId === 'mural-page') loadMuralPage();
-            if (pageId === 'rankings-page') loadRankingsPage();
-            if (pageId === 'request-management-page') loadRequestManagementPage();
-            if (pageId === 'travel-request-management-page') loadTravelRequestManagementPage();
-            if (pageId === 'my-routines-page') loadMyRoutinesPage();
-            if (pageId === 'manage-routines-page') loadManageRoutinesPage();
-            if (pageId === 'organograma-page') loadOrganogramaPage();
-            if (pageId === 'manage-processes-page') loadManageProcessesPage();
-            if (pageId === 'my-processes-page') loadMyProcessesPage();
-            if (pageId === 'kb-page') loadKBPage();
-        }
-
-        function toggleKBFields() {
-            const type = document.getElementById('kb-type').value;
-            document.getElementById('kb-file-group').style.display = type === 'file' ? 'block' : 'none';
-            document.getElementById('kb-text-group').style.display = type === 'text' ? 'block' : 'none';
         }
 
 async function loadKBPage() {
