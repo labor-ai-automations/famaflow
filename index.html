@@ -1912,6 +1912,11 @@ body.fullscreen-flow .flowchart-monitor-bar {
                                 </div>
                             </div>
                             
+                            <div class="form-group">
+                                <label for="user_photo">Foto do Crachá (PNG/JPG)</label>
+                                <input type="file" id="user_photo" class="input-field" accept="image/*">
+                            </div>
+
                             <div id="password-group" class="form-group">
                                 <label for="user_password">Senha</label>
                                 <input type="password" id="user_password" class="input-field">
@@ -5470,7 +5475,15 @@ function toggleRecipientSelection(user) {
                 riskZone = 'yellow'; riskText = 'Atenção'; barColor = 'var(--color-warning)';
             }
 
-            const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+            let avatarHTML = '';
+            if (profile.avatar_url) {
+                // Link direto para visualização da imagem no Google Drive via ID
+                const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
+                avatarHTML = `<img src="${src}" class="user-avatar" style="object-fit: cover; border-radius: 50%; width: 100%; height: 100%;">`;
+            } else {
+                const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
+            }
             const roleAndDept = [profile.role, profile.department].filter(Boolean).join(' • ');
 
             let pendenciesHTML = `<div class="empty-state" style="grid-column: 1/-1;">Nenhuma pendência encontrada.</div>`;
@@ -6177,103 +6190,71 @@ async function loadUserPermissions(userId) {
 }
 
 async function saveUser() {
-const userId = document.getElementById('user-id').value;
-            const fullName = document.getElementById('full_name').value;
-            const deptSelect = document.getElementById('department');
-            const department = deptSelect.value === 'Outros' 
-                ? document.getElementById('department-other').value 
-                : deptSelect.value;
+    const userId = document.getElementById('user-id').value;
+    const fullName = document.getElementById('full_name').value;
+    const email = document.getElementById('user_email').value;
+    const password = document.getElementById('user_password').value;
+    const photoInput = document.getElementById('user_photo');
+    
+    const deptSelect = document.getElementById('department');
+    const department = deptSelect.value === 'Outros' ? document.getElementById('department-other').value : deptSelect.value;
 
-            const roleSelect = document.getElementById('role');
-            const role = roleSelect.value === 'Outros'
-                ? document.getElementById('role-other').value
-                : roleSelect.value;
+    const roleSelect = document.getElementById('role');
+    const role = roleSelect.value === 'Outros' ? document.getElementById('role-other').value : roleSelect.value;
 
     const managerIdValue = document.getElementById('manager_id').value;
     const managerId = managerIdValue === "" ? null : managerIdValue;
-    const email = document.getElementById('user_email').value;
-    const password = document.getElementById('user_password').value;
-    
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) { showToast("Sessão inválida.", 'danger'); return; }
-    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` };
-    const btnSave = document.querySelector('#user-modal .btn-danger');
-    btnSave.disabled = true; btnSave.textContent = "Salvando...";
-    
-    try {
-        let finalUserId = userId;
-        
-        if (userId) {
-            // Atualizar usuário existente
-            const payload = { 
-                id: userId, 
-                full_name: fullName, 
-                department: department, 
-                role: role, 
-                manager_id: managerId 
-            };
-            const response = await fetch(N8N_UPDATE_USER_URL, { 
-                method: 'POST', 
-                headers: headers, 
-                body: JSON.stringify(payload) 
-            });
-            if (!response.ok) throw new Error('Falha ao atualizar usuário.');
-} else {
-                    // Criar novo usuário
-                    if (!password) { throw new Error("Senha é obrigatória para novos usuários."); }
-                    
-                    // Coletar permissões marcadas
-                    const selectedPermissions = [];
-                    Object.keys(PERMISSION_MAPPING).forEach(key => {
-                        const checkbox = document.getElementById(`perm-${key}`);
-                        if (checkbox && checkbox.checked) {
-                            selectedPermissions.push(key);
-                        }
-                    });
-                    
-                    const payload = { 
-                        email: email, 
-                        password: password, 
-                        full_name: fullName, 
-                        department: department, 
-                        role: role,
-                        manager_id: managerId,
-                        permissions: selectedPermissions
-                    };
-                    const response = await fetch(N8N_CREATE_USER_URL, { 
-                        method: 'POST', 
-                        headers: headers, 
-                        body: JSON.stringify(payload) 
-                    });
-                    if (!response.ok) throw new Error('Falha ao criar usuário.');
-                    
-                    const result = await response.json();
-                    console.log('Resposta do n8n:', result); // DEBUG
-                    
-                    // Task: Fix User ID Recognition (Busca o ID no objeto retornado pelo n8n)
-                    finalUserId = result.user_id || (result.json && result.json.id) || (result[0] && result[0].id) || result.id;
-                    
-                    console.log('finalUserId capturado:', finalUserId); // DEBUG
-                    
-                    if (!finalUserId) {
-                        console.error('Resultado completo:', JSON.stringify(result));
-                        throw new Error('ID do usuário não foi retornado');
-                    }
-                }
-        
-        // Sincronizar permissões individuais
-        await syncUserPermissions(finalUserId);
-        
-        showToast(userId ? "Usuário atualizado com sucesso!" : "Usuário criado com sucesso!", 'success');
-        closeUserModal();
-        await fetchAllUsersForSearch();
-        loadUsersForAdmin();
 
-        const organogramaPage = document.getElementById('organograma-page');
-        if (organogramaPage && organogramaPage.classList.contains('active')) {
-            const currentFilter = document.getElementById('org-filter-dept')?.value || '';
-            loadOrganogramaPage(currentFilter);
+    const btnSave = document.querySelector('#user-modal .btn-danger');
+    btnSave.disabled = true; 
+    btnSave.textContent = "Salvando Dados...";
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error("Sessão inválida.");
+        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` };
+
+        let finalUserId = userId;
+
+        // PARTE 1: Salvar/Criar Usuário (Workflow Existente)
+        if (userId) {
+            const payload = { id: userId, full_name: fullName, department: department, role: role, manager_id: managerId };
+            const response = await fetch(N8N_UPDATE_USER_URL, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error('Falha ao atualizar dados do usuário.');
+        } else {
+            if (!password) throw new Error("Senha é obrigatória para novos usuários.");
+            const selectedPermissions = [];
+            Object.keys(PERMISSION_MAPPING).forEach(key => {
+                const checkbox = document.getElementById(`perm-${key}`);
+                if (checkbox && checkbox.checked) selectedPermissions.push(key);
+            });
+            const payload = { email, password, full_name: fullName, department, role, manager_id: managerId, permissions: selectedPermissions };
+            const response = await fetch(N8N_CREATE_USER_URL, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error('Falha ao criar usuário.');
+            const result = await response.json();
+            finalUserId = result.user_id || result.id;
         }
+
+        // PARTE 2: Upload da Foto (Novo Workflow de Foto)
+        if (photoInput.files[0] && finalUserId) {
+            btnSave.textContent = "Enviando Foto...";
+            const photoData = new FormData();
+            photoData.append('user_id', finalUserId);
+            photoData.append('file', photoInput.files[0]);
+
+            const photoResponse = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/upload-profile-photo', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${session.access_token}` },
+                body: photoData
+            });
+            if (!photoResponse.ok) showToast("Dados salvos, mas houve erro no upload da foto.", "warning");
+        }
+
+        await syncUserPermissions(finalUserId);
+        showToast("Usuário e Crachá atualizados!", 'success');
+        closeUserModal();
+        loadUsersForAdmin();
+        await fetchAllUsersForSearch();
 
     } catch (error) {
         console.error(error);
