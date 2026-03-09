@@ -1673,7 +1673,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                     </ul>
                     <div id="admin-section" style="display: none;">
                         <div class="nav-section-title">Administração</div>
-                        <ul class="nav-menu"></ul>
+                        <ul class="nav-menu" id="admin-menu-list"></ul>
                     </div>
                 </div>
                 <div class="sidebar-footer">
@@ -2201,7 +2201,40 @@ async function showApp() {
 
             // 4. Monta e Filtra a Seção Administrativa
             const adminSection = document.getElementById('admin-section');
-            const adminMenuUl = adminSection ? adminSection.querySelector('ul') : null;
+            const adminMenuUl = document.getElementById('admin-menu-list');
+            
+            if (adminSection && adminMenuUl) {
+                let adminMenuHTML = '';
+
+                // Só exibe os menus se tiver permissão master ou específica
+                if (canManageUsers) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
+                }
+                if (canManageHR) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
+                }
+                if (canManageTravel) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
+                }
+                if (canManageRoutines) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
+                }
+
+                adminMenuUl.innerHTML = adminMenuHTML;
+
+                // Reatribui os eventos de clique
+                adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showPage(e.currentTarget.dataset.page);
+                    });
+                });
+
+                // Oculta a seção inteira se estiver vazia
+                adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
+            }
             
             if (adminSection && adminMenuUl) {
                 let adminMenuHTML = '';
