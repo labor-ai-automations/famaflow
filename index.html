@@ -2306,70 +2306,81 @@ async function loadKBPage() {
         }
 
 async function submitKBContent() {
-            const btn = event.target;
-            const title = document.getElementById('kb-title').value;
-            const category = document.getElementById('kb-category').value;
-            const type = document.getElementById('kb-type').value;
-            const fileInput = document.getElementById('kb-file');
-            const contentBody = document.getElementById('kb-content-body').value;
+    const btn = event.target;
+    const title = document.getElementById('kb-title').value;
+    const category = document.getElementById('kb-category').value;
+    const type = document.getElementById('kb-type').value;
+    const fileInput = document.getElementById('kb-file'); // Captura o elemento do input
+    const contentBody = document.getElementById('kb-content-body').value;
 
-            if (!title) { showToast("Título obrigatório", "warning"); return; }
-            
-            if (!currentEditingKBId && type === 'file' && !fileInput.files[0]) { 
-                showToast("Selecione um arquivo", "warning"); 
-                return; 
-            }
+    if (!title) { showToast("Título obrigatório", "warning"); return; }
+    
+    // Validação de arquivo na criação
+    if (!currentEditingKBId && type === 'file' && (!fileInput.files || fileInput.files.length === 0)) { 
+        showToast("Selecione um arquivo", "warning"); 
+        return; 
+    }
 
-            btn.disabled = true;
-            const originalText = btn.textContent;
-            btn.textContent = "Processando...";
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Processando...";
 
-            const formData = new FormData();
-            formData.append('action', currentEditingKBId ? 'update' : 'create');
-            if (currentEditingKBId) formData.append('id', currentEditingKBId);
-            formData.append('title', title);
-            formData.append('category', category);
-            formData.append('content_type', type);
-            
-            if (type === 'file' && fileInput.files[0]) {
-                formData.append('file', fileInput.files[0]);
-            } else if (type === 'text') {
-                formData.append('content_body', contentBody);
-            }
+    // CRIAÇÃO DO FORMDATA
+    const formData = new FormData();
+    formData.append('action', currentEditingKBId ? 'update' : 'create');
+    if (currentEditingKBId) formData.append('id', currentEditingKBId);
+    formData.append('title', title);
+    formData.append('category', category);
+    formData.append('content_type', type);
+    
+    if (type === 'file' && fileInput.files && fileInput.files[0]) {
+        console.log("Arquivo detectado e adicionado ao FormData:", fileInput.files[0].name);
+        formData.append('file', fileInput.files[0]);
+    } else if (type === 'text') {
+        formData.append('content_body', contentBody);
+    }
 
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                
-                const url = currentEditingKBId ? 
-                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
-                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+    // LOG DE DEPURAÇÃO: Verifique o console do seu navegador (F12) após clicar em enviar
+    console.log("Enviando dados para o Webhook...");
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 
-                        // IMPORTANTE: Não definimos 'Content-Type' manualmente aqui. 
-                        // O navegador definirá como multipart/form-data automaticamente ao ver o formData.
-                        'Authorization': `Bearer ${session.access_token}` 
-                    },
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    showToast(currentEditingKBId ? "Alterações salvas!" : "Conteúdo publicado!", "success");
-                    document.getElementById('kb-modal').classList.remove('visible');
-                    document.getElementById('kb-form').reset();
-                    currentEditingKBId = null;
-                    loadKBPage();
-                } else {
-                    throw new Error("Erro no servidor");
-                }
-            } catch (e) { 
-                showToast("Erro na operação", "danger"); 
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Publicar";
-            }
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        const url = currentEditingKBId ? 
+            'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
+            'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                // CERTIFIQUE-SE de que NÃO há 'Content-Type' aqui. O navegador precisa definir o boundary.
+                'Authorization': `Bearer ${session.access_token}` 
+            },
+            body: formData
+        });
+        
+        if (response.ok) {
+            showToast(currentEditingKBId ? "Alterações salvas!" : "Conteúdo publicado!", "success");
+            document.getElementById('kb-modal').classList.remove('visible');
+            document.getElementById('kb-form').reset();
+            currentEditingKBId = null;
+            loadKBPage();
+        } else {
+            const errorText = await response.text();
+            console.error("Resposta de erro do servidor:", errorText);
+            throw new Error("Erro no servidor");
         }
+    } catch (e) { 
+        console.error("Erro no Fetch:", e);
+        showToast("Erro na operação", "danger"); 
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Publicar";
+    }
+}
 
         async function viewKBText(id) {
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
