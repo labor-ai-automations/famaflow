@@ -2260,11 +2260,14 @@ async function showApp() {
     loadAllDynamicData();
 }
         
-        function showPage(pageId, targetUserId = null) { 
-            const appContainer = document.getElementById('app-container'); if (!appContainer) return;
+function showPage(pageId, targetUserId = null) { 
+            const appContainer = document.getElementById('app-container'); 
+            if (!appContainer) return;
+            
             appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
             const targetPage = appContainer.querySelector(`#${pageId}`); 
             if (targetPage) targetPage.classList.add('active'); 
+            
             appContainer.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active')); 
 
             const profileShortcut = document.getElementById('profile-shortcut');
@@ -2278,13 +2281,12 @@ async function showApp() {
                 if (activeLink) activeLink.classList.add('active');
             }
             
-const fabMessage = document.getElementById('fab-new-message');
+            const fabMessage = document.getElementById('fab-new-message');
             const fabPost = document.getElementById('fab-new-post');
             
             fabMessage.classList.add('hidden');
             fabPost.classList.add('hidden');
 
-            // Verifica acesso mestre para exibição dos botões flutuantes
             const hasMasterAccess = currentUserProfile && (
                 currentUserProfile.role === 'Admin' || 
                 currentUserProfile.department === 'Recursos Humanos' || 
@@ -2294,10 +2296,10 @@ const fabMessage = document.getElementById('fab-new-message');
             if (pageId === 'mural-page' && hasMasterAccess) {
                 fabPost.classList.remove('hidden');
             } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page'].includes(pageId) && hasMasterAccess) {
-                // O botão de "Nova Mensagem" agora só aparece para quem tem acesso mestre
                 fabMessage.classList.remove('hidden');
             }
 
+            // --- CARREGAMENTO AUTOMÁTICO DE DADOS ---
             if (pageId === 'messages-page') loadMessages();
             if (pageId === 'requests-page') loadRequests();
             if (pageId === 'team-page') {
@@ -2317,6 +2319,9 @@ const fabMessage = document.getElementById('fab-new-message');
             if (pageId === 'manage-processes-page') loadManageProcessesPage();
             if (pageId === 'my-processes-page') loadMyProcessesPage();
             if (pageId === 'kb-page') loadKBPage();
+            
+            // ADICIONE ESTA LINHA ABAIXO:
+            if (pageId === 'users-page') loadUsersForAdmin(); 
         }
 
         function toggleKBFields() {
