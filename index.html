@@ -5427,189 +5427,81 @@ function toggleRecipientSelection(user) {
             document.getElementById('confirmation-modal').classList.remove('visible');
         }
 
-        async function loadUserProfileData(userId) {
-            const container = document.getElementById('user-profile-content');
-            const targetId = userId || currentUserProfile.id;
-            if (!targetId) {
-                container.innerHTML = '<p>Usuário não encontrado.</p>';
-                return;
-            }
-            
-            container.innerHTML = `<div class="page-header"><h1>Carregando Perfil...</h1></div>`;
+async function loadUserProfileData(userId) {
+    const container = document.getElementById('user-profile-content');
+    const targetId = userId || currentUserProfile.id;
+    
+    // Limpa o histórico para não misturar perfis
+    const historyContainer = document.getElementById('user-history-content');
+    if (historyContainer) historyContainer.innerHTML = '';
 
-            const isMyProfile = targetId === currentUserProfile.id;
+    container.innerHTML = `<div class="page-header"><h1>Carregando Perfil...</h1></div>`;
 
-            const promises = [
-                supabaseClient.from('profiles').select('*').eq('id', targetId).single(),
-                supabaseClient.rpc('get_user_pendencies', { target_user_id: targetId }),
-                supabaseClient.rpc('calculate_user_score', { target_user_id: targetId }),
-                supabaseClient.rpc('get_resolved_tickets', { target_user_id: targetId })
-            ];
-            
-            if (isMyProfile) {
-                promises.push(supabaseClient.rpc('get_created_pendencies', { creator_user_id: targetId }));
-            }
+    try {
+        // 1. Busca o perfil básico (essencial)
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', targetId)
+            .single();
 
-            const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all(promises);
+        if (profileError || !profile) throw new Error('Usuário não encontrado.');
 
-            const { data: profile, error: profileError } = profileRes;
-            if (profileError || !profile) {
-                container.innerHTML = '<p>Erro ao carregar perfil.</p>';
-                console.error(profileError);
-                return;
-            }
+        // 2. Busca o resto sem deixar um erro travar o outro
+        const results = await Promise.allSettled([
+            supabaseClient.rpc('get_user_pendencies', { target_user_id: targetId }),
+            supabaseClient.rpc('calculate_user_score', { target_user_id: targetId }),
+            supabaseClient.rpc('get_resolved_tickets', { target_user_id: targetId })
+        ]);
 
-            const { data: pendencies, error: pendenciesError } = pendenciesRes;
-            const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
-            const { data: createdPendencies, error: createdPendenciesError } = createdPendenciesRes || { data: null };
-            
-            const score = Math.min(profile.score || 100, 100);
-            
-            let riskZone = 'green';
-            let riskText = 'Em Dia';
-            let barColor = 'var(--color-success)'; 
-            
-            if (score < 50) {
-                riskZone = 'red'; riskText = 'Crítico'; barColor = 'var(--color-danger)';
-            } else if (score < 80) {
-                riskZone = 'yellow'; riskText = 'Atenção'; barColor = 'var(--color-warning)';
-            }
+        // Extrai os dados ou define como vazio se falhar
+        const pendencies = results[0].status === 'fulfilled' ? (results[0].value.data || []) : [];
+        const scoreData = results[1].status === 'fulfilled' ? results[1].value.data : 100;
+        const resolvedTickets = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
 
-            let avatarHTML = '';
-            if (profile.avatar_url) {
-                // Link direto para visualização da imagem no Google Drive via ID
-                const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
-                avatarHTML = `<img src="${src}" class="user-avatar" style="object-fit: cover; border-radius: 50%; width: 100%; height: 100%;">`;
-            } else {
-                const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
-            }
-            const roleAndDept = [profile.role, profile.department].filter(Boolean).join(' • ');
+        // Lógica de visualização
+        const score = Math.min(scoreData || 100, 100);
+        const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+        
+        let riskZone = 'green', riskText = 'Em Dia', barColor = 'var(--color-success)';
+        if (score < 50) { riskZone = 'red'; riskText = 'Crítico'; barColor = 'var(--color-danger)'; }
+        else if (score < 80) { riskZone = 'yellow'; riskText = 'Atenção'; barColor = 'var(--color-warning)'; }
 
-            let pendenciesHTML = `<div class="empty-state" style="grid-column: 1/-1;">Nenhuma pendência encontrada.</div>`;
-            if (pendencies && pendencies.length > 0) {
-                pendenciesHTML = pendencies.map(p => {
-                    const readStatus = p.first_read_at
-                        ? `<div style="color:var(--color-text-secondary); margin-top: 4px; border-top: 1px dashed var(--color-border); padding-top: 4px;">Visto em: ${new Date(p.first_read_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</div>`
-                        : `<div class="pendency-alert">⚠️ Ainda não visualizado</div>`;
-                    return `<div class="pendency-card" style="border-left-color: ${p.priority === 'urgent' ? 'var(--color-danger)' : 'var(--color-warning)'}">
-                                <div class="pendency-header">
-                                    <h4 class="pendency-title"><span class="material-icons" style="font-size: 18px;">${p.type === 'ticket' ? 'support_agent' : 'mail'}</span> Chamado Aberto</h4>
-                                    ${p.priority === 'urgent' ? `<span class="tag-fino tag-urgent">Urgente</span>` : ''}
-                                </div>
-                                <div class="pendency-meta">
-                                    <div>De: ${p.sender_name.split(' ')[0]} (${p.sender_department || '-'})</div>
-                                    ${p.due_date ? `<div>Prazo: ${new Date(p.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>` : ''}
-                                </div>
-                                ${readStatus}
-                            </div>`;
-                }).join('');
-            }
-
-            let createdPendenciesHTML = '';
-            if (isMyProfile && createdPendencies && createdPendencies.length > 0) {
-                 createdPendenciesHTML = `
-                    <div class="card">
-                        <h3 class="card-title"><span class="material-icons">outbox</span> Chamados que eu abri (${createdPendencies.length})</h3>
-                        <div class="pendencies-grid">
-                            ${createdPendencies.map(p => {
-                                const readStatusText = p.first_read_at
-                                    ? `Visto em: ${new Date(p.first_read_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}`
-                                    : 'Aguardando visualização';
-                                const readStatusClass = p.first_read_at ? '' : 'pendency-alert';
-                                
-                                return `
-                                <div class="pendency-card" style="border-left-color: var(--color-info)">
-                                    <div class="pendency-header">
-                                        <h4 class="pendency-title"><span class="material-icons" style="font-size: 18px;">${p.type === 'ticket' ? 'support_agent' : 'mail'}</span> Chamado Aberto</h4>
-                                        ${p.priority === 'urgent' ? `<span class="tag-fino tag-urgent">Urgente</span>` : ''}
-                                    </div>
-                                    <div class="pendency-meta">
-                                        <div>Para: ${p.recipients_names || 'N/A'}</div>
-                                        ${p.due_date ? `<div>Prazo: ${new Date(p.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>` : ''}
-                                    </div>
-                                    <div class="${readStatusClass}" style="margin-top: auto;">${readStatusText}</div>
-                                </div>
-                            `}).join('')}
-                        </div>
-                    </div>`;
-            }
-
-            container.innerHTML = `
-                <div class="profile-header-card zone-${riskZone}">
-                    <div class="user-avatar">${avatarInitial}</div>
-                    <div class="profile-info">
-                        <h3>${profile.full_name}</h3>
-                        <p>${roleAndDept || 'Colaborador Fama'}</p>
-                        <span class="status-badge">${riskText}</span>
-                    </div>
+        // Renderiza o HTML principal
+        container.innerHTML = `
+            <div class="profile-header-card zone-${riskZone}">
+                <div class="user-avatar">${avatarInitial}</div>
+                <div class="profile-info">
+                    <h3>${profile.full_name}</h3>
+                    <p>${profile.role || 'Colaborador'} • ${profile.department || 'Fama'}</p>
+                    <span class="status-badge">${riskText}</span>
                 </div>
-                
-                <div class="card"><h3 class="card-title"><span class="material-icons">radar</span> Radar de Engajamento</h3>
-                    <div>
-                        <div class="score-display"><span class="score-label">Score Atual</span><span class="score-value">${score}</span></div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${score}%; background-color: ${barColor};"></div>
-                        </div>
-                    </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><span class="material-icons">radar</span> Radar de Engajamento</h3>
+                <div class="score-display"><span class="score-label">Score Atual</span><span class="score-value">${score}</span></div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: ${score}%; background-color: ${barColor};"></div>
                 </div>
-
-                <div class="card">
-                    <h3 class="card-title"><span class="material-icons">pending_actions</span> ${isMyProfile ? 'Minhas Pendências' : `Pendências com ${profile.full_name.split(' ')[0]}`} (${pendencies ? pendencies.length : 0})</h3>
-                    <div class="pendencies-grid">${pendenciesHTML}</div>
-                </div>
-                
-                ${createdPendenciesHTML}
-            `;
-
-            const historyContainer = document.getElementById('user-history-content');
-            let historyHTML = '';
-            if (resolvedTickets && resolvedTickets.length > 0) {
-                historyHTML = `
-                    <div class="card">
-                        <h3 class="card-title"><span class="material-icons">history</span> Histórico de Atividades (${resolvedTickets.length})</h3>
-                        <div class="pendencies-grid">
-                            ${resolvedTickets.map(ticket => {
-                                const ticketIdShort = `#${ticket.id.substring(0, 4).toUpperCase()}`;
-                                const priorityTag = ticket.priority === 'urgent' ? `<span class="tag-fino tag-urgent">Urgente</span>` : (ticket.priority === 'important' ? `<span class="tag-fino tag-important">Importante</span>` : '');
-
-                                const firstReadDate = ticket.first_read_at
-                                    ? `Visualizado em: ${new Date(ticket.first_read_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
-                                    : 'Não visualizado antes da resolução';
-
-                                const resolvedDate = ticket.resolved_at
-                                    ? `Resolvido em: ${new Date(ticket.resolved_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
-                                    : 'Data de resolução indisponível';
-
-                                return `
-                                    <div class="pendency-card" style="border-left-color: var(--color-success);">
-                                        <div class="pendency-header">
-                                            <h4 class="pendency-title">
-                                                <span class="material-icons" style="color: var(--color-success);">check_circle</span>
-                                                Chamado Resolvido
-                                            </h4>
-                                            <div>
-                                                <span style="font-size: 0.8rem; font-weight: 500; color: var(--color-text-secondary);">${ticketIdShort}</span>
-                                                ${priorityTag}
-                                            </div>
-                                        </div>
-                                        <div class="pendency-meta">
-                                            <div>De: ${ticket.creator_name}</div>
-                                            ${ticket.due_date ? `<div>Prazo Final: ${new Date(ticket.due_date).toLocaleDateString('pt-BR')}</div>` : ''}
-                                        </div>
-                                        <div style="font-size: 0.85rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--color-border); display: flex; flex-direction: column; gap: 0.25rem;">
-                                            <div>${firstReadDate}</div>
-                                            <div>${resolvedDate}</div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
+            </div>
+            <div class="card">
+                <h3 class="card-title"><span class="material-icons">pending_actions</span> Pendências (${pendencies.length})</h3>
+                <div class="pendencies-grid">
+                    ${pendencies.length > 0 ? pendencies.map(p => `
+                        <div class="pendency-card" style="border-left-color: var(--color-warning)">
+                            <div class="pendency-header"><strong>${p.subject || 'Chamado'}</strong></div>
+                            <div class="pendency-meta">De: ${p.sender_name || 'N/A'}</div>
                         </div>
-                    </div>
-                `;
-            }
-            historyContainer.innerHTML = historyHTML;
-        }
+                    `).join('') : '<p class="empty-state">Nenhuma pendência.</p>'}
+                </div>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error("Erro no perfil:", error);
+        container.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar: ${error.message}</div>`;
+    }
+}
 
         function handleAvatarUpload(event) {
             const file = event.target.files[0]; if (!file) return;
