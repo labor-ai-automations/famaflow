@@ -8112,57 +8112,75 @@ async function openKBEditModal(id) {
 
         // ATUALIZAÇÃO: Modificar submitKBContent para suportar Edição
         // Por favor, localize a submitKBContent que alteramos anteriormente e substitua por esta:
-        async function submitKBContent() {
-            const btn = event.target;
-            const title = document.getElementById('kb-title').value;
-            const category = document.getElementById('kb-category').value;
-            const type = document.getElementById('kb-type').value;
-            const contentBody = document.getElementById('kb-content-body').value;
+async function submitKBContent() {
+    // Captura os elementos no momento exato do clique
+    const btn = event.currentTarget;
+    const title = document.getElementById('kb-title').value;
+    const category = document.getElementById('kb-category').value;
+    const type = document.getElementById('kb-type').value;
+    const fileInput = document.getElementById('kb-file');
+    const contentBody = document.getElementById('kb-content-body').value;
 
-            if (!title) { showToast("Título obrigatório", "warning"); return; }
+    if (!title) { showToast("Título é obrigatório", "warning"); return; }
 
-            btn.disabled = true;
-            btn.textContent = "Processando...";
+    // Bloqueio de segurança do botão
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Enviando...';
 
-            const payload = {
-                action: currentEditingKBId ? 'update' : 'create',
-                id: currentEditingKBId,
-                title,
-                category,
-                content_type: type,
-                content_body: contentBody
-            };
+    // Construção do FormData (Obrigatório para arquivos)
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('category', category);
+    formData.append('content_type', type);
+    
+    if (currentEditingKBId) {
+        formData.append('action', 'update');
+        formData.append('id', currentEditingKBId);
+    } else {
+        formData.append('action', 'create');
+    }
 
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                
-                // Se for criação com arquivo, o n8n antigo ainda funciona.
-                // Se for update, usamos o novo webhook 'kb-manage'
-                const url = currentEditingKBId ? 
-                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 
-                    'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+    if (type === 'file' && fileInput.files[0]) {
+        formData.append('file', fileInput.files[0]); // A chave DEVE ser 'file'
+    } else {
+        formData.append('content_body', contentBody);
+    }
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (response.ok) {
-                    showToast(currentEditingKBId ? "Alterações salvas!" : "Conteúdo publicado!", "success");
-                    document.getElementById('kb-modal').classList.remove('visible');
-                    document.getElementById('kb-form').reset();
-                    currentEditingKBId = null;
-                    loadKBPage();
-                }
-            } catch (e) { 
-                showToast("Erro na operação", "danger"); 
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Publicar";
-            }
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        // URL Dinâmica
+        const url = currentEditingKBId 
+            ? 'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' 
+            : 'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 
+                // AQUI ESTÁ O SEGREDO: NÃO DEFINA CONTENT-TYPE. 
+                // O navegador faz isso sozinho ao detectar o FormData.
+                'Authorization': `Bearer ${session.access_token}` 
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            showToast("Sucesso!", "success");
+            document.getElementById('kb-modal').classList.remove('visible');
+            currentEditingKBId = null;
+            setTimeout(() => loadKBPage(), 500); // Delay para o banco processar
+        } else {
+            throw new Error("Erro na resposta do servidor");
         }
-
+    } catch (e) {
+        console.error("Falha crítica no envio:", e);
+        showToast("Erro ao publicar. Verifique sua conexão.", "danger");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Publicar';
+    }
+}
     </script>
 
     <!-- QUICK ADD SIDE PANEL (PROCESSOS) -->
