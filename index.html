@@ -4364,6 +4364,51 @@ return `
                         </div>
                     `;
                     break;
+                
+                case 'disciplinary_action':
+                    title = 'Registro de Medida Disciplinar';
+                    formHTML = `
+                        <h3 class="form-section-title">1. Classificação da Medida</h3>
+                        <div class="form-group">
+                            <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                                <label><input type="radio" name="classificacao_medida" value="aviso_verbal" required> Aviso verbal (registro interno)</label>
+                                <label><input type="radio" name="classificacao_medida" value="advertencia_escrita"> Advertência escrita</label>
+                                <label><input type="radio" name="classificacao_medida" value="nova_advertencia_escrita"> Nova advertência escrita</label>
+                                <label><input type="radio" name="classificacao_medida" value="suspensao"> Suspensão (definir dias abaixo)</label>
+                                <label><input type="radio" name="classificacao_medida" value="rescisao_justa_causa"> Rescisão por justa causa</label>
+                                <label><input type="radio" name="classificacao_medida" value="aplicacao_direta"> Aplicação direta por gravidade (justificar abaixo)</label>
+                            </div>
+                        </div>
+                        <div class="form-group"><label for="dias_suspensao">Dias de Suspensão (se aplicável)</label><input type="number" id="dias_suspensao" name="dias_suspensao" class="input-field" placeholder="Apenas se 'Suspensão' for selecionado"></div>
+
+                        <h3 class="form-section-title">2. Identificação do Colaborador</h3>
+                        <div class="form-group"><label for="nome_colaborador">Nome do Colaborador*</label><input type="text" id="nome_colaborador" name="nome_colaborador" class="input-field" required></div>
+                        <div class="grid grid-cols-2">
+                            <div class="form-group"><label for="matricula">Matrícula</label><input type="text" id="matricula" name="matricula" class="input-field"></div>
+                            <div class="form-group"><label for="cargo">Cargo</label><input type="text" id="cargo" name="cargo" class="input-field"></div>
+                        </div>
+                        <div class="grid grid-cols-2">
+                            <div class="form-group"><label for="setor">Setor</label><input type="text" id="setor" name="setor" class="input-field"></div>
+                            <div class="form-group"><label for="supervisor">Supervisor</label><input type="text" id="supervisor" name="supervisor" class="input-field"></div>
+                        </div>
+                        <div class="form-group"><label for="data_ocorrencia">Data da Ocorrência*</label><input type="date" id="data_ocorrencia" name="data_ocorrencia" class="input-field" required></div>
+
+                        <h3 class="form-section-title">3. Descrição e Justificativa</h3>
+                        <div class="form-group"><label for="descricao_fato">Descrição Objetiva do Fato*</label><textarea id="descricao_fato" name="descricao_fato" class="input-field" rows="4" placeholder="Descrever apenas fatos observáveis, sem julgamentos." required></textarea></div>
+                        <div class="form-group"><label for="justificativa_gravidade">Justificativa (se houver aplicação direta por gravidade)</label><textarea id="justificativa_gravidade" name="justificativa_gravidade" class="input-field" rows="2"></textarea></div>
+
+                        <h3 class="form-section-title">4. Ciência</h3>
+                        <p style="font-size: 0.9rem; color: var(--color-text-secondary); margin-top: -0.5rem;">A assinatura digital será coletada pelo RH após o envio desta requisição.</p>
+                        <div class="form-group">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="recusou_assinar">
+                                <span class="checkbox-box"><span class="material-icons">check</span></span>
+                                Marcar se o colaborador recusou-se a assinar na presença de testemunhas.
+                            </label>
+                        </div>
+                         <div class="form-group"><label for="testemunha">Nome da Testemunha (se houver recusa)</label><input type="text" id="testemunha" name="testemunha" class="input-field"></div>
+                    `;
+                    break;
             }
 
             modalTitle.textContent = title;
