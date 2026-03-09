@@ -2291,6 +2291,15 @@ if (permissions.includes('manage_routines')) {
 
 async function loadKBPage() {
             const tbody = document.getElementById('kb-table-body');
+            
+            // Gerencia visibilidade do botão de Adicionar Conteúdo
+            const canAddKB = currentUserProfile && (
+                currentUserProfile.role === 'Admin' || 
+                currentUserProfile.department === 'Recursos Humanos' ||
+                currentUserProfile.permissions.includes('manage_users') // ou outra permissão que você deseje
+            );
+            const addBtn = document.querySelector('#kb-page .btn-danger');
+            if (addBtn) addBtn.style.display = canAddKB ? 'flex' : 'none';
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Carregando documentos...</td></tr>';
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('is_active', true).order('created_at', { ascending: false });
@@ -2302,15 +2311,15 @@ async function loadKBPage() {
                     <td><span class="tag-fino" style="background:var(--color-info-bg); color:var(--color-info);">${item.category}</span></td>
                     <td>${item.content_type === 'text' ? '📝 Texto' : '📄 Arquivo'}</td>
                     <td>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+<div style="display: flex; gap: 0.5rem; align-items: center;">
                             ${item.google_drive_file_id 
                                 ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ver</a>`
                                 : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ler</button>`}
-${item.content_type === 'text' 
-                                ? `<button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>` 
-                                : ''
-                            }
-                            <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
+                            
+                            ${canAddKB ? `
+                                <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>
+                                <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>`).join('');
