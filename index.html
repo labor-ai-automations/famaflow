@@ -5964,30 +5964,74 @@ async function loadUserProfileData(userId) {
             messagesContainer.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
         }
 
-        async function loadUsersForAdmin() {
+async function loadUsersForAdmin() {
             const tableBody = document.getElementById('user-table-body');
             if (!tableBody) return;
-            tableBody.innerHTML = `<tr><td colspan="4">Carregando usuários...</td></tr>`;
+            
+            tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando usuários...</td></tr>`;
+            
             try {
-                const { data: users, error } = await supabaseClient.from('users_with_email').select('*');
-                if (error) throw error;
+                const { data: users, error } = await supabaseClient
+                    .from('users_with_email')
+                    .select('*')
+                    .order('full_name', { ascending: true });
+
+                if (error) {
+                    console.error("Erro Supabase (Users):", error);
+                    throw error;
+                }
+
+                if (!users || users.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Nenhum usuário encontrado na base de dados.</td></tr>`;
+                    return;
+                }
+
                 tableBody.innerHTML = users.map(user => {
                     const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
-                    const roleTag = user.role === 'Admin' ? `<span class="user-tag role-admin">Admin</span>` : (user.role ? `<span class="user-tag role">${user.role}</span>` : '');
-                    const departmentTag = user.department ? `<span class="user-tag department">${user.department}</span>` : '';
+                    const roleTag = user.role === 'Admin' ? 
+                        `<span class="user-tag role-admin">Admin</span>` : 
+                        (user.role ? `<span class="user-tag role">${user.role}</span>` : '');
+                    
+                    const departmentTag = user.department ? 
+                        `<span class="user-tag department">${user.department}</span>` : '';
+
+                    let avatarHTML = '';
+                    if (user.avatar_url) {
+                        const src = `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
+                        avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%; width: 40px; height: 40px; flex-shrink: 0;"></div>`;
+                    } else {
+                        avatarHTML = `<div class="user-avatar" style="width: 40px; height: 40px; flex-shrink: 0;">${avatarInitial}</div>`;
+                    }
+
+                    // Escapa aspas para não quebrar o clique do botão editar
+                    const userJson = JSON.stringify(user).replace(/'/g, "\'");
+
                     return `<tr>
-                        <td><div class="user-info-cell"><div class="user-avatar">${avatarInitial}</div><div><div class="user-name">${user.full_name||'N/A'}</div><div class="user-email">${user.email||'N/A'}</div></div></div></td>
-                        <td><div class="user-meta-cell"><div class="user-tags">${departmentTag}${roleTag}</div></div></td>
-                        <td class="score-cell"><span class="material-icons">star</span> ${user.score||100}</td>
+                        <td>
+                            <div class="user-info-cell">
+                                ${avatarHTML}
+                                <div>
+                                    <div class="user-name">${user.full_name || 'N/A'}</div>
+                                    <div class="user-email">${user.email || 'N/A'}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-meta-cell">
+                                <div class="user-tags">${departmentTag}${roleTag}</div>
+                            </div>
+                        </td>
+                        <td class="score-cell"><span class="material-icons">star</span> ${user.score || 0}</td>
                         <td class="action-buttons">
-                            <button class="btn btn-icon" onclick='openUserModal(${JSON.stringify(user)})' title="Editar"><span class="material-icons">edit</span></button>
-                            <button class="btn btn-icon" onclick="deleteUser('${user.id}')" title="Excluir"><span class="material-icons">delete</span></button>
+                            <button class="btn btn-icon" onclick="openUserModal(${userJson})" title="Editar"><span class="material-icons">edit</span></button>
+                            <button class="btn btn-icon" onclick="deleteUser('${user.id}')" title="Excluir"><span class="material-icons" style="color: var(--color-danger);">delete</span></button>
                         </td>
                     </tr>`;
                 }).join('');
-            } catch(error) { 
-                console.error("Erro ao carregar usuários:", error);
-                tableBody.innerHTML = `<tr><td colspan="4">Erro ao carregar usuários.</td></tr>`;
+
+            } catch (error) {
+                console.error("Erro crítico ao carregar usuários:", error);
+                tableBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--color-danger);">Erro ao carregar usuários: ${error.message}</td></tr>`;
             }
         }
 
