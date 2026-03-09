@@ -2176,7 +2176,7 @@ async function showApp() {
             const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
             currentUserProfile.permissions = permissionsError ? [] : permissions;
 
-            // 1. DEFINE ACESSO MESTRE (RH, DP ou Admin)
+            // 1. DEFINE ACESSO MESTRE
             const hasMasterAccess = currentUserProfile && (
                 currentUserProfile.role === 'Admin' || 
                 currentUserProfile.department === 'Recursos Humanos' || 
@@ -2189,7 +2189,7 @@ async function showApp() {
             const canManageHR = currentUserProfile.permissions.includes('manage_hr');
             const canManageUsers = currentUserProfile.permissions.includes('manage_users');
 
-            // 3. Filtra o Menu Lateral Principal (LINKS RESTRITOS)
+            // 3. Filtra o Menu Lateral Principal (Links Básicos)
             document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
                 const page = link.getAttribute('data-page');
                 const allowedForSupervisor = ['requests-page', 'kb-page', 'profile-page'];
@@ -2201,7 +2201,7 @@ async function showApp() {
                 }
             });
 
-            // 4. Monta e Filtra a Seção Administrativa
+            // 4. Monta a Seção Administrativa dinamicamente
             const adminSection = document.getElementById('admin-section');
             const adminMenuUl = document.getElementById('admin-menu-list');
             
@@ -2219,7 +2219,8 @@ async function showApp() {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
                 }
                 if (canManageRoutines || hasMasterAccess) {
-
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
                 }
 
                 adminMenuUl.innerHTML = adminMenuHTML;
@@ -2234,11 +2235,20 @@ async function showApp() {
                 adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
             }
 
-            // 5. Atualiza Perfil
+            // 5. Atualiza Perfil e Avatar
             const profileShortcut = document.getElementById('profile-shortcut');
             const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
+            
+            let avatarHTML = '';
+            if (currentUserProfile.avatar_url && currentUserProfile.avatar_url !== '') {
+                const src = `https://lh3.googleusercontent.com/d/${currentUserProfile.avatar_url}`;
+                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+            } else {
+                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
+            }
+
             profileShortcut.innerHTML = `
-                <div class="user-avatar">${avatarInitial}</div>
+                ${avatarHTML}
                 <div>
                     <div class="user-name">${currentUserProfile.full_name}</div>
                     <div class="user-role">${currentUserProfile.role || 'Colaborador'}</div>
