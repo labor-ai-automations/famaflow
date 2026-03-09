@@ -2244,9 +2244,9 @@ async function showApp() {
             let avatarHTML = '';
             if (currentUserProfile.avatar_url && currentUserProfile.avatar_url !== '') {
                 const src = `https://lh3.googleusercontent.com/d/${currentUserProfile.avatar_url}`;
-                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%; width: 44px; height: 44px; flex-shrink: 0;"></div>`;
             } else {
-                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
+                avatarHTML = `<div class="user-avatar" style="width: 44px; height: 44px; flex-shrink: 0;">${avatarInitial}</div>`;
             }
 
             profileShortcut.innerHTML = `
@@ -5476,10 +5476,10 @@ async function loadUserProfileData(userId) {
         let avatarHTML = '';
         if (profile.avatar_url && profile.avatar_url !== '') {
             const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
-            avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%; width: 80px; height: 80px; border: 4px solid ${barColor};"></div>`;
+            avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%; width: 120px; height: 120px; border: 5px solid ${barColor};"></div>`;
         } else {
             const initial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-            avatarHTML = `<div class="user-avatar" style="width: 80px; height: 80px; font-size: 2.5rem; border: 4px solid ${barColor};">${initial}</div>`;
+            avatarHTML = `<div class="user-avatar" style="width: 120px; height: 120px; font-size: 3.5rem; border: 5px solid ${barColor};">${initial}</div>`;
         }
 
         // 4. Renderiza Cabeçalho e Radar
