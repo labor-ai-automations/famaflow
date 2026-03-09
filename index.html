@@ -5190,12 +5190,12 @@ async function submitRequest(event) {
 
             const generateCardHTML = (user) => {
                 let avatarHTML = '';
-                if (user.avatar_url) {
-                    const src = user.avatar_url.includes('http') ? user.avatar_url : `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
-                    avatarHTML = `<img src="${src}" class="team-avatar-img" alt="${user.full_name}">`;
+                if (user.avatar_url && user.avatar_url !== '') {
+                    const src = `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
+                    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; width: 64px; height: 64px; margin-bottom: 1rem;"></div>`;
                 } else {
                     const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
-                    avatarHTML = `<div class="user-avatar">${initial}</div>`;
+                    avatarHTML = `<div class="user-avatar" style="width: 64px; height: 64px; margin-bottom: 1rem;">${initial}</div>`;
                 }
 
                 const score = user.score || 100;
@@ -5476,13 +5476,12 @@ function toggleRecipientSelection(user) {
             }
 
             let avatarHTML = '';
-            if (profile.avatar_url) {
-                // Link direto para visualização da imagem no Google Drive via ID
+            if (profile.avatar_url && profile.avatar_url !== '') {
                 const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
-                avatarHTML = `<img src="${src}" class="user-avatar" style="object-fit: cover; border-radius: 50%; width: 100%; height: 100%;">`;
+                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
             } else {
-                const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
+                const initial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+                avatarHTML = `<div class="user-avatar">${initial}</div>`;
             }
             const roleAndDept = [profile.role, profile.department].filter(Boolean).join(' • ');
 
