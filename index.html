@@ -2239,11 +2239,11 @@ async function showApp() {
             const profileShortcut = document.getElementById('profile-shortcut');
             const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
             
-            let avatarHTML = '';
-            if (currentUserProfile.avatar_url && currentUserProfile.avatar_url !== '') {
-                const src = `https://lh3.googleusercontent.com/d/${currentUserProfile.avatar_url}`;
-                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
-            } else {
+let avatarHTML = '';
+if (profile.avatar_url && profile.avatar_url !== '') {
+    const src = `http://googleusercontent.com/profile/picture/${profile.avatar_url}`;
+    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+} else {
                 avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
             }
 
@@ -4992,10 +4992,10 @@ async function submitRequest(event) {
                 let mediaHTML = '';
                 if (post.media_data && post.media_data.type !== 'text') {
                     const md = post.media_data;
-                    if (md.type === 'image' && md.id) {
-                        const src = `https://lh3.googleusercontent.com/d/${md.id}`;
-                        mediaHTML = `<div class="media-container"><img src="${src}" loading="lazy" onclick="openLightbox(event, '${src}')"></div>`;
-                    } else if (md.type === 'video') {
+if (md.type === 'image' && md.id) {
+    const src = `http://googleusercontent.com/profile/picture/${md.id}`;
+    mediaHTML = `<div class="media-container"><img src="${src}" loading="lazy" onclick="openLightbox(event, '${src}')"></div>`;
+} else if (md.type === 'video') {
                          if(md.source === 'youtube' && md.id) {
                              mediaHTML = `<div class="media-container"><iframe src="https://www.youtube.com/embed/${md.id}" allowfullscreen></iframe></div>`;
                         } else if (md.embed_url) {
@@ -5199,11 +5199,10 @@ async function submitRequest(event) {
             const others = filteredUsers.filter(u => u.department !== myDept);
 
             const generateCardHTML = (user) => {
-// ✅ CORRETO
-const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
 let avatarHTML = '';
-if (profile.avatar_url && profile.avatar_url !== '') {
-    const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
+if (user.avatar_url && user.avatar_url !== '') {
+    const src = `http://googleusercontent.com/profile/picture/${user.avatar_url}`;
     avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
 } else {
     avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
@@ -5473,10 +5472,6 @@ if (profileError || !profile) {
     console.error(profileError);
     return;
 }
-
-            const { data: pendencies, error: pendenciesError } = pendenciesRes;
-            const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
-            const { data: createdPendencies, error: createdPendenciesError } = createdPendenciesRes || { data: null };
             
             const score = Math.min(profile.score || 100, 100);
             
