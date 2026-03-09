@@ -2177,24 +2177,20 @@ async function showApp() {
                 currentUserProfile.department === 'Departamento Pessoal'
             );
 
-            // 2. Atalhos para permissões administrativas específicas
+            // 2. Atalhos para permissões administrativas
             const canManageRoutines = currentUserProfile.permissions.includes('manage_routines');
             const canManageTravel = currentUserProfile.permissions.includes('manage_travel');
             const canManageHR = currentUserProfile.permissions.includes('manage_hr');
             const canManageUsers = currentUserProfile.permissions.includes('manage_users');
 
             // 3. Filtra o Menu Lateral Principal (LINKS RESTRITOS)
-            document.querySelectorAll('.nav-menu .nav-link').forEach(link => {
+            document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
                 const page = link.getAttribute('data-page');
-                
-                // Lista de páginas que o Supervisor SEM permissões Master pode ver
                 const allowedForSupervisor = ['requests-page', 'kb-page', 'profile-page'];
                 
                 if (hasMasterAccess) {
-                    // Acesso Total vê tudo
                     link.parentElement.style.display = 'block';
                 } else {
-                    // Supervisor vê apenas Requisições, KB e Perfil
                     link.parentElement.style.display = allowedForSupervisor.includes(page) ? 'block' : 'none';
                 }
             });
@@ -2206,40 +2202,6 @@ async function showApp() {
             if (adminSection && adminMenuUl) {
                 let adminMenuHTML = '';
 
-                // Só exibe os menus se tiver permissão master ou específica
-                if (canManageUsers) {
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
-                }
-                if (canManageHR) {
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
-                }
-                if (canManageTravel) {
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
-                }
-                if (canManageRoutines) {
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
-                }
-
-                adminMenuUl.innerHTML = adminMenuHTML;
-
-                // Reatribui os eventos de clique
-                adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        showPage(e.currentTarget.dataset.page);
-                    });
-                });
-
-                // Oculta a seção inteira se estiver vazia
-                adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
-            }
-            
-            if (adminSection && adminMenuUl) {
-                let adminMenuHTML = '';
-
-                // A seção de administração só aparece se for Master ou tiver permissão manual específica
                 if (canManageUsers || hasMasterAccess) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
@@ -2257,7 +2219,6 @@ async function showApp() {
 
                 adminMenuUl.innerHTML = adminMenuHTML;
 
-                // Atribui eventos de clique
                 adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
@@ -2265,7 +2226,6 @@ async function showApp() {
                     });
                 });
 
-                // Oculta a seção inteira de ADMINISTRAÇÃO para o Supervisor comum
                 adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
             }
 
@@ -2281,11 +2241,11 @@ async function showApp() {
             `;
             profileShortcut.onclick = () => showPage('profile-page');
 
-            // 6. Lógica de Redirecionamento Inicial (Pouso Seguro)
+            // 6. Redirecionamento Inicial
             if (hasMasterAccess) {
-                showPage('dashboard-page'); // Admin/RH cai na Dashboard
+                showPage('dashboard-page');
             } else {
-                showPage('requests-page'); // Supervisor cai direto em Requisições
+                showPage('requests-page');
             }
 
             loadAllDynamicData();
