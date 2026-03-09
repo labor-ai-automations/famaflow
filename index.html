@@ -1783,6 +1783,14 @@ body.fullscreen-flow .flowchart-monitor-bar {
         <div><h1>Base de Conhecimento</h1><p>Manuais, normas e procedimentos internos.</p></div>
         <div class="page-header-actions"><button class="btn btn-danger" onclick="currentEditingKBId = null; document.querySelector('#kb-modal h3').textContent = 'Novo Conteúdo'; document.getElementById('kb-form').reset(); toggleKBFields(); document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div>
     </div>
+    
+    <!-- BANNER DE OBSERVAÇÃO -->
+    <div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;">
+        <span class="material-icons" style="color: var(--color-info);">info</span>
+        <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-primary);">
+            <strong>Observação:</strong> Para atualizar o arquivo de um documento existente, por favor, <strong>exclua o registro atual e crie um novo</strong> com o arquivo atualizado. Atualmente, a edição direta é permitida apenas para o título e conteúdos em formato de texto.
+        </p>
+    </div>
     <div class="card" style="padding:0;">
         <table class="data-table">
             <thead><tr><th style="width: 40%;">Título</th><th style="width: 20%;">Categoria</th><th style="width: 20%;">Tipo</th><th style="width: 20%;">Ação</th></tr></thead>
@@ -2298,7 +2306,10 @@ async function loadKBPage() {
                             ${item.google_drive_file_id 
                                 ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ver</a>`
                                 : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ler</button>`}
-                            <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>
+${item.content_type === 'text' 
+                                ? `<button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>` 
+                                : ''
+                            }
                             <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
                         </div>
                     </td>
