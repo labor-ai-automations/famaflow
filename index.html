@@ -1672,7 +1672,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                         <li><a href="#" class="nav-link" data-page="kb-page"><span class="material-icons">school</span> Base de Conhecimento</a></li>
                     </ul>
                     <div id="admin-section" style="display: none;">
-                        <h3 class="nav-section-title">Administração</h3>
+                        <div class="nav-section-title">Administração</div>
                         <ul class="nav-menu"></ul>
                     </div>
                 </div>
@@ -2276,15 +2276,23 @@ async function showApp() {
                 if (activeLink) activeLink.classList.add('active');
             }
             
-            const fabMessage = document.getElementById('fab-new-message');
+const fabMessage = document.getElementById('fab-new-message');
             const fabPost = document.getElementById('fab-new-post');
             
             fabMessage.classList.add('hidden');
             fabPost.classList.add('hidden');
+
+            // Verifica acesso mestre para exibição dos botões flutuantes
+            const hasMasterAccess = currentUserProfile && (
+                currentUserProfile.role === 'Admin' || 
+                currentUserProfile.department === 'Recursos Humanos' || 
+                currentUserProfile.department === 'Departamento Pessoal'
+            );
             
-            if (pageId === 'mural-page' && currentUserProfile && (currentUserProfile.role === 'Admin' || currentUserProfile.role === 'RH')) {
+            if (pageId === 'mural-page' && hasMasterAccess) {
                 fabPost.classList.remove('hidden');
-            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page'].includes(pageId)) {
+            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page'].includes(pageId) && hasMasterAccess) {
+                // O botão de "Nova Mensagem" agora só aparece para quem tem acesso mestre
                 fabMessage.classList.remove('hidden');
             }
 
