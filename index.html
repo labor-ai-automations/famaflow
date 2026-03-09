@@ -5973,42 +5973,63 @@ async function loadUsersForAdmin() {
     const tableBody = document.getElementById('user-table-body');
     if (!tableBody) return;
     
-    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Iniciando reflexão dos dados...</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Atualizando lista de usuários...</td></tr>`;
     
     try {
         const { data: users, error } = await supabaseClient
             .from('users_with_email')
-            .select('*');
+            .select('*')
+            .order('full_name', { ascending: true });
 
         if (error) throw error;
 
-        // Se o array vier vazio, o problema é RLS (Banco)
         if (!users || users.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Banco retornou zero registros (verifique as políticas RLS).</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Nenhum usuário retornado.</td></tr>`;
             return;
         }
 
-        // Mapeamento direto das colunas confirmadas: full_name, role, department, score, avatar_url, email
         tableBody.innerHTML = users.map(user => {
             const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
-            const avatarHTML = user.avatar_url 
-                ? `<div class="user-avatar" style="background-image: url('https://lh3.googleusercontent.com/d/${user.avatar_url}'); background-size: cover; width: 40px; height: 40px; border-radius: 50%;"></div>`
-                : `<div class="user-avatar">${avatarInitial}</div>`;
+            const roleTag = user.role ? `<span class="user-tag role">${user.role}</span>` : '';
+            const departmentTag = user.department ? `<span class="user-tag department">${user.department}</span>` : '';
+
+            let avatarHTML = '';
+            if (user.avatar_url) {
+                const src = `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
+                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;"></div>`;
+            } else {
+                avatarHTML = `<div class="user-avatar" style="width: 40px; height: 40px; flex-shrink: 0;">${avatarInitial}</div>`;
+            }
+
+            // Sanitização robusta para o objeto JSON do usuário
+            const userSafeJson = JSON.stringify(user).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
             return `<tr>
-                <td><div class="user-info-cell">${avatarHTML}<div><strong>${user.full_name}</strong><br><small>${user.email}</small></div></div></td>
-                <td><span class="user-tag department">${user.department || 'Fama'}</span><br><span class="user-tag role">${user.role || 'Colaborador'}</span></td>
-                <td class="score-cell"><span class="material-icons">star</span> ${user.score || 0}</td>
                 <td>
-                    <button class="btn btn-icon" onclick="openUserModalById('${user.id}')"><span class="material-icons">edit</span></button>
-                    <button class="btn btn-icon" onclick="deleteUser('${user.id}')"><span class="material-icons" style="color:var(--color-danger)">delete</span></button>
+                    <div class="user-info-cell">
+                        ${avatarHTML}
+                        <div>
+                            <div class="user-name">${user.full_name || 'N/A'}</div>
+                            <div class="user-email">${user.email || 'N/A'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="user-meta-cell">
+                        <div class="user-tags">${departmentTag}${roleTag}</div>
+                    </div>
+                </td>
+                <td class="score-cell"><span class="material-icons">star</span> ${user.score || 0}</td>
+                <td class="action-buttons">
+                    <button class="btn btn-icon" onclick='openUserModal(JSON.parse(this.getAttribute("data-user")))' data-user='${userSafeJson}' title="Editar"><span class="material-icons">edit</span></button>
+                    <button class="btn btn-icon" onclick="deleteUser('${user.id}')" title="Excluir"><span class="material-icons" style="color: var(--color-danger);">delete</span></button>
                 </td>
             </tr>`;
         }).join('');
 
-    } catch (e) {
-        console.error("Erro de reflexão no Frontend:", e);
-        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Erro no script: ${e.message}</td></tr>`;
+    } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: var(--color-danger);">Erro: ${error.message}</td></tr>`;
     }
 }
 
