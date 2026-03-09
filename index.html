@@ -2176,7 +2176,7 @@ async function showApp() {
             const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
             currentUserProfile.permissions = permissionsError ? [] : permissions;
 
-            // 1. DEFINE ACESSO MESTRE
+            // 1. DEFINE ACESSO MESTRE (RH, DP ou Admin)
             const hasMasterAccess = currentUserProfile && (
                 currentUserProfile.role === 'Admin' || 
                 currentUserProfile.department === 'Recursos Humanos' || 
@@ -2189,7 +2189,7 @@ async function showApp() {
             const canManageHR = currentUserProfile.permissions.includes('manage_hr');
             const canManageUsers = currentUserProfile.permissions.includes('manage_users');
 
-            // 3. Filtra o Menu Lateral Principal (Links Básicos)
+            // 3. Filtra o Menu Lateral Principal (LINKS RESTRITOS)
             document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
                 const page = link.getAttribute('data-page');
                 const allowedForSupervisor = ['requests-page', 'kb-page', 'profile-page'];
@@ -2201,7 +2201,7 @@ async function showApp() {
                 }
             });
 
-            // 4. Monta a Seção Administrativa dinamicamente
+            // 4. Monta e Filtra a Seção Administrativa
             const adminSection = document.getElementById('admin-section');
             const adminMenuUl = document.getElementById('admin-menu-list');
             
@@ -2219,8 +2219,7 @@ async function showApp() {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
                 }
                 if (canManageRoutines || hasMasterAccess) {
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
-                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
+
                 }
 
                 adminMenuUl.innerHTML = adminMenuHTML;
@@ -2235,20 +2234,11 @@ async function showApp() {
                 adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
             }
 
-            // 5. Atualiza Perfil e Avatar
+            // 5. Atualiza Perfil
             const profileShortcut = document.getElementById('profile-shortcut');
             const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
-            
-let avatarHTML = '';
-if (profile.avatar_url && profile.avatar_url !== '') {
-    const src = `http://googleusercontent.com/profile/picture/${profile.avatar_url}`;
-    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
-} else {
-                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
-            }
-
             profileShortcut.innerHTML = `
-                ${avatarHTML}
+                <div class="user-avatar">${avatarInitial}</div>
                 <div>
                     <div class="user-name">${currentUserProfile.full_name}</div>
                     <div class="user-role">${currentUserProfile.role || 'Colaborador'}</div>
@@ -4992,10 +4982,10 @@ async function submitRequest(event) {
                 let mediaHTML = '';
                 if (post.media_data && post.media_data.type !== 'text') {
                     const md = post.media_data;
-if (md.type === 'image' && md.id) {
-    const src = `http://googleusercontent.com/profile/picture/${md.id}`;
-    mediaHTML = `<div class="media-container"><img src="${src}" loading="lazy" onclick="openLightbox(event, '${src}')"></div>`;
-} else if (md.type === 'video') {
+                    if (md.type === 'image' && md.id) {
+                        const src = `https://lh3.googleusercontent.com/d/${md.id}`;
+                        mediaHTML = `<div class="media-container"><img src="${src}" loading="lazy" onclick="openLightbox(event, '${src}')"></div>`;
+                    } else if (md.type === 'video') {
                          if(md.source === 'youtube' && md.id) {
                              mediaHTML = `<div class="media-container"><iframe src="https://www.youtube.com/embed/${md.id}" allowfullscreen></iframe></div>`;
                         } else if (md.embed_url) {
@@ -5199,14 +5189,14 @@ if (md.type === 'image' && md.id) {
             const others = filteredUsers.filter(u => u.department !== myDept);
 
             const generateCardHTML = (user) => {
-const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
-let avatarHTML = '';
-if (user.avatar_url && user.avatar_url !== '') {
-    const src = `http://googleusercontent.com/profile/picture/${user.avatar_url}`;
-    avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
-} else {
-    avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
-}
+                let avatarHTML = '';
+                if (user.avatar_url) {
+                    const src = user.avatar_url.includes('http') ? user.avatar_url : `https://lh3.googleusercontent.com/d/${user.avatar_url}`;
+                    avatarHTML = `<img src="${src}" class="team-avatar-img" alt="${user.full_name}">`;
+                } else {
+                    const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : '?';
+                    avatarHTML = `<div class="user-avatar">${initial}</div>`;
+                }
 
                 const score = user.score || 100;
                 let scoreClass = 'good';
@@ -5460,18 +5450,18 @@ function toggleRecipientSelection(user) {
                 promises.push(supabaseClient.rpc('get_created_pendencies', { creator_user_id: targetId }));
             }
 
-const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all(promises);
+            const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all(promises);
 
-const { data: profile, error: profileError } = profileRes;
-const { data: pendencies, error: pendenciesError } = pendenciesRes;
-const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
-const { data: createdPendencies, error: createdPendenciesError } = createdPendenciesRes || { data: null };
+            const { data: profile, error: profileError } = profileRes;
+            if (profileError || !profile) {
+                container.innerHTML = '<p>Erro ao carregar perfil.</p>';
+                console.error(profileError);
+                return;
+            }
 
-if (profileError || !profile) {
-    container.innerHTML = '<p>Erro ao carregar perfil.</p>';
-    console.error(profileError);
-    return;
-}
+            const { data: pendencies, error: pendenciesError } = pendenciesRes;
+            const { data: resolvedTickets, error: resolvedTicketsError } = resolvedTicketsRes || { data: null };
+            const { data: createdPendencies, error: createdPendenciesError } = createdPendenciesRes || { data: null };
             
             const score = Math.min(profile.score || 100, 100);
             
@@ -5486,12 +5476,13 @@ if (profileError || !profile) {
             }
 
             let avatarHTML = '';
-            if (profile.avatar_url && profile.avatar_url !== '') {
+            if (profile.avatar_url) {
+                // Link direto para visualização da imagem no Google Drive via ID
                 const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
-                avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%;"></div>`;
+                avatarHTML = `<img src="${src}" class="user-avatar" style="object-fit: cover; border-radius: 50%; width: 100%; height: 100%;">`;
             } else {
-                const initial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-                avatarHTML = `<div class="user-avatar">${initial}</div>`;
+                const avatarInitial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
+                avatarHTML = `<div class="user-avatar">${avatarInitial}</div>`;
             }
             const roleAndDept = [profile.role, profile.department].filter(Boolean).join(' • ');
 
