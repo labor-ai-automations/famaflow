@@ -1534,11 +1534,30 @@ body.fullscreen-flow .flowchart-monitor-bar {
             <div class="modal-header"><h3>Novo Processo</h3><span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Admissão de Funcionário" required></div>
-                <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="3" placeholder="Descreva o objetivo deste fluxo..."></textarea></div>
+                <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Descreva o objetivo deste fluxo..."></textarea></div>
+                
+                <div style="background: var(--color-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); margin-top: 1rem;">
+                    <label class="custom-checkbox" style="margin-bottom: 1rem;">
+                        <input type="checkbox" id="process-is-recurring" onchange="document.getElementById('recurrence-fields').style.display = this.checked ? 'grid' : 'none'">
+                        <span class="checkbox-box"><span class="material-icons">check</span></span>
+                        <strong>Processo Recorrente (Calendário)</strong>
+                    </label>
+                    
+                    <div id="recurrence-fields" class="grid grid-cols-2" style="display: none; gap: 1rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Dia do Mês (1-31)</label>
+                            <input type="number" id="process-recurring-day" class="input-field" min="1" max="31" value="1">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Avisar (dias antes)</label>
+                            <input type="number" id="process-notify-days" class="input-field" min="0" value="3">
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="document.getElementById('new-process-modal').classList.remove('visible')">Cancelar</button>
-                <button class="btn btn-danger" onclick="createProcess()">Criar Processo</button>
+                <button class="btn btn-danger" onclick="createProcess()">Salvar Processo</button>
             </div>
         </div>
     </div>
@@ -2468,6 +2487,7 @@ async function submitKBContent() {
 
         async function loadManageProcessesPage() {
             const listContainer = document.getElementById('process-list-sidebar');
+            if(!listContainer) return;
             listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
             const { data: processes, error } = await supabaseClient.from('processes').select('*').order('created_at', { ascending: false });
             if (error) { listContainer.innerHTML = 'Erro ao carregar.'; return; }
@@ -2476,21 +2496,24 @@ async function submitKBContent() {
             listContainer.innerHTML = processes.map(p => `
                 <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}')" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                     <div style="display:flex; flex-direction:column; flex: 1;">
-                        <span style="font-weight:600">${p.title}</span>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span style="font-weight:600">${p.title}</span>
+                            ${p.is_recurring ? '<span class="material-icons" style="font-size:14px; color:var(--color-info);" title="Processo Recorrente">update</span>' : ''}
+                        </div>
+                        ${p.is_recurring ? `<small style="font-size:0.65rem; color:var(--color-text-secondary);">Todo dia ${p.recurring_day}</small>` : ''}
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-<button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/<[^>]*>?/gm, '').trim().replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`)" title="Editar Nome/Descrição" style="color: var(--color-text-secondary); opacity: 0.5;">
-    <span class="material-icons" style="font-size: 18px;">settings</span>
-</button>
-<button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir Processo" style="color: var(--color-danger); opacity: 0.3; transition: opacity 0.2s;">
-    <span class="material-icons" style="font-size: 18px;">delete</span>
-</button>
-                        <span class="material-icons arrow-icon" style="font-size:16px; transition: transform 0.3s;">chevron_right</span>
+                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring}, ${p.recurring_day}, ${p.notify_before_days})" title="Configurações" style="color: var(--color-text-secondary); opacity: 0.5;">
+                            <span class="material-icons" style="font-size: 18px;">settings</span>
+                        </button>
+                        <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="color: var(--color-danger); opacity: 0.3;">
+                            <span class="material-icons" style="font-size: 18px;">delete</span>
+                        </button>
+                        <span class="material-icons arrow-icon" style="font-size:16px;">chevron_right</span>
                     </div>
                 </div>
             `).join('');
 
-            // Adiciona efeito de hover para mostrar a lixeira
             document.querySelectorAll('.routines-list-item').forEach(item => {
                 item.onmouseenter = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '1'; };
                 item.onmouseleave = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '0.3'; };
@@ -3257,12 +3280,33 @@ function openNewProcessModal() {
 }
 
         async function createProcess() {
-            const title = document.getElementById('new-process-title').value;
-            const desc = document.getElementById('new-process-desc').value;
-            if (!title) return;
-            await supabaseClient.from('processes').insert({ title, description: desc, created_by: currentUserProfile.id });
-            document.getElementById('new-process-modal').classList.remove('visible');
-            loadManageProcessesPage();
+            const titleInput = document.getElementById('new-process-title');
+            const descInput = document.getElementById('new-process-desc');
+            const isRecurringCheck = document.getElementById('process-is-recurring');
+            const dayInput = document.getElementById('process-recurring-day');
+            const notifyInput = document.getElementById('process-notify-days');
+
+            if (!titleInput.value) {
+                showToast("O título do processo é obrigatório", "warning");
+                return;
+            }
+            
+            const { error } = await supabaseClient.from('processes').insert({ 
+                title: titleInput.value.replace(/<[^>]*>?/gm, '').trim(), 
+                description: descInput.value, 
+                created_by: currentUserProfile.id,
+                is_recurring: isRecurringCheck.checked,
+                recurring_day: isRecurringCheck.checked ? parseInt(dayInput.value) : null,
+                notify_before_days: isRecurringCheck.checked ? parseInt(notifyInput.value) : 0
+            });
+
+            if (!error) {
+                showToast("Processo criado com sucesso!", "success");
+                document.getElementById('new-process-modal').classList.remove('visible');
+                loadManageProcessesPage();
+            } else {
+                showToast("Erro ao criar: " + error.message, "danger");
+            }
         }
 
         async function openAddStepModal(processId, suggestedOrder = null) {
@@ -8037,44 +8081,45 @@ async function exitMonitorMode(processId) {
             );
         }
 		
-async function openEditProcessModal(id, title, desc) {
+async function openEditProcessModal(id, title, desc, isRecurring = false, day = 1, notify = 0) {
     const modal = document.getElementById('new-process-modal');
     const titleInput = document.getElementById('new-process-title');
     const descInput = document.getElementById('new-process-desc');
+    const isRecurringCheck = document.getElementById('process-is-recurring');
+    const dayInput = document.getElementById('process-recurring-day');
+    const notifyInput = document.getElementById('process-notify-days');
     const saveBtn = modal.querySelector('.btn-danger');
 
-    // BLINDAGEM: Limpa o título de qualquer HTML antes de preencher o formulário
-    const cleanTitle = title.replace(/<[^>]*>?/gm, '').trim();
-    titleInput.value = cleanTitle;
+    titleInput.value = title.replace(/<[^>]*>?/gm, '').trim();
     descInput.value = desc;
+    isRecurringCheck.checked = isRecurring;
+    dayInput.value = day || 1;
+    notifyInput.value = notify || 0;
+    document.getElementById('recurrence-fields').style.display = isRecurring ? 'grid' : 'none';
     
-    modal.querySelector('h3').textContent = 'Editar Processo';
+    modal.querySelector('h3').textContent = 'Configurar Processo';
     saveBtn.textContent = 'Salvar Alterações';
     
     saveBtn.onclick = async (e) => {
         e.preventDefault();
-        
-        // BLINDAGEM: Limpa o título de novo antes de enviar ao banco
-        const newCleanTitle = titleInput.value.replace(/<[^>]*>?/gm, '').trim();
-        const newDesc = descInput.value;
-        
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Salvando...';
+        saveBtn.textContent = "Salvando...";
 
-        // Envia apenas o texto limpo para o banco de dados
         const { error } = await supabaseClient.from('processes')
-            .update({ title: newCleanTitle, description: newDesc })
+            .update({ 
+                title: titleInput.value.replace(/<[^>]*>?/gm, '').trim(), 
+                description: descInput.value,
+                is_recurring: isRecurringCheck.checked,
+                recurring_day: isRecurringCheck.checked ? parseInt(dayInput.value) : null,
+                notify_before_days: isRecurringCheck.checked ? parseInt(notifyInput.value) : 0
+            })
             .eq('id', id);
 
         if(!error) {
-            showToast("Processo atualizado!", "success");
+            showToast("Configurações atualizadas!", "success");
             modal.classList.remove('visible');
-            loadManageProcessesPage(); // Recarrega a lista da esquerda com os dados limpos
-            
-            // Atualiza a UI do fluxo aberto com os dados limpos
-            if(currentlyOpenProcessId === id) {
-                selectProcess(id, newCleanTitle);
-            }
+            loadManageProcessesPage();
+            if(currentlyOpenProcessId === id) selectProcess(id, titleInput.value);
         } else {
             showToast("Erro ao salvar: " + error.message, "danger");
         }
