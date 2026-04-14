@@ -688,6 +688,8 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
         .status-pending { background-color: var(--color-warning-bg); color: var(--color-warning); }
         .status-approved { background-color: var(--color-success-bg); color: var(--color-success); }
         .status-rejected { background-color: var(--color-danger-bg); color: var(--color-danger); }
+        .status-planned { background-color: var(--color-info-bg); color: var(--color-info); }
+        .status-executed { background-color: var(--color-success-bg); color: var(--color-success); }
 
         #request-modal .modal-content { max-width: 700px; }
         #request-modal .modal-body { max-height: 70vh; overflow-y: auto; }
@@ -1626,6 +1628,9 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_CREATE_TRAVEL_REQUEST_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/create-travel-request';
         const N8N_REGISTER_DECISION_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/submit-travel-decision';
         const N8N_CANCEL_TRAVEL_REQUEST_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/cancel-travel-request';
+        // NOVOS WEBHOOKS PARA MANUTENÇÃO
+        const N8N_PLAN_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/plan-maintenance-request';
+        const N8N_EXECUTE_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/execute-maintenance-request';
 
 
         // Mapeamento de permissões RBAC
@@ -4209,8 +4214,10 @@ function initOrgZoomPan() {
                 'disciplinary_action': 'Medida Disciplinar',
                 'maintenance': 'Manutenção'
             };
-            
-            const travelStatusLabels = {
+
+            const statusLabels = {
+                'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
+                'planned': 'Planejada', 'executed': 'Executada',
                 'pending_review': 'Aguardando Análise', 'approved_by_director': 'Aprovado (Diretor)',
                 'rejected_by_director': 'Recusado (Diretor)', 'pending_final_approval': 'Aprovação Final Pendente',
                 'approved_definitively': 'Aprovada', 'rejected_definitively': 'Recusada',
@@ -4220,44 +4227,37 @@ function initOrgZoomPan() {
             tableBody.innerHTML = data.map(req => {
                 let statusLabel, statusClass;
 
+                statusLabel = statusLabels[req.status] || req.status.replace(/_/g, ' ');
+
                 if (req.type === 'travel') {
-                    statusLabel = travelStatusLabels[req.status] || req.status.replace(/_/g, ' ');
-                    
-                    if (req.status === 'pending_review' || req.status === 'pending_final_approval') {
-                        statusClass = 'status-pending';
-                    } else if (req.status === 'cancelled_by_requester') {
-                        statusClass = 'status-rejected';
-                    } else {
-                        statusClass = req.status.includes('approved') ? 'status-approved' : 'status-rejected';
-                    }
+                    if (req.status === 'pending_review' || req.status === 'pending_final_approval') statusClass = 'status-pending';
+                    else if (req.status.includes('cancelled') || req.status.includes('rejected')) statusClass = 'status-rejected';
+                    else statusClass = 'status-approved';
                 } else {
-                    statusLabel = req.status === 'pending' ? 'Pendente' : (req.status === 'approved' ? 'Aprovada' : 'Recusada');
                     statusClass = `status-${req.status}`;
                 }
                 
                 const typeLabel = requestTypeLabels[req.type] || req.type;
                 const date = new Date(req.created_at).toLocaleDateString('pt-BR');
 
-// Lógica para Botões de Ação movida para dentro do template HTML
-
-return `
-            <tr>
-                <td style="width: 18%;"><strong>${typeLabel}</strong></td>
-                <td style="width: 25%;">${currentUserProfile.full_name}</td>
-                <td style="width: 14%;">${date}</td>
-                <td style="width: 20%;"><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                <td style="width: 23%;">
-                    <div style="display: flex; gap: 0.4rem; justify-content: flex-start;">
-                        <button class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
-                        ${req.type === 'travel' && req.status === 'approved_by_director' ? `
-                            <button class="btn btn-warning" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="promptCancellation('${req.id}')">Cancelar</button>
-                        ` : ''}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+                return `
+                    <tr>
+                        <td style="width: 18%;"><strong>${typeLabel}</strong></td>
+                        <td style="width: 25%;">${currentUserProfile.full_name}</td>
+                        <td style="width: 14%;">${date}</td>
+                        <td style="width: 20%;"><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                        <td style="width: 23%;">
+                            <div style="display: flex; gap: 0.4rem; justify-content: flex-start;">
+                                <button class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
+                                ${req.type === 'travel' && req.status === 'approved_by_director' ? `
+                                    <button class="btn btn-warning" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="promptCancellation('${req.id}')">Cancelar</button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
 
         // NOVAS FUNÇÕES DE CANCELAMENTO
         function promptCancellation(requestId) {
@@ -4383,8 +4383,21 @@ return `
 
                 let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
                 
-                // Exibe as notas de aprovação/reprovação primeiro, se existirem
-                if (request.approval_notes) {
+                // Bloco de status da manutenção (se aplicável)
+                if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
+                    const scheduledDate = new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short'});
+                    detailsHTML += `
+                        <div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
+                            <h4 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem; color: var(--color-info);">
+                                <span class="material-icons">event</span> Agendamento
+                            </h4>
+                            <p style="margin: 0;"><strong>Data Prevista:</strong> ${scheduledDate}</p>
+                            ${request.approval_notes ? `<p style="margin: 0.5rem 0 0 0; white-space: pre-wrap;"><strong>Observações:</strong> ${request.approval_notes}</p>` : ''}
+                        </div>
+                    `;
+                } 
+                // Bloco de notas para outras requisições
+                else if (request.approval_notes) {
                     const noteColor = request.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)';
                     detailsHTML += `
                         <div style="background-color: var(--color-background); border-left: 4px solid ${noteColor}; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
@@ -6589,6 +6602,90 @@ async function syncUserPermissions(userId) {
                 btn.disabled = false;
             }
         }
+		
+		// --- NOVAS FUNÇÕES PARA O FLUXO DE MANUTENÇÃO ---
+
+        function openMaintenancePlanningModal(requestId) {
+            const modal = document.getElementById('maintenance-planning-modal');
+            const confirmBtn = document.getElementById('btn-confirm-maintenance-plan');
+            
+            // Limpa campos
+            document.getElementById('maintenance-date').value = '';
+            document.getElementById('maintenance-time').value = '';
+            document.getElementById('maintenance-notes').value = '';
+
+            // Associa a ação ao botão
+            confirmBtn.onclick = () => submitMaintenancePlan(requestId);
+
+            modal.classList.add('visible');
+        }
+
+        function closeMaintenancePlanningModal() {
+            document.getElementById('maintenance-planning-modal').classList.remove('visible');
+        }
+
+        async function submitMaintenancePlan(requestId) {
+            const date = document.getElementById('maintenance-date').value;
+            const time = document.getElementById('maintenance-time').value;
+            const notes = document.getElementById('maintenance-notes').value.trim();
+            const btn = document.getElementById('btn-confirm-maintenance-plan');
+
+            if (!date || !time) {
+                showToast('A data e a hora previstas são obrigatórias.', 'warning');
+                return;
+            }
+
+            // Combina data e hora em um formato ISO 8601 (TIMESTAMPTZ)
+            const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+
+            btn.disabled = true;
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) throw new Error("Sessão inválida.");
+
+                const response = await fetch(N8N_PLAN_MAINTENANCE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({
+                        request_id: requestId,
+                        maintenance_scheduled_at: scheduledAt,
+                        approval_notes: notes
+                    })
+                });
+
+                if (!response.ok) throw new Error('Falha ao planejar manutenção.');
+                showToast('Manutenção planejada com sucesso!', 'success');
+                closeMaintenancePlanningModal();
+                loadRequestManagementPage();
+            } catch (error) {
+                showToast(error.message, 'danger');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function executeMaintenanceRequestHandler(requestId) {
+            showConfirmation(
+                "Confirmar Execução?",
+                "Esta ação marcará a requisição de manutenção como concluída. Deseja continuar?",
+                async () => {
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (!session) throw new Error("Sessão inválida.");
+                        const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
+                            body: JSON.stringify({ request_id: requestId })
+                        });
+                        if (!response.ok) throw new Error('Falha ao concluir manutenção.');
+                        showToast('Manutenção marcada como executada!', 'success');
+                        loadRequestManagementPage();
+                    } catch(e) {
+                        showToast(e.message, 'danger');
+                    }
+                }
+            );
+        }
 
         async function loadRequestManagementPage() {
             const tableBody = document.getElementById('request-management-table-body');
@@ -6619,6 +6716,8 @@ async function syncUserPermissions(userId) {
                 pending: 'Pendente',
                 approved: 'Aprovado',
                 rejected: 'Recusado',
+                planned: 'Planejado',
+                executed: 'Executado',
                 cancelled_by_requester: 'Cancelada pelo Solicitante'
             };
 
@@ -6626,17 +6725,26 @@ async function syncUserPermissions(userId) {
                 const typeLabel = requestTypeLabels[req.type] || req.type.replace(/_/g, ' ');
                 const date = new Date(req.created_at).toLocaleDateString('pt-BR');
                 const statusLabel = statusLabels[req.status] || req.status;
-                const statusClass = req.status === 'cancelled_by_requester' ? 'status-rejected' : `status-${req.status}`;
+                const statusClass = `status-${req.status}`;
                 
-                const actionsHTML = `
-                    <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
-                    ${req.status === 'pending' ? `
-                        <span data-request-id="${req.id}">
-                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
-                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
-                        </span>
-                    ` : ''}
-                `;
+                let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+
+                if (req.type === 'maintenance') {
+                    if (req.status === 'pending') {
+                        actionsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem; margin-left: 0.5rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
+                    } else if (req.status === 'planned') {
+                        actionsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem; margin-left: 0.5rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executado</button>`;
+                    }
+                } else {
+                    if (req.status === 'pending') {
+                        actionsHTML += `
+                            <span data-request-id="${req.id}">
+                                <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
+                                <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
+                            </span>
+                        `;
+                    }
+                }
 
                 return `
                     <tr>
@@ -8434,6 +8542,37 @@ async function submitKBContent() {
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeApprovalModal()">Cancelar</button>
                 <button class="btn btn-danger" id="btn-confirm-action-with-notes">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+<!-- MAINTENANCE PLANNING MODAL -->
+    <div id="maintenance-planning-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Planejar Manutenção</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="closeMaintenancePlanningModal()">close</span>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--color-text-secondary); margin-top: 0;">Agende a data e hora para o serviço e adicione observações para o solicitante.</p>
+                <div class="grid grid-cols-2">
+                    <div class="form-group">
+                        <label for="maintenance-date">Data Prevista*</label>
+                        <input type="date" id="maintenance-date" class="input-field" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="maintenance-time">Hora Prevista*</label>
+                        <input type="time" id="maintenance-time" class="input-field" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="maintenance-notes">Observações</label>
+                    <textarea id="maintenance-notes" class="input-field" rows="3" placeholder="Ex: A máquina precisará ficar parada por 2 horas..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMaintenancePlanningModal()">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirm-maintenance-plan">Confirmar Planejamento</button>
             </div>
         </div>
     </div>
