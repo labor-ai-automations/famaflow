@@ -1531,7 +1531,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
 <!-- NOVO: MODAL DE CRIAR PROCESSO -->
     <div id="new-process-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header"><h3>Novo Processo</h3><span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span></div>
+            <div class="modal-header"><h3>Configurar Processo e Alertas</h3><span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span></div>
             <div class="modal-body">
                 <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Fechamento de Folha" required></div>
                 <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Objetivo do fluxo..."></textarea></div>
@@ -1549,21 +1549,21 @@ body.fullscreen-flow .flowchart-monitor-bar {
                                 <label style="font-size: 0.75rem; font-weight: 700;">Nova Data de Execução (Início)</label>
                                 <input type="date" id="sched-date-input" class="input-field">
                             </div>
-                            <button type="button" class="btn btn-danger" onclick="addExecutionDate()" style="height: 42px; padding: 0 1rem;">
-                                <span class="material-icons">add_circle</span> Início
+                            <button type="button" class="btn btn-danger" onclick="addExecutionDate()" id="btn-add-exec-date" style="height: 42px; padding: 0 1rem; white-space: nowrap;">
+                                <span class="material-icons" style="vertical-align: middle;">add_circle</span> Início
                             </button>
                         </div>
                         
-                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Datas de Início e Cronograma de Alertas:</label>
+                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Cronograma de Início e Alertas:</label>
                         <div id="local-schedules-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 300px; overflow-y: auto;">
-                            <!-- Lista Dinâmica com Sub-Datas -->
+                            <!-- Aqui aparecerão os cards para você marcar as notificações -->
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="document.getElementById('new-process-modal').classList.remove('visible')">Cancelar</button>
-                <button class="btn btn-danger" onclick="createProcess()">Salvar Processo</button>
+                <button class="btn btn-danger" id="btn-save-process-master">Salvar Alterações</button>
             </div>
         </div>
     </div>
@@ -2474,7 +2474,7 @@ async function submitKBContent() {
         const N8N_START_PROCESS_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/start-process';
         const N8N_COMPLETE_PROCESS_STEP_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/complete-process-step';
 
-        async function loadManageProcessesPage() {
+async function loadManageProcessesPage() {
             const listContainer = document.getElementById('process-list-sidebar');
             if(!listContainer) return;
             listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
@@ -2487,12 +2487,12 @@ async function submitKBContent() {
                     <div style="display:flex; flex-direction:column; flex: 1;">
                         <div style="display:flex; align-items:center; gap:5px;">
                             <span style="font-weight:600">${p.title}</span>
-                            ${p.is_recurring ? '<span class="material-icons" style="font-size:14px; color:var(--color-info);" title="Processo Recorrente">update</span>' : ''}
+                            ${p.is_recurring ? '<span class="material-icons" style="font-size:14px; color:var(--color-info);" title="Cronograma de Alertas">calendar_month</span>' : ''}
                         </div>
-                        ${p.is_recurring ? `<small style="font-size:0.65rem; color:var(--color-text-secondary);">Todo dia ${p.recurring_day}</small>` : ''}
+                        ${p.is_recurring ? `<small style="font-size:0.65rem; color:var(--color-text-secondary);">Agendamento Ativo</small>` : ''}
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurações" style="color: var(--color-text-secondary); opacity: 0.5;">
+                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurar Calendário" style="color: var(--color-text-secondary); opacity: 0.5;">
                             <span class="material-icons" style="font-size: 18px;">settings</span>
                         </button>
                         <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="color: var(--color-danger); opacity: 0.3;">
@@ -3268,18 +3268,21 @@ function openNewProcessModal() {
     modal.classList.add('visible');
 }
 
-        let localSchedules = []; // Estrutura: [{ date: '2026-03-20', alerts: ['2026-03-17', '2026-03-18'] }]
+let localSchedules = []; // Estrutura: [{ date: '2026-03-20', alerts: ['2026-03-17', '2026-03-18'] }]
 
         function renderLocalSchedules() {
             const container = document.getElementById('local-schedules-list');
             if (!container) return;
+            
             localSchedules.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
             container.innerHTML = localSchedules.length > 0 ? localSchedules.map((s, sIdx) => `
                 <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.75rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <span style="font-size: 0.9rem; font-weight: 800; color: var(--color-brand-primary);">🚀 INÍCIO: ${new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                         <span class="material-icons" style="color: var(--color-danger); cursor: pointer; font-size: 20px;" onclick="removeExecutionDate(${sIdx})">delete</span>
                     </div>
+                    
                     <div style="background: var(--color-background); padding: 0.5rem; border-radius: 6px;">
                         <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.5rem;">
                             <div style="flex: 1;">
@@ -3290,6 +3293,7 @@ function openNewProcessModal() {
                                 <span class="material-icons" style="font-size: 18px;">notifications_active</span>
                             </button>
                         </div>
+                        
                         <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="alerts-list-${sIdx}">
                             ${s.alerts.length > 0 ? s.alerts.sort().map((a, aIdx) => `
                                 <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); display: flex; align-items: center; gap: 4px; padding: 2px 8px;">
@@ -3300,16 +3304,17 @@ function openNewProcessModal() {
                         </div>
                     </div>
                 </div>
-            `).join('') : '<div class="empty-state">Nenhuma data de início agendada.</div>';
+            `).join('') : '<div style="text-align:center; color:var(--color-text-secondary); font-size:0.8rem; padding: 1rem;">Nenhuma data de início agendada.</div>';
         }
 
         function addExecutionDate() {
-            const date = document.getElementById('sched-date-input').value;
+            const dateInput = document.getElementById('sched-date-input');
+            const date = dateInput.value;
             if (!date) { showToast("Selecione a data de início", "warning"); return; }
             if (localSchedules.some(s => s.date === date)) { showToast("Esta data já existe", "info"); return; }
             localSchedules.push({ date, alerts: [] });
             renderLocalSchedules();
-            document.getElementById('sched-date-input').value = '';
+            dateInput.value = '';
         }
 
         function removeExecutionDate(idx) {
@@ -3324,6 +3329,7 @@ function openNewProcessModal() {
             if (localSchedules[sIdx].alerts.includes(date)) return;
             localSchedules[sIdx].alerts.push(date);
             renderLocalSchedules();
+            input.value = '';
         }
 
         function removeAlertDate(sIdx, aIdx) {
