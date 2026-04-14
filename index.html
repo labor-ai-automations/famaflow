@@ -4252,7 +4252,7 @@ return `
                 
                 modalTitle.textContent = 'Detalhes da Requisição';
 
-                const translations = {
+const translations = {
                     funcao: 'Função', quantidade: 'Quantidade de Vagas', motivo_contratacao: 'Motivo da Contratação',
                     substituicao_nome: 'Nome do Colaborador Substituído', substituicao_motivo: 'Motivo da Saída',
                     tipo_contrato: 'Tipo de Contrato', horario: 'Horário de Trabalho', escolaridade: 'Escolaridade Mínima',
@@ -4272,7 +4272,12 @@ return `
                     modalidade: 'Modalidade', local: 'Local', datas: 'Datas', carga_horaria: 'Carga Horária',
                     participacao_tipo: 'Tipo de Participação', nomes_participantes: 'Participantes',
                     custo_inscricao: 'Custo Inscrição (R$)', custo_transporte: 'Custo Transporte (R$)',
-                    custo_hospedagem: 'Custo Hospedagem (R$)', custo_outras: 'Outras Despesas (R$)'
+                    custo_hospedagem: 'Custo Hospedagem (R$)', custo_outras: 'Outras Despesas (R$)',
+                    solicitante_nome: 'Solicitante', 
+                    setor: 'Setor', 
+                    equipamento: 'Código/Equipamento', 
+                    descricao_problema: 'Descrição Objetiva do Problema', 
+                    situacao_maquina: 'Situação Atual da Máquina'
                 };
 
                 let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
@@ -4307,7 +4312,7 @@ return `
             
             document.getElementById('request-modal-title').textContent = 'Nova Requisição';
 
-            modalBody.innerHTML = `
+modalBody.innerHTML = `
                 <h3>Selecione o tipo de solicitação</h3>
                 <div class="request-type-selection">
                     <div class="type-card" data-type="new_hire">
@@ -4317,6 +4322,10 @@ return `
                     <div class="type-card" data-type="termination">
                         <span class="material-icons">person_remove</span>
                         <h3>Solicitar Desligamento</h3>
+                    </div>
+                    <div class="type-card" data-type="maintenance">
+                        <span class="material-icons">settings_suggest</span>
+                        <h3>Solicitação de Manutenção</h3>
                     </div>
                     <div class="type-card" data-type="promotion">
                         <span class="material-icons">trending_up</span>
@@ -4357,7 +4366,7 @@ return `
             currentEditingRequest = null;
         }
 
-        function renderRequestForm(type) {
+function renderRequestForm(type) {
             currentRequestType = type;
             const modalBody = document.getElementById('request-modal-body');
             const modalFooter = document.getElementById('request-modal-footer');
@@ -4369,6 +4378,40 @@ return `
             const backButtonHTML = `<button class="btn btn-icon" onclick="openRequestModal()" title="Voltar" style="position: absolute; left: 1.5rem; top: 1rem;"><span class="material-icons">arrow_back</span></button>`;
 
             switch (type) {
+                case 'maintenance':
+                    title = 'Solicitação de Serviços Manutenção - Briefing Obrigatório';
+                    formHTML = `
+                        <div class="form-group"><label for="req-maint-solicitante">1. Solicitante*</label><input type="text" id="req-maint-solicitante" name="solicitante_nome" class="input-field" placeholder="Insira sua resposta" required></div>
+                        
+                        <div class="form-group">
+                            <label>2. Setor*</label>
+                            <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                                <label><input type="radio" name="setor" value="Mola plana" required> Mola plana</label>
+                                <label><input type="radio" name="setor" value="Mola helicoidal"> Mola helicoidal</label>
+                                <label><input type="radio" name="setor" value="Grampo"> Grampo</label>
+                                <label><input type="radio" name="setor" value="Usinagem"> Usinagem</label>
+                                <label><input type="radio" name="setor" value="Fundição"> Fundição</label>
+                                <label><input type="radio" name="setor" value="Fundição Cold Box"> Fundição Cold Box</label>
+                                <label><input type="radio" name="setor" value="Outra"> Outra</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group"><label for="req-maint-equip">3. Código/Equipamento*</label><input type="text" id="req-maint-equip" name="equipamento" class="input-field" placeholder="Insira sua resposta" required></div>
+                        
+                        <div class="form-group"><label for="req-maint-problem">4. Descrição objetiva do problema*</label><p style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:-0.5rem;">O que está acontecendo?</p><textarea id="req-maint-problem" name="descricao_problema" class="input-field" rows="4" placeholder="Insira sua resposta" required></textarea></div>
+
+                        <div class="form-group">
+                            <label>5. Situação atual da máquina*</label>
+                            <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                                <label><input type="radio" name="situacao_maquina" value="Maquina parada" required> Maquina parada</label>
+                                <label><input type="radio" name="situacao_maquina" value="Maquina rodando, mas com risco"> Maquina rodando, mas com risco</label>
+                                <label><input type="radio" name="situacao_maquina" value="Maquina rodando normal (preventiva)"> Maquina rodando normal (preventiva)</label>
+                                <label><input type="radio" name="situacao_maquina" value="Manutenção infraestrutura"> Manutenção infraestrutura</label>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
                 case 'travel': 
                     title = 'Requisição de Viagem';
                     formHTML = `
@@ -4497,41 +4540,7 @@ return `
                                 <label><input type="radio" name="tipo_rescisao" value="pedido_demissao"> Pedido de demissão (iniciativa do colaborador)</label>
                                 <label><input type="radio" name="tipo_rescisao" value="sem_justa_causa"> Demissão sem justa causa (iniciativa da empresa)</label>
                                 <label><input type="radio" name="tipo_rescisao" value="com_justa_causa"> Demissão com justa causa</label>
-                                <label><input type="radio" name="tipo_rescisao" value="termino_contrato"> Término de contrato por prazo determinado</label>
-                                <label><input type="radio" name="tipo_rescisao" value="acordo_partes"> Acordo entre as partes (Art. 484-A da CLT)</label>
-                                <label><input type="radio" name="tipo_rescisao" value="outros"> Outros</label>
-                            </div>
-                        </div>
-                        <div class="form-group"><label>Aviso prévio*</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="aviso_previo" value="cumprido"> Cumprido</label>
-                                <label><input type="radio" name="aviso_previo" value="indenizado"> Indenizado</label>
-                                <label><input type="radio" name="aviso_previo" value="dispensado"> Dispensado</label>
-                                <label><input type="radio" name="aviso_previo" value="nao_aplicavel"> Não aplicável</label>
-                            </div>
-                        </div>
-                        <div class="form-group"><label>Reposição da Vaga?*</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="reposicao_vaga" value="sim"> SIM</label>
-                                <label><input type="radio" name="reposicao_vaga" value="nao"> NÃO</label>
-                            </div>
-                        </div>
-
-                        <h3 class="form-section-title">3. Motivo do Desligamento (para iniciativa da empresa)</h3>
-                        <div class="form-group"><label>Marcar um ou mais, se aplicável:</label>
-                            <div class="radio-group" style="flex-direction: column; align-items: flex-start;">
-                                <label><input type="checkbox" name="motivo_desligamento" value="desempenho_abaixo"> Desempenho abaixo do esperado</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="inadequacao_cultura"> Inadequação à cultura organizacional</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="comportamento_incompativel"> Comportamento incompatível com as diretrizes</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="reestruturacao"> Reestruturação / corte de custos</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="fim_projeto"> Fim de projeto ou contrato</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="faltas"> Faltas injustificadas ou indisciplina</label>
-                                <label><input type="checkbox" name="motivo_desligamento" value="outras"> Outras razões</label>
-                            </div>
-                        </div>
-                        <div class="form-group"><label for="req-motivo-breve">Relate brevemente o Motivo</label><textarea id="req-motivo-breve" name="motivo_breve" class="input-field"></textarea></div>
-                        
-                        <h3 class="form-section-title">4. Observações Adicionais</h3>
+                                <label><input type="radio" name="tipo_rescisao" value="termino_contrato"> Término de contrato por prazo determinado</l      <h3 class="form-section-title">4. Observações Adicionais</h3>
                         <div class="form-group"><textarea name="observacoes_adicionais" class="input-field"></textarea></div>
                     `;
                     break;
