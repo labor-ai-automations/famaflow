@@ -1533,24 +1533,34 @@ body.fullscreen-flow .flowchart-monitor-bar {
         <div class="modal-content">
             <div class="modal-header"><h3>Novo Processo</h3><span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span></div>
             <div class="modal-body">
-                <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Admissão de Funcionário" required></div>
-                <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Descreva o objetivo deste fluxo..."></textarea></div>
+                <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Fechamento de Folha" required></div>
+                <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Objetivo do fluxo..."></textarea></div>
                 
                 <div style="background: var(--color-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); margin-top: 1rem;">
                     <label class="custom-checkbox" style="margin-bottom: 1rem;">
-                        <input type="checkbox" id="process-is-recurring" onchange="document.getElementById('recurrence-fields').style.display = this.checked ? 'grid' : 'none'">
+                        <input type="checkbox" id="process-is-recurring" onchange="document.getElementById('recurrence-calendar-area').style.display = this.checked ? 'block' : 'none'">
                         <span class="checkbox-box"><span class="material-icons">check</span></span>
-                        <strong>Processo Recorrente (Calendário)</strong>
+                        <strong>Agendar no Calendário (Recorrência)</strong>
                     </label>
                     
-                    <div id="recurrence-fields" class="grid grid-cols-2" style="display: none; gap: 1rem;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Dia do Mês (1-31)</label>
-                            <input type="number" id="process-recurring-day" class="input-field" min="1" max="31" value="1">
+                    <div id="recurrence-calendar-area" style="display: none; margin-top: 1rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;">
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size: 0.75rem;">Data da Execução</label>
+                                <input type="date" id="sched-date-input" class="input-field">
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size: 0.75rem;">Avisar (dias antes)</label>
+                                <input type="number" id="sched-notify-input" class="input-field" value="3" min="0">
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addDateToLocalSchedule()" style="height: 42px;">
+                                <span class="material-icons" style="margin:0;">add</span>
+                            </button>
                         </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Avisar (dias antes)</label>
-                            <input type="number" id="process-notify-days" class="input-field" min="0" value="3">
+                        
+                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Próximas Execuções Programadas:</label>
+                        <div id="local-schedules-list" style="max-height: 150px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; padding: 0.5rem;">
+                            <div style="text-align:center; color:var(--color-text-secondary); font-size:0.8rem; padding: 1rem;">Nenhuma data agendada.</div>
                         </div>
                     </div>
                 </div>
@@ -2486,7 +2496,7 @@ async function submitKBContent() {
                         ${p.is_recurring ? `<small style="font-size:0.65rem; color:var(--color-text-secondary);">Todo dia ${p.recurring_day}</small>` : ''}
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring}, ${p.recurring_day}, ${p.notify_before_days})" title="Configurações" style="color: var(--color-text-secondary); opacity: 0.5;">
+                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurações" style="color: var(--color-text-secondary); opacity: 0.5;">
                             <span class="material-icons" style="font-size: 18px;">settings</span>
                         </button>
                         <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="color: var(--color-danger); opacity: 0.3;">
@@ -3262,34 +3272,56 @@ function openNewProcessModal() {
     modal.classList.add('visible');
 }
 
+        let localSchedules = [];
+
+        function renderLocalSchedules() {
+            const container = document.getElementById('local-schedules-list');
+            if (!container) return;
+            localSchedules.sort((a, b) => new Date(a.date) - new Date(b.date));
+            container.innerHTML = localSchedules.length > 0 ? localSchedules.map((s, idx) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                    <span>📅 <strong>${new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}</strong> (Aviso: ${s.notify}d)</span>
+                    <span class="material-icons" style="color: var(--color-danger); cursor: pointer; font-size: 18px;" onclick="removeDateFromLocalSchedule(${idx})">delete</span>
+                </div>
+            `).join('') : '<div style="text-align:center; color:var(--color-text-secondary); font-size:0.8rem; padding: 1rem;">Nenhuma data agendada.</div>';
+        }
+
+        function addDateToLocalSchedule() {
+            const date = document.getElementById('sched-date-input').value;
+            const notify = document.getElementById('sched-notify-input').value;
+            if (!date) { showToast("Selecione uma data", "warning"); return; }
+            localSchedules.push({ date, notify: parseInt(notify) });
+            renderLocalSchedules();
+            document.getElementById('sched-date-input').value = '';
+        }
+
+        function removeDateFromLocalSchedule(idx) {
+            localSchedules.splice(idx, 1);
+            renderLocalSchedules();
+        }
+
         async function createProcess() {
             const titleInput = document.getElementById('new-process-title');
             const descInput = document.getElementById('new-process-desc');
-            const isRecurringCheck = document.getElementById('process-is-recurring');
-            const dayInput = document.getElementById('process-recurring-day');
-            const notifyInput = document.getElementById('process-notify-days');
+            const isRecurring = document.getElementById('process-is-recurring').checked;
 
-            if (!titleInput.value) {
-                showToast("O título do processo é obrigatório", "warning");
-                return;
-            }
+            if (!titleInput.value) { showToast("O título é obrigatório", "warning"); return; }
             
-            const { error } = await supabaseClient.from('processes').insert({ 
+            const { data: proc, error } = await supabaseClient.from('processes').insert({ 
                 title: titleInput.value.replace(/<[^>]*>?/gm, '').trim(), 
                 description: descInput.value, 
                 created_by: currentUserProfile.id,
-                is_recurring: isRecurringCheck.checked,
-                recurring_day: isRecurringCheck.checked ? parseInt(dayInput.value) : null,
-                notify_before_days: isRecurringCheck.checked ? parseInt(notifyInput.value) : 0
-            });
+                is_recurring: isRecurring
+            }).select().single();
 
-            if (!error) {
-                showToast("Processo criado com sucesso!", "success");
-                document.getElementById('new-process-modal').classList.remove('visible');
-                loadManageProcessesPage();
-            } else {
-                showToast("Erro ao criar: " + error.message, "danger");
+            if (!error && isRecurring && localSchedules.length > 0) {
+                const scheds = localSchedules.map(s => ({ process_id: proc.id, scheduled_date: s.date, notify_days_before: s.notify }));
+                await supabaseClient.from('process_schedules').insert(scheds);
             }
+
+            document.getElementById('new-process-modal').classList.remove('visible');
+            loadManageProcessesPage();
+            showToast("Processo criado com sucesso!", "success");
         }
 
         async function openAddStepModal(processId, suggestedOrder = null) {
@@ -8123,22 +8155,21 @@ async function exitMonitorMode(processId) {
             );
         }
 		
-async function openEditProcessModal(id, title, desc, isRecurring = false, day = 1, notify = 0) {
+async function openEditProcessModal(id, title, desc, isRecurring = false) {
     const modal = document.getElementById('new-process-modal');
-    const titleInput = document.getElementById('new-process-title');
-    const descInput = document.getElementById('new-process-desc');
     const isRecurringCheck = document.getElementById('process-is-recurring');
-    const dayInput = document.getElementById('process-recurring-day');
-    const notifyInput = document.getElementById('process-notify-days');
     const saveBtn = modal.querySelector('.btn-danger');
 
-    titleInput.value = title.replace(/<[^>]*>?/gm, '').trim();
-    descInput.value = desc;
+    document.getElementById('new-process-title').value = title.replace(/<[^>]*>?/gm, '').trim();
+    document.getElementById('new-process-desc').value = desc;
     isRecurringCheck.checked = isRecurring;
-    dayInput.value = day || 1;
-    notifyInput.value = notify || 0;
-    document.getElementById('recurrence-fields').style.display = isRecurring ? 'grid' : 'none';
+    document.getElementById('recurrence-calendar-area').style.display = isRecurring ? 'block' : 'none';
     
+    // Busca os agendamentos reais do banco
+    const { data: scheds } = await supabaseClient.from('process_schedules').select('*').eq('process_id', id);
+    localSchedules = (scheds || []).map(s => ({ date: s.scheduled_date, notify: s.notify_days_before }));
+    renderLocalSchedules();
+
     modal.querySelector('h3').textContent = 'Configurar Processo';
     saveBtn.textContent = 'Salvar Alterações';
     
@@ -8146,31 +8177,31 @@ async function openEditProcessModal(id, title, desc, isRecurring = false, day = 
         e.preventDefault();
         saveBtn.disabled = true;
         saveBtn.textContent = "Salvando...";
+        
+        const titleVal = document.getElementById('new-process-title').value;
 
-        const { error } = await supabaseClient.from('processes')
-            .update({ 
-                title: titleInput.value.replace(/<[^>]*>?/gm, '').trim(), 
-                description: descInput.value,
-                is_recurring: isRecurringCheck.checked,
-                recurring_day: isRecurringCheck.checked ? parseInt(dayInput.value) : null,
-                notify_before_days: isRecurringCheck.checked ? parseInt(notifyInput.value) : 0
-            })
-            .eq('id', id);
+        await supabaseClient.from('processes').update({ 
+            title: titleVal, 
+            description: document.getElementById('new-process-desc').value,
+            is_recurring: isRecurringCheck.checked
+        }).eq('id', id);
 
-        if(!error) {
-            showToast("Configurações atualizadas!", "success");
-            modal.classList.remove('visible');
-            loadManageProcessesPage();
-            if(currentlyOpenProcessId === id) selectProcess(id, titleInput.value);
-        } else {
-            showToast("Erro ao salvar: " + error.message, "danger");
+        // Sincroniza Agendamentos
+        await supabaseClient.from('process_schedules').delete().eq('process_id', id);
+        if (isRecurringCheck.checked && localSchedules.length > 0) {
+            const finalScheds = localSchedules.map(s => ({ process_id: id, scheduled_date: s.date, notify_days_before: s.notify }));
+            await supabaseClient.from('process_schedules').insert(finalScheds);
         }
+
+        showToast("Configurações salvas!", "success");
+        modal.classList.remove('visible');
+        loadManageProcessesPage();
+        if(currentlyOpenProcessId === id) selectProcess(id, titleVal);
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Salvar Alterações';
+        saveBtn.textContent = "Salvar Alterações";
     };
     modal.classList.add('visible');
-}		
-
+}
 async function openKBEditModal(id) {
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
             if (error || !data) return;
