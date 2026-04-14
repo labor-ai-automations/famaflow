@@ -4353,7 +4353,7 @@ return `
                 
                 modalTitle.textContent = 'Detalhes da Requisição';
 
-const translations = {
+                const translations = {
                     funcao: 'Função', quantidade: 'Quantidade de Vagas', motivo_contratacao: 'Motivo da Contratação',
                     substituicao_nome: 'Nome do Colaborador Substituído', substituicao_motivo: 'Motivo da Saída',
                     tipo_contrato: 'Tipo de Contrato', horario: 'Horário de Trabalho', escolaridade: 'Escolaridade Mínima',
@@ -4382,6 +4382,20 @@ const translations = {
                 };
 
                 let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
+                
+                // Exibe as notas de aprovação/reprovação primeiro, se existirem
+                if (request.approval_notes) {
+                    const noteColor = request.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)';
+                    detailsHTML += `
+                        <div style="background-color: var(--color-background); border-left: 4px solid ${noteColor}; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
+                            <h4 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem; color: ${noteColor};">
+                                <span class="material-icons">info</span> Observações da Gestão
+                            </h4>
+                            <p style="margin: 0; white-space: pre-wrap;">${request.approval_notes}</p>
+                        </div>
+                    `;
+                }
+
                 for (const key in request.data) {
                     if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
                         const label = translations[key] || key.replace(/_/g, ' ');
@@ -6502,11 +6516,50 @@ async function syncUserPermissions(userId) {
             }
         }
 
-        async function handleRequestAction(action, requestId) {
+        async function openApprovalModal(action, requestId) {
+            const modal = document.getElementById('notes-modal');
+            const title = document.getElementById('notes-modal-title');
+            const message = document.getElementById('notes-modal-message');
+            const confirmBtn = document.getElementById('btn-confirm-action-with-notes');
+
+            if (action === 'approve') {
+                title.textContent = 'Aprovar Requisição';
+                message.textContent = 'Adicione observações para o solicitante antes de confirmar a aprovação.';
+                confirmBtn.className = 'btn btn-success';
+                confirmBtn.textContent = 'Sim, Aprovar';
+            } else {
+                title.textContent = 'Reprovar Requisição';
+                message.textContent = 'É altamente recomendado informar o motivo da reprovação ao solicitante.';
+                confirmBtn.className = 'btn btn-danger';
+                confirmBtn.textContent = 'Sim, Reprovar';
+            }
+
+            // Limpa o campo de notas anterior
+            document.getElementById('action-notes').value = '';
+
+            // Armazena os dados da ação no botão para uso posterior
+            confirmBtn.dataset.action = action;
+            confirmBtn.dataset.requestId = requestId;
+            
+            // Adiciona o listener de clique dinamicamente
+            confirmBtn.onclick = submitRequestActionWithNotes;
+
+            modal.classList.add('visible');
+        }
+
+        function closeApprovalModal() {
+            document.getElementById('notes-modal').classList.remove('visible');
+        }
+        
+        async function submitRequestActionWithNotes() {
+            const btn = document.getElementById('btn-confirm-action-with-notes');
+            const action = btn.dataset.action;
+            const requestId = btn.dataset.requestId;
+            const notes = document.getElementById('action-notes').value.trim();
+
             const url = action === 'approve' ? N8N_APPROVE_REQUEST_URL : N8N_REJECT_REQUEST_URL;
             
-            const buttons = document.querySelectorAll(`[data-request-id='${requestId}'] button`);
-            buttons.forEach(btn => btn.disabled = true);
+            btn.disabled = true;
 
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
@@ -6518,17 +6571,22 @@ async function syncUserPermissions(userId) {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`
                     },
-                    body: JSON.stringify({ request_id: requestId })
+                    body: JSON.stringify({ 
+                        request_id: requestId,
+                        approval_notes: notes // Enviando a nova informação
+                    })
                 });
 
                 if (!response.ok) throw new Error(`Falha ao ${action === 'approve' ? 'aprovar' : 'reprovar'} a requisição.`);
 
                 showToast(`Requisição ${action === 'approve' ? 'aprovada' : 'reprovada'} com sucesso!`, 'success');
+                closeApprovalModal();
                 loadRequestManagementPage();
             } catch (error) {
                 console.error("Erro na ação da requisição:", error);
                 showToast(error.message, "danger");
-                buttons.forEach(btn => btn.disabled = false);
+            } finally {
+                btn.disabled = false;
             }
         }
 
@@ -6574,8 +6632,8 @@ async function syncUserPermissions(userId) {
                     <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
                     ${req.status === 'pending' ? `
                         <span data-request-id="${req.id}">
-                            <button class="btn btn-icon" title="Aprovar" onclick="handleRequestAction('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
-                            <button class="btn btn-icon" title="Reprovar" onclick="handleRequestAction('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
+                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
+                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
                         </span>
                     ` : ''}
                 `;
@@ -8358,6 +8416,27 @@ async function submitKBContent() {
     }
 }
     </script>
+
+<!-- NOTES MODAL (FOR APPROVAL/REJECTION) -->
+    <div id="notes-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 id="notes-modal-title">Adicionar Observações</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="closeApprovalModal()">close</span>
+            </div>
+            <div class="modal-body">
+                <p id="notes-modal-message" style="color: var(--color-text-secondary); margin-top: 0;">Informe uma observação para esta decisão.</p>
+                <div class="form-group">
+                    <label for="action-notes">Observações</label>
+                    <textarea id="action-notes" class="input-field" rows="4" placeholder="Ex: Serviço será realizado amanhã no primeiro horário..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeApprovalModal()">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirm-action-with-notes">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- QUICK ADD SIDE PANEL (PROCESSOS) -->
     <div id="process-quick-panel">
