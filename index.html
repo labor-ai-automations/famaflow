@@ -1540,27 +1540,23 @@ body.fullscreen-flow .flowchart-monitor-bar {
                     <label class="custom-checkbox" style="margin-bottom: 1rem;">
                         <input type="checkbox" id="process-is-recurring" onchange="document.getElementById('recurrence-calendar-area').style.display = this.checked ? 'block' : 'none'">
                         <span class="checkbox-box"><span class="material-icons">check</span></span>
-                        <strong>Agendar no Calendário (Recorrência)</strong>
+                        <strong>Agendar no Calendário (Início e Alertas)</strong>
                     </label>
                     
                     <div id="recurrence-calendar-area" style="display: none; margin-top: 1rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;">
-                            <div class="form-group" style="margin:0;">
-                                <label style="font-size: 0.75rem;">Data da Execução</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--color-border);">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; font-weight: 700;">Nova Data de Execução (Início)</label>
                                 <input type="date" id="sched-date-input" class="input-field">
                             </div>
-                            <div class="form-group" style="margin:0;">
-                                <label style="font-size: 0.75rem;">Avisar (dias antes)</label>
-                                <input type="number" id="sched-notify-input" class="input-field" value="3" min="0">
-                            </div>
-                            <button type="button" class="btn btn-secondary" onclick="addDateToLocalSchedule()" style="height: 42px;">
-                                <span class="material-icons" style="margin:0;">add</span>
+                            <button type="button" class="btn btn-danger" onclick="addExecutionDate()" style="height: 42px; padding: 0 1rem;">
+                                <span class="material-icons">add_circle</span> Início
                             </button>
                         </div>
                         
-                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Próximas Execuções Programadas:</label>
-                        <div id="local-schedules-list" style="max-height: 150px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; padding: 0.5rem;">
-                            <div style="text-align:center; color:var(--color-text-secondary); font-size:0.8rem; padding: 1rem;">Nenhuma data agendada.</div>
+                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Datas de Início e Cronograma de Alertas:</label>
+                        <div id="local-schedules-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 300px; overflow-y: auto;">
+                            <!-- Lista Dinâmica com Sub-Datas -->
                         </div>
                     </div>
                 </div>
@@ -3272,31 +3268,66 @@ function openNewProcessModal() {
     modal.classList.add('visible');
 }
 
-        let localSchedules = [];
+        let localSchedules = []; // Estrutura: [{ date: '2026-03-20', alerts: ['2026-03-17', '2026-03-18'] }]
 
         function renderLocalSchedules() {
             const container = document.getElementById('local-schedules-list');
             if (!container) return;
             localSchedules.sort((a, b) => new Date(a.date) - new Date(b.date));
-            container.innerHTML = localSchedules.length > 0 ? localSchedules.map((s, idx) => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
-                    <span>📅 <strong>${new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}</strong> (Aviso: ${s.notify}d)</span>
-                    <span class="material-icons" style="color: var(--color-danger); cursor: pointer; font-size: 18px;" onclick="removeDateFromLocalSchedule(${idx})">delete</span>
+            container.innerHTML = localSchedules.length > 0 ? localSchedules.map((s, sIdx) => `
+                <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.9rem; font-weight: 800; color: var(--color-brand-primary);">🚀 INÍCIO: ${new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                        <span class="material-icons" style="color: var(--color-danger); cursor: pointer; font-size: 20px;" onclick="removeExecutionDate(${sIdx})">delete</span>
+                    </div>
+                    <div style="background: var(--color-background); padding: 0.5rem; border-radius: 6px;">
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.5rem;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.65rem; font-weight: 700;">Data de Alerta</label>
+                                <input type="date" id="alert-input-${sIdx}" class="input-field" style="padding: 0.3rem; font-size: 0.8rem; height: 32px;">
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addAlertDate(${sIdx})" style="height: 32px; padding: 0 0.5rem;">
+                                <span class="material-icons" style="font-size: 18px;">notifications_active</span>
+                            </button>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="alerts-list-${sIdx}">
+                            ${s.alerts.length > 0 ? s.alerts.sort().map((a, aIdx) => `
+                                <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); display: flex; align-items: center; gap: 4px; padding: 2px 8px;">
+                                    ${new Date(a + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                    <span class="material-icons" style="font-size: 14px; cursor: pointer;" onclick="removeAlertDate(${sIdx}, ${aIdx})">close</span>
+                                </span>
+                            `).join('') : '<small style="color: var(--color-text-secondary); font-size: 0.7rem;">Nenhum alerta configurado.</small>'}
+                        </div>
+                    </div>
                 </div>
-            `).join('') : '<div style="text-align:center; color:var(--color-text-secondary); font-size:0.8rem; padding: 1rem;">Nenhuma data agendada.</div>';
+            `).join('') : '<div class="empty-state">Nenhuma data de início agendada.</div>';
         }
 
-        function addDateToLocalSchedule() {
+        function addExecutionDate() {
             const date = document.getElementById('sched-date-input').value;
-            const notify = document.getElementById('sched-notify-input').value;
-            if (!date) { showToast("Selecione uma data", "warning"); return; }
-            localSchedules.push({ date, notify: parseInt(notify) });
+            if (!date) { showToast("Selecione a data de início", "warning"); return; }
+            if (localSchedules.some(s => s.date === date)) { showToast("Esta data já existe", "info"); return; }
+            localSchedules.push({ date, alerts: [] });
             renderLocalSchedules();
             document.getElementById('sched-date-input').value = '';
         }
 
-        function removeDateFromLocalSchedule(idx) {
+        function removeExecutionDate(idx) {
             localSchedules.splice(idx, 1);
+            renderLocalSchedules();
+        }
+
+        function addAlertDate(sIdx) {
+            const input = document.getElementById(`alert-input-${sIdx}`);
+            const date = input.value;
+            if (!date) return;
+            if (localSchedules[sIdx].alerts.includes(date)) return;
+            localSchedules[sIdx].alerts.push(date);
+            renderLocalSchedules();
+        }
+
+        function removeAlertDate(sIdx, aIdx) {
+            localSchedules[sIdx].alerts.splice(aIdx, 1);
             renderLocalSchedules();
         }
 
@@ -3315,13 +3346,17 @@ function openNewProcessModal() {
             }).select().single();
 
             if (!error && isRecurring && localSchedules.length > 0) {
-                const scheds = localSchedules.map(s => ({ process_id: proc.id, scheduled_date: s.date, notify_days_before: s.notify }));
+                const scheds = localSchedules.map(s => ({ 
+                    process_id: proc.id, 
+                    scheduled_date: s.date, 
+                    notification_dates: s.alerts 
+                }));
                 await supabaseClient.from('process_schedules').insert(scheds);
             }
 
             document.getElementById('new-process-modal').classList.remove('visible');
             loadManageProcessesPage();
-            showToast("Processo criado com sucesso!", "success");
+            showToast("Processo e Alertas salvos!", "success");
         }
 
         async function openAddStepModal(processId, suggestedOrder = null) {
@@ -8156,52 +8191,54 @@ async function exitMonitorMode(processId) {
         }
 		
 async function openEditProcessModal(id, title, desc, isRecurring = false) {
-    const modal = document.getElementById('new-process-modal');
-    const isRecurringCheck = document.getElementById('process-is-recurring');
-    const saveBtn = modal.querySelector('.btn-danger');
+            const modal = document.getElementById('new-process-modal');
+            const isRecurringCheck = document.getElementById('process-is-recurring');
+            const saveBtn = modal.querySelector('.btn-danger');
 
-    document.getElementById('new-process-title').value = title.replace(/<[^>]*>?/gm, '').trim();
-    document.getElementById('new-process-desc').value = desc;
-    isRecurringCheck.checked = isRecurring;
-    document.getElementById('recurrence-calendar-area').style.display = isRecurring ? 'block' : 'none';
-    
-    // Busca os agendamentos reais do banco
-    const { data: scheds } = await supabaseClient.from('process_schedules').select('*').eq('process_id', id);
-    localSchedules = (scheds || []).map(s => ({ date: s.scheduled_date, notify: s.notify_days_before }));
-    renderLocalSchedules();
+            document.getElementById('new-process-title').value = title.replace(/<[^>]*>?/gm, '').trim();
+            document.getElementById('new-process-desc').value = desc;
+            isRecurringCheck.checked = isRecurring;
+            document.getElementById('recurrence-calendar-area').style.display = isRecurring ? 'block' : 'none';
+            
+            const { data: scheds } = await supabaseClient.from('process_schedules').select('*').eq('process_id', id);
+            localSchedules = (scheds || []).map(s => ({ 
+                date: s.scheduled_date, 
+                alerts: Array.isArray(s.notification_dates) ? s.notification_dates : [] 
+            }));
+            renderLocalSchedules();
 
-    modal.querySelector('h3').textContent = 'Configurar Processo';
-    saveBtn.textContent = 'Salvar Alterações';
-    
-    saveBtn.onclick = async (e) => {
-        e.preventDefault();
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Salvando...";
-        
-        const titleVal = document.getElementById('new-process-title').value;
+            modal.querySelector('h3').textContent = 'Configurar Processo e Alertas';
+            saveBtn.textContent = 'Salvar Alterações';
+            
+            saveBtn.onclick = async (e) => {
+                e.preventDefault();
+                saveBtn.disabled = true;
+                const titleVal = document.getElementById('new-process-title').value;
 
-        await supabaseClient.from('processes').update({ 
-            title: titleVal, 
-            description: document.getElementById('new-process-desc').value,
-            is_recurring: isRecurringCheck.checked
-        }).eq('id', id);
+                await supabaseClient.from('processes').update({ 
+                    title: titleVal, 
+                    description: document.getElementById('new-process-desc').value,
+                    is_recurring: isRecurringCheck.checked
+                }).eq('id', id);
 
-        // Sincroniza Agendamentos
-        await supabaseClient.from('process_schedules').delete().eq('process_id', id);
-        if (isRecurringCheck.checked && localSchedules.length > 0) {
-            const finalScheds = localSchedules.map(s => ({ process_id: id, scheduled_date: s.date, notify_days_before: s.notify }));
-            await supabaseClient.from('process_schedules').insert(finalScheds);
+                await supabaseClient.from('process_schedules').delete().eq('process_id', id);
+                if (isRecurringCheck.checked && localSchedules.length > 0) {
+                    const finalScheds = localSchedules.map(s => ({ 
+                        process_id: id, 
+                        scheduled_date: s.date, 
+                        notification_dates: s.alerts 
+                    }));
+                    await supabaseClient.from('process_schedules').insert(finalScheds);
+                }
+
+                showToast("Processo e Agenda de Alertas atualizados!", "success");
+                modal.classList.remove('visible');
+                loadManageProcessesPage();
+                if(currentlyOpenProcessId === id) selectProcess(id, titleVal);
+                saveBtn.disabled = false;
+            };
+            modal.classList.add('visible');
         }
-
-        showToast("Configurações salvas!", "success");
-        modal.classList.remove('visible');
-        loadManageProcessesPage();
-        if(currentlyOpenProcessId === id) selectProcess(id, titleVal);
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Salvar Alterações";
-    };
-    modal.classList.add('visible');
-}
 async function openKBEditModal(id) {
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
             if (error || !data) return;
