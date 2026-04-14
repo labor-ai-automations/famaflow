@@ -1681,14 +1681,13 @@ body.fullscreen-flow .flowchart-monitor-bar {
                         <li><a href="#" class="nav-link" data-page="dashboard-page"><span class="material-icons">dashboard</span> Dashboard</a></li>
                         <li><a href="#" class="nav-link" data-page="messages-page"><span class="material-icons">inbox</span> Mensagens</a></li>
                         <li><a href="#" class="nav-link" data-page="requests-page"><span class="material-icons">description</span> Requisições</a></li>
-                                                <li><a href="#" class="nav-link" data-page="my-routines-page"><span class="material-icons">checklist</span> Minhas Rotinas Pontuais</a></li>
-                        <li><a href="#" class="nav-link" data-page="my-processes-page"><span class="material-icons">hub</span> Meus Processos</a></li>
+                        <li><a href="#" class="nav-link" data-page="my-routines-page"><span class="material-icons">checklist</span> Minhas Rotinas</a></li>
                         <li><a href="#" class="nav-link" data-page="channels-page"><span class="material-icons">tag</span> Canais</a></li>
                         <li><a href="#" class="nav-link" data-page="team-page"><span class="material-icons">people</span> Equipe</a></li>
                         <li><a href="#" class="nav-link" data-page="organograma-page"><span class="material-icons">account_tree</span> Organograma</a></li>
-<li><a href="#" class="nav-link" data-page="rankings-page"><span class="material-icons">leaderboard</span> Performance e Rankings</a></li>
+                        <li><a href="#" class="nav-link" data-page="rankings-page"><span class="material-icons">leaderboard</span> Performance e Rankings</a></li>
                         <li><a href="#" class="nav-link" data-page="mural-page"><span class="material-icons">campaign</span> Mural Cultural</a></li>
-<li><a href="#" class="nav-link" data-page="kb-page"><span class="material-icons">school</span> Base de Conhecimento</a></li>
+                        <li><a href="#" class="nav-link" data-page="kb-page"><span class="material-icons">school</span> Base de Conhecimento</a></li>
                     </ul>
                     <!-- SEÇÃO DE ADMINISTRAÇÃO - CONTROLADA EXCLUSIVAMENTE PELO JS -->
                     <div id="admin-section" style="display: none;">
@@ -2192,60 +2191,50 @@ async function showApp() {
 
     displayUserBriefing(); 
 
-    // Busca permissões reais do banco para as exceções
     const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
     currentUserProfile.permissions = permissionsError ? [] : permissions.map(p => p.permission_key);
 
-    // 1. DEFINE ACESSO MESTRE (Privilégios Administrativos Inatos)
     const isRH = currentUserProfile.department === 'Recursos Humanos' || currentUserProfile.department === 'Departamento Pessoal';
     const isAdmin = currentUserProfile.role === 'Admin';
     const hasMasterAccess = isAdmin || isRH;
 
-    // 2. Atalhos para permissões administrativas (Inatos ou por Exceção)
-    const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || hasMasterAccess;
-    const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || hasMasterAccess;
-    const canManageHR = currentUserProfile.permissions.includes('manage_hr') || hasMasterAccess;
-    const canManageUsers = currentUserProfile.permissions.includes('manage_users') || hasMasterAccess;
-
-    // 3. Filtra a Sidebar Principal (Menu Superior)
-    // Se não for Master, escondemos quase tudo, deixando apenas o essencial
+    // 1. Filtra a Sidebar Principal
     document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
         const page = link.getAttribute('data-page');
-        const basicPages = ['requests-page', 'kb-page', 'profile-page'];
+        const basicPages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page', 'dashboard-page', 'messages-page', 'channels-page', 'team-page', 'organograma-page', 'rankings-page', 'mural-page'];
         
         if (hasMasterAccess) {
             link.parentElement.style.display = 'block';
         } else {
-            // Gerentes/Supervisores comuns vêem apenas estes
-            link.parentElement.style.display = basicPages.includes(page) ? 'block' : 'none';
+            // Gerentes/Supervisores comuns vêem apenas estes 4 essenciais
+            const supervisorPages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page'];
+            link.parentElement.style.display = supervisorPages.includes(page) ? 'block' : 'none';
         }
     });
 
-    // 4. Monta e Controla a Seção de ADMINISTRAÇÃO
+    // 2. Monta e Controla a Seção de ADMINISTRAÇÃO
     const adminSection = document.getElementById('admin-section');
     const adminMenuUl = document.getElementById('admin-menu-list');
     
     if (adminSection && adminMenuUl) {
         let adminMenuHTML = '';
-
-        if (canManageUsers) {
+        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_users')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
         }
-        if (canManageHR) {
+        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_hr')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
         }
-        if (canManageTravel) {
+        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_travel')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
         }
-        if (canManageRoutines) {
+        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_routines')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
         }
 
         adminMenuUl.innerHTML = adminMenuHTML;
 
-        // Reatribui eventos para os novos links injetados
         adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -2253,11 +2242,9 @@ async function showApp() {
             });
         });
 
-        // O segredo: Se a string estiver vazia, o título "ADMINISTRAÇÃO" também some
         adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
     }
 
-    // 5. Atualiza Perfil e Avatar no rodapé da Sidebar
     const profileShortcut = document.getElementById('profile-shortcut');
     const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
     let avatarHTML = '';
@@ -2269,7 +2256,6 @@ async function showApp() {
     profileShortcut.innerHTML = `${avatarHTML}<div><div class="user-name">${currentUserProfile.full_name}</div><div class="user-role">${currentUserProfile.role || 'Colaborador'}</div></div>`;
     profileShortcut.onclick = () => showPage('profile-page');
 
-    // 6. Redirecionamento Inicial conforme permissão
     if (hasMasterAccess) {
         showPage('dashboard-page');
     } else {
@@ -2282,7 +2268,7 @@ async function showApp() {
 function showPage(pageId, targetUserId = null) { 
             const appContainer = document.getElementById('app-container'); 
             if (!appContainer) return;
-            
+
             appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
             const targetPage = appContainer.querySelector(`#${pageId}`); 
             if (targetPage) targetPage.classList.add('active'); 
@@ -2318,7 +2304,7 @@ function showPage(pageId, targetUserId = null) {
                 fabMessage.classList.remove('hidden');
             }
 
-            // --- CARREGAMENTO AUTOMÁTICO DE DADOS ---
+            // --- CARREGAMENTO DE DADOS UNIFICADO ---
             if (pageId === 'messages-page') loadMessages();
             if (pageId === 'requests-page') loadRequests();
             if (pageId === 'team-page') {
@@ -2336,10 +2322,7 @@ function showPage(pageId, targetUserId = null) {
             if (pageId === 'manage-routines-page') loadManageRoutinesPage();
             if (pageId === 'organograma-page') loadOrganogramaPage();
             if (pageId === 'manage-processes-page') loadManageProcessesPage();
-            if (pageId === 'my-processes-page') loadMyProcessesPage();
             if (pageId === 'kb-page') loadKBPage();
-            
-            // ADICIONE ESTA LINHA ABAIXO:
             if (pageId === 'users-page') loadUsersForAdmin(); 
         }
 
@@ -6896,7 +6879,7 @@ const numParticipants = updatedData.num_participantes || 1;
             const page = document.getElementById('my-routines-page');
             page.innerHTML = `
                 <div class="page-header">
-                    <div><h1>Minhas Rotinas Pontuais</h1><p>Organize e acompanhe suas tarefas com datas específicas.</p></div>
+                    <div><h1>Minhas Rotinas</h1><p>Central de tarefas e execuções de processos por data.</p></div>
                 </div>
                 <div class="grid" style="grid-template-columns: 350px 1fr; gap: 2rem; align-items: flex-start;">
                     <div class="card" id="calendar-container" style="padding: 1rem;"></div>
@@ -6910,6 +6893,65 @@ const numParticipants = updatedData.num_participantes || 1;
             routineCurrentDate = new Date();
             await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
             selectDate(new Date().toISOString().split('T')[0]);
+        }
+
+        async function fetchAndRenderTasks(date) {
+            const tasksContainer = document.getElementById('tasks-list-container');
+            const titleElement = document.getElementById('tasks-list-title');
+            if (!tasksContainer || !titleElement) return;
+            
+            tasksContainer.innerHTML = `<div class="empty-state"><span class="material-icons" style="animation: spin 2s linear infinite;">sync</span><br>Buscando suas tarefas...</div>`;
+
+            const dateObj = new Date(date + 'T12:00:00');
+            const formattedDate = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            titleElement.textContent = `Tarefas para ${formattedDate}`;
+
+            // Busca as tarefas unificadas do novo motor de calendário
+            const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
+
+            if (error) {
+                console.error('Erro ao buscar tarefas:', error);
+                tasksContainer.innerHTML = `<div class="empty-state" style="color: var(--color-danger)">Falha ao carregar tarefas.</div>`;
+                return;
+            }
+
+            if (!tasks || tasks.length === 0) {
+                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa de processo agendada para hoje.</div>`;
+                return;
+            }
+
+            // Agrupa por Processo para organizar a visualização
+            const tasksByProcess = tasks.reduce((acc, task) => {
+                if (!acc[task.process_title]) acc[task.process_title] = [];
+                acc[task.process_title].push(task);
+                return acc;
+            }, {});
+
+            tasksContainer.innerHTML = Object.keys(tasksByProcess).map(processTitle => {
+                const processTasks = tasksByProcess[processTitle];
+                const tasksHTML = processTasks.map(task => `
+                    <div class="task-item" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.75rem 0;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="font-size: 16px; color: var(--color-brand-primary);">play_circle</span>
+                                <strong style="font-size: 0.95rem;">${task.task_title}</strong>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 24px;">${task.task_description || 'Sem instruções adicionais.'}</div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-info); margin-left: 24px; margin-top: 4px;">👤 ${task.instance_name}</div>
+                        </div>
+                        <button class="btn btn-success" onclick="completeProcessTask('${task.instance_id}', this)" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                             <span class="material-icons" style="font-size: 16px;">check_circle</span> Concluir
+                        </button>
+                    </div>
+                `).join('');
+
+                return `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--color-brand-primary); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">${processTitle}</h4>
+                        ${tasksHTML}
+                    </div>
+                `;
+            }).join('');
         }
 
         async function renderCalendar(year, month) {
