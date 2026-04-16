@@ -1569,7 +1569,6 @@ body.fullscreen-flow .flowchart-monitor-bar {
             </div>
         </div>
     </div>
-
     <!-- NOVO: MODAL DE ADICIONAR ETAPA -->
     <div id="add-step-modal" class="modal-overlay">
         <div class="modal-content">
@@ -3251,29 +3250,28 @@ async function showStepHistory(stepId) {
         }
 
 function openNewProcessModal() {
-    const modal = document.getElementById('new-process-modal');
-    const titleInput = document.getElementById('new-process-title');
-    const descInput = document.getElementById('new-process-desc');
-    const saveBtn = modal.querySelector('.btn-danger');
-    
-    // Limpa os campos
-    titleInput.value = '';
-    descInput.value = '';
-    
-    // Seta os textos de CRIAR
-    modal.querySelector('h3').textContent = 'Novo Processo';
-    saveBtn.textContent = 'Criar Processo';
-    
-    // Vincula a função de CRIAÇÃO e garante reset do estado
-    saveBtn.onclick = (e) => { 
-        e.preventDefault(); 
-        createProcess(); 
-    };
-    
-    modal.classList.add('visible');
-}
-
-let localSchedules = []; // Estrutura: [{ date: '2026-03-20', alerts: ['2026-03-17', '2026-03-18'] }]
+            const modal = document.getElementById('new-process-modal');
+            const titleInput = document.getElementById('new-process-title');
+            const descInput = document.getElementById('new-process-desc');
+            // CORREÇÃO: Busca o botão de salvar especificamente pelo ID, evitando sequestrar o botão de adicionar data
+            const saveBtn = document.getElementById('btn-save-process-master');
+            
+            // Limpa os campos
+            titleInput.value = '';
+            descInput.value = '';
+            
+            // Seta os textos de CRIAR
+            modal.querySelector('h3').textContent = 'Novo Processo';
+            saveBtn.textContent = 'Criar Processo';
+            
+            // Vincula a função de CRIAÇÃO e garante reset do estado
+            saveBtn.onclick = (e) => { 
+                e.preventDefault(); 
+                createProcess(); 
+            };
+            
+            modal.classList.add('visible');
+        }
 
         function renderLocalSchedules() {
             const container = document.getElementById('local-schedules-list');
@@ -8413,7 +8411,8 @@ async function exitMonitorMode(processId) {
 async function openEditProcessModal(id, title, desc, isRecurring = false) {
             const modal = document.getElementById('new-process-modal');
             const isRecurringCheck = document.getElementById('process-is-recurring');
-            const saveBtn = modal.querySelector('.btn-danger');
+            // CORREÇÃO: Busca o botão de salvar especificamente pelo ID
+            const saveBtn = document.getElementById('btn-save-process-master');
 
             document.getElementById('new-process-title').value = title.replace(/<[^>]*>?/gm, '').trim();
             document.getElementById('new-process-desc').value = desc;
