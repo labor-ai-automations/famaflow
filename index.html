@@ -4336,16 +4336,18 @@ function initOrgZoomPan() {
             modal.classList.add('visible');
 
             try {
-                const { data: request, error } = await supabaseClient
-                    .from('requests')
-                    .select('*, requester:profiles(full_name)')
-                    .eq('id', requestId)
-                    .single();
-
-                if (error || !request) {
-                    throw new Error('Não foi possível carregar os detalhes da requisição.');
-                }
+                // Busca a requisição E o seu histórico em paralelo
+                const [requestRes, historyRes] = await Promise.all([
+                    supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single(),
+                    supabaseClient.from('request_history').select('*, user:changed_by(profiles(full_name))').eq('request_id', requestId).order('created_at', { ascending: true })
+                ]);
                 
+                const { data: request, error: requestError } = requestRes;
+                const { data: history, error: historyError } = historyRes;
+
+                if (requestError || !request) throw new Error('Não foi possível carregar os detalhes da requisição.');
+                if (historyError) console.warn("Não foi possível carregar o histórico da requisição:", historyError);
+
                 if (request.type === 'travel') {
                     await openTravelRequestDetailsModal(requestId);
                     return; 
@@ -4383,32 +4385,6 @@ function initOrgZoomPan() {
 
                 let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
                 
-                // Bloco de status da manutenção (se aplicável)
-                if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
-                    const scheduledDate = new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short'});
-                    detailsHTML += `
-                        <div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
-                            <h4 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem; color: var(--color-info);">
-                                <span class="material-icons">event</span> Agendamento
-                            </h4>
-                            <p style="margin: 0;"><strong>Data Prevista:</strong> ${scheduledDate}</p>
-                            ${request.approval_notes ? `<p style="margin: 0.5rem 0 0 0; white-space: pre-wrap;"><strong>Observações:</strong> ${request.approval_notes}</p>` : ''}
-                        </div>
-                    `;
-                } 
-                // Bloco de notas para outras requisições
-                else if (request.approval_notes) {
-                    const noteColor = request.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)';
-                    detailsHTML += `
-                        <div style="background-color: var(--color-background); border-left: 4px solid ${noteColor}; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px;">
-                            <h4 style="margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem; color: ${noteColor};">
-                                <span class="material-icons">info</span> Observações da Gestão
-                            </h4>
-                            <p style="margin: 0; white-space: pre-wrap;">${request.approval_notes}</p>
-                        </div>
-                    `;
-                }
-
                 for (const key in request.data) {
                     if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
                         const label = translations[key] || key.replace(/_/g, ' ');
@@ -4422,6 +4398,39 @@ function initOrgZoomPan() {
                     }
                 }
                 detailsHTML += `</div>`;
+                
+                // --- NOVA SEÇÃO DE HISTÓRICO ---
+                if (history && history.length > 0) {
+                    const statusIcons = { pending: 'hourglass_top', planned: 'event', executed: 'check_circle', approved: 'thumb_up', rejected: 'thumb_down' };
+                    const historyItemsHTML = history.map(item => `
+                        <div class="history-item">
+                            <div class="icon-wrapper">
+                                <span class="material-icons">${statusIcons[item.status] || 'info'}</span>
+                            </div>
+                            <div class="info-wrapper">
+                                <div class="action-text">
+                                    Status alterado para <strong>${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</strong>
+                                    por ${item.user?.profiles[0]?.full_name || 'Sistema'}
+                                </div>
+                                <div class="timestamp">${new Date(item.created_at).toLocaleString('pt-BR')}</div>
+                                ${item.notes ? `<p style="font-size:0.85rem; margin: 4px 0 0; padding: 8px; background:var(--color-background); border-radius:6px;">${item.notes}</p>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    detailsHTML += `
+                        <div class="history-card">
+                            <details class="history-details" open>
+                                <summary class="history-summary">
+                                    <span class="material-icons">timeline</span> Linha do Tempo da Requisição
+                                </summary>
+                                <div class="history-list">
+                                    ${historyItemsHTML}
+                                </div>
+                            </details>
+                        </div>
+                    `;
+                }
 
                 modalBody.innerHTML = detailsHTML;
                 modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
@@ -6635,7 +6644,6 @@ async function syncUserPermissions(userId) {
                 return;
             }
 
-            // Combina data e hora em um formato ISO 8601 (TIMESTAMPTZ)
             const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
             btn.disabled = true;
@@ -6654,13 +6662,15 @@ async function syncUserPermissions(userId) {
                 });
 
                 if (!response.ok) throw new Error('Falha ao planejar manutenção.');
+                
                 showToast('Manutenção planejada com sucesso!', 'success');
                 closeMaintenancePlanningModal();
-                loadRequestManagementPage();
             } catch (error) {
                 showToast(error.message, 'danger');
             } finally {
                 btn.disabled = false;
+                // Garante que a tela sempre será atualizada, com sucesso ou erro.
+                loadRequestManagementPage();
             }
         }
 
@@ -6679,9 +6689,11 @@ async function syncUserPermissions(userId) {
                         });
                         if (!response.ok) throw new Error('Falha ao concluir manutenção.');
                         showToast('Manutenção marcada como executada!', 'success');
-                        loadRequestManagementPage();
                     } catch(e) {
                         showToast(e.message, 'danger');
+                    } finally {
+                        // Garante que a tela sempre será atualizada, com sucesso ou erro.
+                        loadRequestManagementPage();
                     }
                 }
             );
