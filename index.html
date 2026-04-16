@@ -6689,56 +6689,48 @@ async function syncUserPermissions(userId) {
                 
                 showToast('Manutenção planejada com sucesso!', 'success');
                 closeMaintenancePlanningModal();
+                
+                // CORREÇÃO DA CONDIÇÃO DE CORRIDA: Aguarda 1 segundo para o n8n finalizar o banco
+                setTimeout(() => {
+                    loadRequestManagementPage();
+                }, 1000);
+
             } catch (error) {
                 showToast(error.message, 'danger');
             } finally {
                 btn.disabled = false;
-                // Garante que a tela sempre será atualizada, com sucesso ou erro.
-                loadRequestManagementPage();
             }
         }
 
-        async function executeMaintenanceRequestHandler(requestId) {
-            // A função `showConfirmation` agora apenas aguarda uma decisão. A lógica principal fica aqui fora.
-            const confirmAction = () => new Promise(resolve => {
-                showConfirmation(
-                    "Confirmar Execução?",
-                    "Esta ação marcará a requisição de manutenção como concluída. Deseja continuar?",
-                    () => resolve(true) // Resolve como true se o usuário confirmar
-                );
-                // Se o usuário cancelar (clicando fora ou no botão cancelar), o modal fecha, mas a promessa nunca resolve.
-                // Adicionamos um listener para o botão cancelar para resolver como false.
-                document.getElementById('confirmation-modal').querySelector('.btn-secondary').onclick = () => {
-                    closeConfirmationModal();
-                    resolve(false);
-                };
-            });
+        function executeMaintenanceRequestHandler(requestId) {
+            showConfirmation(
+                "Confirmar Execução?",
+                "Esta ação marcará a requisição de manutenção como concluída. Deseja continuar?",
+                async () => {
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (!session) throw new Error("Sessão inválida.");
+                        
+                        const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
+                            body: JSON.stringify({ request_id: requestId })
+                        });
+                        
+                        if (!response.ok) throw new Error('Falha ao concluir manutenção.');
+                        
+                        showToast('Manutenção marcada como executada!', 'success');
+                        
+                        // CORREÇÃO DA CONDIÇÃO DE CORRIDA: Aguarda 1 segundo para o n8n finalizar o banco
+                        setTimeout(() => {
+                            loadRequestManagementPage();
+                        }, 1000);
 
-            const userConfirmed = await confirmAction();
-
-            if (!userConfirmed) {
-                // Se o usuário cancelou, não fazemos nada.
-                return;
-            }
-
-            // Se o usuário confirmou, executamos a lógica de API e atualização.
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) throw new Error("Sessão inválida.");
-                const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
-                    body: JSON.stringify({ request_id: requestId })
-                });
-                if (!response.ok) throw new Error('Falha ao concluir manutenção.');
-                showToast('Manutenção marcada como executada!', 'success');
-            } catch(e) {
-                showToast(e.message, 'danger');
-            } finally {
-                // A atualização da tela agora ocorre de forma garantida no final da execução,
-                // fora do escopo do callback do modal de confirmação.
-                loadRequestManagementPage();
-            }
+                    } catch(e) {
+                        showToast(e.message, 'danger');
+                    }
+                }
+            );
         }
 
         async function loadRequestManagementPage() {
