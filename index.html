@@ -671,6 +671,8 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
         .comment-input-wrapper { display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; }
         .comment-input-wrapper input { flex-grow: 1; }
         #new-post-modal .modal-content { max-width: 600px; height: auto; max-height: 90vh; overflow-y: auto; }
+        #new-process-modal .modal-content { max-height: 90vh; display: flex; flex-direction: column; }
+        #new-process-modal .modal-body { overflow-y: auto; flex: 1; padding-bottom: 2rem; }
         .media-type-options { display: flex; gap: 1rem; margin-bottom: 1rem; }
         .media-option { flex: 1; border: 1px solid var(--color-border); border-radius: 8px; padding: 0.75rem; text-align: center; cursor: pointer; transition: all 0.2s; }
         .media-option:hover, .media-option.selected { background-color: var(--color-info-bg); border-color: var(--color-info); color: var(--color-info); font-weight: 600; }
