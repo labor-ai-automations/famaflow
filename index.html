@@ -4325,7 +4325,7 @@ function initOrgZoomPan() {
             }
         }
 
-        async function openRequestDetailsModal(requestId) {
+async function openRequestDetailsModal(requestId) {
             const modal = document.getElementById('request-modal');
             const modalTitle = document.getElementById('request-modal-title');
             const modalBody = document.getElementById('request-modal-body');
@@ -4336,10 +4336,10 @@ function initOrgZoomPan() {
             modal.classList.add('visible');
 
             try {
-                // Busca a requisição E o seu histórico em paralelo
+                // Busca a requisição E o seu histórico em paralelo com uma consulta de join simplificada e robusta
                 const [requestRes, historyRes] = await Promise.all([
                     supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single(),
-                    supabaseClient.from('request_history').select('*, user:changed_by(profiles(full_name))').eq('request_id', requestId).order('created_at', { ascending: true })
+                    supabaseClient.from('request_history').select('*, changed_by_profile:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
                 ]);
                 
                 const { data: request, error: requestError } = requestRes;
@@ -4382,14 +4382,16 @@ function initOrgZoomPan() {
                     descricao_problema: 'Descrição Objetiva do Problema', 
                     situacao_maquina: 'Situação Atual da Máquina'
                 };
-
-                let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
                 
+                let mainContentHTML = ''; // HTML para os dados principais
+                let historyHTML = '';    // HTML separado para o histórico
+
+                // Renderiza os dados originais da requisição (do objeto 'data')
                 for (const key in request.data) {
                     if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
                         const label = translations[key] || key.replace(/_/g, ' ');
                         const value = request.data[key];
-                        detailsHTML += `
+                        mainContentHTML += `
                             <div class="form-group" style="border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
                                 <label style="font-size:0.8rem; color: var(--color-text-secondary);">${label}</label>
                                 <p style="margin:0; font-weight: 500;">${value}</p>
@@ -4397,28 +4399,27 @@ function initOrgZoomPan() {
                         `;
                     }
                 }
-                detailsHTML += `</div>`;
                 
-                // --- NOVA SEÇÃO DE HISTÓRICO ---
+                // --- SEÇÃO DE HISTÓRICO ---
                 if (history && history.length > 0) {
                     const statusIcons = { pending: 'hourglass_top', planned: 'event', executed: 'check_circle', approved: 'thumb_up', rejected: 'thumb_down' };
                     const historyItemsHTML = history.map(item => `
                         <div class="history-item">
                             <div class="icon-wrapper">
-                                <span class="material-icons">${statusIcons[item.status] || 'info'}</span>
+                                <span class="material-icons" style="color: ${item.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-success)'};">${statusIcons[item.status] || 'info'}</span>
                             </div>
                             <div class="info-wrapper">
                                 <div class="action-text">
-                                    Status alterado para <strong>${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</strong>
-                                    por ${item.user?.profiles[0]?.full_name || 'Sistema'}
+                                    Status alterado para <strong>${(item.status || '').charAt(0).toUpperCase() + (item.status || '').slice(1)}</strong>
+                                    por ${item.changed_by_profile?.full_name || 'Sistema'}
                                 </div>
                                 <div class="timestamp">${new Date(item.created_at).toLocaleString('pt-BR')}</div>
-                                ${item.notes ? `<p style="font-size:0.85rem; margin: 4px 0 0; padding: 8px; background:var(--color-background); border-radius:6px;">${item.notes}</p>` : ''}
+                                ${item.notes ? `<p style="font-size:0.85rem; margin: 4px 0 0; padding: 8px; background:var(--color-background); border-radius:6px; border: 1px solid var(--color-border); white-space: pre-wrap;">${item.notes}</p>` : ''}
                             </div>
                         </div>
                     `).join('');
 
-                    detailsHTML += `
+                    historyHTML = `
                         <div class="history-card">
                             <details class="history-details" open>
                                 <summary class="history-summary">
@@ -4432,7 +4433,8 @@ function initOrgZoomPan() {
                     `;
                 }
 
-                modalBody.innerHTML = detailsHTML;
+                // Junta todas as partes para a renderização final
+                modalBody.innerHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">${mainContentHTML}</div> ${historyHTML}`;
                 modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
 
             } catch (error) {
