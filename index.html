@@ -4336,7 +4336,7 @@ async function openRequestDetailsModal(requestId) {
             modal.classList.add('visible');
 
             try {
-                // Busca a requisição E o seu histórico em paralelo com uma consulta de join simplificada e robusta
+                // Unifica as buscas em paralelo para máxima eficiência
                 const [requestRes, historyRes] = await Promise.all([
                     supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single(),
                     supabaseClient.from('request_history').select('*, changed_by_profile:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
@@ -4346,7 +4346,10 @@ async function openRequestDetailsModal(requestId) {
                 const { data: history, error: historyError } = historyRes;
 
                 if (requestError || !request) throw new Error('Não foi possível carregar os detalhes da requisição.');
-                if (historyError) console.warn("Não foi possível carregar o histórico da requisição:", historyError);
+                if (historyError) {
+                    // Não é um erro fatal, apenas registramos no console.
+                    console.warn("Aviso: Não foi possível carregar o histórico da requisição:", historyError.message);
+                }
 
                 if (request.type === 'travel') {
                     await openTravelRequestDetailsModal(requestId);
@@ -4382,16 +4385,15 @@ async function openRequestDetailsModal(requestId) {
                     descricao_problema: 'Descrição Objetiva do Problema', 
                     situacao_maquina: 'Situação Atual da Máquina'
                 };
-                
-                let mainContentHTML = ''; // HTML para os dados principais
-                let historyHTML = '';    // HTML separado para o histórico
 
+                let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
+                
                 // Renderiza os dados originais da requisição (do objeto 'data')
                 for (const key in request.data) {
                     if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
                         const label = translations[key] || key.replace(/_/g, ' ');
                         const value = request.data[key];
-                        mainContentHTML += `
+                        detailsHTML += `
                             <div class="form-group" style="border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
                                 <label style="font-size:0.8rem; color: var(--color-text-secondary);">${label}</label>
                                 <p style="margin:0; font-weight: 500;">${value}</p>
@@ -4399,6 +4401,7 @@ async function openRequestDetailsModal(requestId) {
                         `;
                     }
                 }
+                detailsHTML += `</div>`;
                 
                 // --- SEÇÃO DE HISTÓRICO ---
                 if (history && history.length > 0) {
@@ -4406,11 +4409,11 @@ async function openRequestDetailsModal(requestId) {
                     const historyItemsHTML = history.map(item => `
                         <div class="history-item">
                             <div class="icon-wrapper">
-                                <span class="material-icons" style="color: ${item.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-success)'};">${statusIcons[item.status] || 'info'}</span>
+                                <span class="material-icons" style="color: ${item.status === 'rejected' ? 'var(--color-danger)' : (item.status === 'planned' ? 'var(--color-info)' : 'var(--color-success)')};">${statusIcons[item.status] || 'info'}</span>
                             </div>
                             <div class="info-wrapper">
                                 <div class="action-text">
-                                    Status alterado para <strong>${(item.status || '').charAt(0).toUpperCase() + (item.status || '').slice(1)}</strong>
+                                    Status alterado para <strong>${(item.status || 'desconhecido').charAt(0).toUpperCase() + (item.status || 'desconhecido').slice(1)}</strong>
                                     por ${item.changed_by_profile?.full_name || 'Sistema'}
                                 </div>
                                 <div class="timestamp">${new Date(item.created_at).toLocaleString('pt-BR')}</div>
@@ -4419,7 +4422,7 @@ async function openRequestDetailsModal(requestId) {
                         </div>
                     `).join('');
 
-                    historyHTML = `
+                    detailsHTML += `
                         <div class="history-card">
                             <details class="history-details" open>
                                 <summary class="history-summary">
@@ -4433,8 +4436,7 @@ async function openRequestDetailsModal(requestId) {
                     `;
                 }
 
-                // Junta todas as partes para a renderização final
-                modalBody.innerHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">${mainContentHTML}</div> ${historyHTML}`;
+                modalBody.innerHTML = detailsHTML;
                 modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
 
             } catch (error) {
