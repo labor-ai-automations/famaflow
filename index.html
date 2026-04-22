@@ -97,6 +97,16 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
         }
         .doc-check-item { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
         .doc-check-item input { width: 16px; height: 16px; cursor: pointer; }
+
+        /* NOVOS: Badges para os cards do Fluxograma */
+        .doc-badge {
+            display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px;
+            border-radius: 4px; font-size: 0.65rem; font-weight: 800; color: white;
+            margin-left: 4px; text-transform: uppercase; line-height: 1;
+        }
+        .doc-badge.badge-excel { background-color: #1D6F42; }
+        .doc-badge.badge-word { background-color: #2B579A; }
+        .doc-badge .material-icons { font-size: 11px; }
         body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--color-background); color: var(--color-text-primary); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
         * { box-sizing: border-box; }
         .login-wrapper { display: flex; align-items: center; justify-content: center; height: 100vh; }
@@ -2939,7 +2949,7 @@ setTimeout(() => {
             if (world) world.style.transform = `translate(${flowPanX}px, ${flowPanY}px) scale(${flowZoom})`;
         }
 
-        async function loadFlowSteps(processId, forceStep = null) {
+async function loadFlowSteps(processId, forceStep = null) {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
@@ -2976,15 +2986,18 @@ setTimeout(() => {
                 const isActive = step.is_active || false;
                 const isCompleted = step.is_completed || false;
                 
-                // Geração dinâmica dos ícones de documentos para o cabeçalho do nó
+                // NOVO: Geração de Badges com texto para maior clareza
                 const docIcons = (step.required_docs || []).map(doc => 
-                    `<span class="material-icons" style="font-size:14px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
+                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório">
+                        <span class="material-icons">${doc === 'excel' ? 'table_view' : 'description'}</span>
+                        ${doc === 'excel' ? 'XLS' : 'DOC'}
+                    </span>`
                 ).join('');
 
                 return `
                     <div class="flow-node ${isActive ? 'active-step' : ''} ${isCompleted ? 'completed-step' : ''}" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <div style="display:flex; align-items:center; gap:4px;">
+                            <div style="display:flex; align-items:center; gap:0;">
                                 <div class="node-label">Etapa ${step.step_order}</div>
                                 ${docIcons}
                             </div>
@@ -3111,15 +3124,18 @@ function renderLocalWorkflow() {
                 const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
                 const isCompleted = step.is_completed || false;
                 
-                // Geração dinâmica dos ícones de documentos para o modo rascunho
+                // NOVO: Geração de Badges com texto para o modo rascunho
                 const docIcons = (step.required_docs || []).map(doc => 
-                    `<span class="material-icons" style="font-size:14px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
+                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório">
+                        <span class="material-icons">${doc === 'excel' ? 'table_view' : 'description'}</span>
+                        ${doc === 'excel' ? 'XLS' : 'DOC'}
+                    </span>`
                 ).join('');
 
                 return `
                     <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <div style="display:flex; align-items:center; gap:4px;">
+                            <div style="display:flex; align-items:center; gap:0;">
                                 <div class="node-label">Etapa ${step.step_order}</div>
                                 ${docIcons}
                             </div>
