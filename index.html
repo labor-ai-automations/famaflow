@@ -7563,19 +7563,19 @@ async function fetchAndRenderTasks(date) {
 
 const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
                     
-                    // NOVA LÓGICA DE INSTRUÇÃO DE INÍCIO
+                    // NOVA LÓGICA DE INSTRUÇÃO DE INÍCIO (REFORÇO DE GOVERNANÇA)
                     let displayInstanceName = task.instance_name;
                     let instanceColor = isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)';
                     
                     if (isFuturePreview && isToday) {
-                        displayInstanceName = "Pendente: Clique em 'Iniciar Processo' para começar esta rotina.";
-                        instanceColor = 'var(--color-brand-primary)'; // Cor de destaque (Vermelho Fama)
+                        displayInstanceName = "Ação Obrigatória: Este fluxo depende de você. Inicie o processo e conclua sua etapa para que os próximos responsáveis recebam suas tarefas.";
+                        instanceColor = 'var(--color-brand-primary)'; 
                     }
 
                     const instanceTag = task.instance_name ? `
-                        <div style="font-size: 0.75rem; font-weight: 700; color: ${instanceColor}; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                            <span class="material-icons" style="font-size: 14px;">${isFuturePreview && isToday ? 'priority_high' : 'person'}</span> 
-                            ${isFuturePreview ? 'Ação: ' : 'Execução: '}${displayInstanceName}
+                        <div style="font-size: 0.75rem; font-weight: 700; color: ${instanceColor}; margin-top: 4px; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; max-width: 600px;">
+                            <span class="material-icons" style="font-size: 18px; flex-shrink: 0;">${isFuturePreview && isToday ? 'assignment_late' : 'person'}</span> 
+                            <span>${isFuturePreview ? '' : 'Execução: '}${displayInstanceName}</span>
                         </div>` : '';
 
                     const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
