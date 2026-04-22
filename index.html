@@ -7526,7 +7526,6 @@ async function fetchAndRenderTasks(date) {
             const formattedDate = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             titleElement.textContent = `Tarefas para ${formattedDate}`;
 
-            // Chama a RPC unificada (Note: O SQL foi atualizado para retornar required_docs)
             const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
 
             if (error) {
@@ -7540,14 +7539,13 @@ async function fetchAndRenderTasks(date) {
                 return;
             }
 
+            // Identifica o "Hoje" no fuso local para comparação de botões
+            const todayStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
             const tasksByGroup = tasks.reduce((acc, task) => {
                 const groupName = task.routine_title || 'Tarefas Avulsas';
                 if (!acc[groupName]) {
-                    acc[groupName] = {
-                        title: groupName,
-                        source_type: task.source_type,
-                        tasks: []
-                    };
+                    acc[groupName] = { title: groupName, source_type: task.source_type, tasks: [] };
                 }
                 acc[groupName].tasks.push(task);
                 return acc;
@@ -7559,7 +7557,7 @@ async function fetchAndRenderTasks(date) {
                 
                 let groupTag = '';
                 if (isPreview) {
-                    groupTag = `<span class="tag-fino" style="background: var(--color-border); color: var(--color-text-secondary); margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; text-transform: uppercase;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">calendar_today</span> Futura / Programada</span>`;
+                    groupTag = `<span class="tag-fino" style="background: var(--color-border); color: var(--color-text-secondary); margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; text-transform: uppercase;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">calendar_today</span> Programada</span>`;
                 } else if (isRecurrent) {
                     groupTag = `<span class="tag-fino" style="background: var(--color-info); color: white; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; text-transform: uppercase;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">account_tree</span> Processo</span>`;
                 } else {
@@ -7569,17 +7567,16 @@ async function fetchAndRenderTasks(date) {
                 const tasksHTML = group.tasks.map(task => {
                     const isCompleted = task.status === 'completed';
                     const isOverdue = task.is_overdue; 
-                    const isFuture = task.source_type === 'scheduled_preview';
+                    const isFuturePreview = task.source_type === 'scheduled_preview';
+                    const isToday = date === todayStr;
                     
                     const onClickAction = isRecurrent 
                         ? `completeProcessTask('${task.instance_id}', this)`
-                        : isFuture ? '' : `completeTask(this, '${task.task_id}', null, '${date}')`;
+                        : isFuturePreview ? `startProcessInstance('${task.routine_id}')` : `completeTask(this, '${task.task_id}', null, '${date}')`;
 
                     const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
-                    
-                    const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: ${isFuture ? 'var(--color-text-secondary)' : 'var(--color-info)'}; margin-top: 4px;">👤 ${isFuture ? 'Status: ' : 'Execução: '}${task.instance_name}</div>` : '';
+                    const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: ${isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)'}; margin-top: 4px;">👤 ${isFuturePreview ? 'Status: ' : 'Execução: '}${task.instance_name}</div>` : '';
 
-                    // NOVO: Geração da Checklist de Documentos
                     const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
                         <div class="execution-doc-checklist">
                             <div style="font-size: 0.7rem; font-weight: 800; color: var(--color-text-secondary); margin-bottom: 2px; text-transform: uppercase;">Ação Documental Obrigatória:</div>
@@ -7596,11 +7593,11 @@ async function fetchAndRenderTasks(date) {
                     ` : '';
 
                     return `
-                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 1rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 12px; border-left: 4px solid var(--color-danger);' : ''} ${isFuture ? 'opacity: 0.7;' : ''}">
+                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 1rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 12px; border-left: 4px solid var(--color-danger);' : ''} ${isFuturePreview && !isToday ? 'opacity: 0.7;' : ''}">
                             <div style="flex: 1;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    ${isRecurrent || isFuture 
-                                        ? `<span class="material-icons" style="font-size: 20px; color: ${isFuture ? 'var(--color-text-secondary)' : 'var(--color-brand-primary)'};">${isFuture ? 'event_upcoming' : 'play_circle'}</span>`
+                                    ${isRecurrent || isFuturePreview 
+                                        ? `<span class="material-icons" style="font-size: 20px; color: ${isFuturePreview && !isToday ? 'var(--color-text-secondary)' : 'var(--color-brand-primary)'};">${isFuturePreview ? 'event_upcoming' : 'play_circle'}</span>`
                                         : `<label class="custom-checkbox" style="margin:0;"><input type="checkbox" onchange="${onClickAction}" ${isCompleted ? 'checked' : ''}><span class="checkbox-box"><span class="material-icons">check</span></span></label>`
                                     }
                                     <div style="display:flex; flex-direction:column;">
@@ -7612,19 +7609,19 @@ async function fetchAndRenderTasks(date) {
                                     </div>
                                 </div>
                                 <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 30px; margin-top: 4px;">${task.task_description || 'Sem instruções adicionais.'}</div>
-                                <div style="margin-left: 30px;">
-                                    ${docsHTML} <!-- Checklist aqui -->
-                                    ${instanceTag}
-                                </div>
+                                <div style="margin-left: 30px;">${docsHTML}${instanceTag}</div>
                             </div>
                             <div style="margin-right: 1.5rem;">
                                 ${isRecurrent ? `
                                     <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;" ${isCompleted ? 'disabled' : ''}>
                                          <span class="material-icons" style="font-size: 18px;">check_circle</span> ${isCompleted ? 'Concluído' : 'Concluir'}
                                     </button>
-                                ` : isFuture ? `
+                                ` : (isFuturePreview ? (isToday ? `
+                                    <button class="btn btn-danger" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;">
+                                         <span class="material-icons" style="font-size: 18px;">rocket_launch</span> Iniciar Processo
+                                    </button>` : `
                                     <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); background: var(--color-background); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--color-border);">Aguardando Data</span>
-                                ` : ''}
+                                `) : '')}
                             </div>
                         </div>
                     `;
