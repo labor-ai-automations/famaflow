@@ -5839,128 +5839,106 @@ function toggleRecipientSelection(user) {
         }
 
 async function loadUserProfileData(userId) {
-    const container = document.getElementById('user-profile-content');
-    const historyContainer = document.getElementById('user-history-content');
-    const targetId = userId || currentUserProfile.id;
-    
-    if (historyContainer) historyContainer.innerHTML = '';
-    container.innerHTML = `<div class="page-header"><h1>Carregando Perfil...</h1></div>`;
-
-    try {
-        const isMyProfile = targetId === currentUserProfile.id;
-
-        // 1. Busca todos os dados em paralelo para máxima performance
-        const [profileRes, pendenciesRes, scoreRes, resolvedTicketsRes, createdPendenciesRes] = await Promise.all([
-            supabaseClient.from('profiles').select('*').eq('id', targetId).single(),
-            supabaseClient.rpc('get_user_pendencies', { target_user_id: targetId }),
-            supabaseClient.rpc('calculate_user_score', { target_user_id: targetId }),
-            supabaseClient.rpc('get_resolved_tickets', { target_user_id: targetId }),
-            isMyProfile ? supabaseClient.rpc('get_created_pendencies', { creator_user_id: targetId }) : Promise.resolve({data: []})
-        ]);
-
-        const profile = profileRes.data;
-        if (!profile) throw new Error('Perfil não encontrado');
-
-        const pendencies = pendenciesRes.data || [];
-        const resolvedTickets = resolvedTicketsRes.data || [];
-        const createdPendencies = createdPendenciesRes.data || [];
-        const score = Math.min(profile.score || 100, 100);
-
-        // 2. Lógica de Zona de Risco
-        let riskZone = 'green', riskText = 'Em Dia', barColor = 'var(--color-success)';
-        if (score < 50) { riskZone = 'red'; riskText = 'Crítico'; barColor = 'var(--color-danger)'; }
-        else if (score < 80) { riskZone = 'yellow'; riskText = 'Atenção'; barColor = 'var(--color-warning)'; }
-
-        // 3. Lógica do Avatar (Foto ou Inicial)
-        let avatarHTML = '';
-        if (profile.avatar_url && profile.avatar_url !== '') {
-            const src = `https://lh3.googleusercontent.com/d/${profile.avatar_url}`;
-            avatarHTML = `<div class="user-avatar" style="background-image: url('${src}'); background-size: cover; background-position: center; border-radius: 50%; width: 120px; height: 120px; border: 5px solid ${barColor};"></div>`;
-        } else {
-            const initial = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?';
-            avatarHTML = `<div class="user-avatar" style="width: 120px; height: 120px; font-size: 3.5rem; border: 5px solid ${barColor};">${initial}</div>`;
-        }
-
-        // 4. Renderiza Cabeçalho e Radar
-        container.innerHTML = `
-            <div class="profile-header-card zone-${riskZone}">
-                ${avatarHTML}
-                <div class="profile-info">
-                    <h3 style="margin-top:1rem;">${profile.full_name}</h3>
-                    <p>${profile.role || 'Colaborador'} • ${profile.department || 'Fama'}</p>
-                    <span class="status-badge">${riskText}</span>
-                </div>
-            </div>
+            const container = document.getElementById('user-profile-content');
+            const historyContainer = document.getElementById('user-history-content');
+            const targetId = userId || currentUserProfile.id;
             
-            <div class="card">
-                <h3 class="card-title"><span class="material-icons">radar</span> Radar de Engajamento</h3>
-                <div class="score-display"><span class="score-label">Score Atual</span><span class="score-value">${score}</span></div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: ${score}%; background-color: ${barColor};"></div>
-                </div>
-            </div>
+            if (historyContainer) historyContainer.innerHTML = '';
+            container.innerHTML = `<div class="page-header"><h1>Carregando Perfil...</h1></div>`;
 
-            <div class="card">
-                <h3 class="card-title"><span class="material-icons">pending_actions</span> Pendências Atuais (${pendencies.length})</h3>
-                <div class="pendencies-grid">
-                    ${pendencies.length > 0 ? pendencies.map(p => `
-                        <div class="pendency-card" style="border-left-color: ${p.priority === 'urgent' ? 'var(--color-danger)' : 'var(--color-warning)'}">
-                            <div class="pendency-header">
-                                <h4 class="pendency-title"><span class="material-icons" style="font-size:18px;">support_agent</span> Chamado Aberto</h4>
-                            </div>
-                            <div class="pendency-meta">
-                                <div>De: ${p.sender_name} (${p.sender_department || '-'})</div>
-                                ${p.due_date ? `<div>Prazo: ${new Date(p.due_date).toLocaleDateString('pt-BR')}</div>` : ''}
-                            </div>
-                            ${!p.first_read_at ? '<div class="pendency-alert">⚠️ Não visualizado</div>' : ''}
+            try {
+                // Busca Perfil, Score e o novo Resumo de Performance
+                const [profileRes, statsRes, performanceRes] = await Promise.all([
+                    supabaseClient.from('profiles').select('*').eq('id', targetId).single(),
+                    supabaseClient.rpc('get_dashboard_stats', { p_user_id: targetId }).single(), // Adaptado para aceitar ID se necessário
+                    supabaseClient.rpc('get_user_performance_summary', { p_user_id: targetId })
+                ]);
+
+                const profile = profileRes.data;
+                const perfData = performanceRes.data || [];
+                const score = Math.min(profile.score || 100, 100);
+
+                let riskZone = 'green', riskText = 'Em Dia', barColor = 'var(--color-success)';
+                if (score < 50) { riskZone = 'red'; riskText = 'Crítico'; barColor = 'var(--color-danger)'; }
+                else if (score < 80) { riskZone = 'yellow'; riskText = 'Atenção'; barColor = 'var(--color-warning)'; }
+
+                let avatarHTML = profile.avatar_url 
+                    ? `<div class="user-avatar" style="background-image: url('https://lh3.googleusercontent.com/d/${profile.avatar_url}'); background-size: cover; background-position: center; border-radius: 50%; width: 120px; height: 120px; border: 5px solid ${barColor};"></div>`
+                    : `<div class="user-avatar" style="width: 120px; height: 120px; font-size: 3.5rem; border: 5px solid ${barColor};">${profile.full_name.charAt(0).toUpperCase()}</div>`;
+
+                // Filtragem dos grupos de performance
+                const overdue = perfData.filter(t => t.status_group === 'overdue');
+                const ongoing = perfData.filter(t => t.status_group === 'ongoing');
+                const completed = perfData.filter(t => t.status_group === 'completed').slice(0, 6); // Top 6 recentes
+
+                container.innerHTML = `
+                    <div class="profile-header-card zone-${riskZone}">
+                        ${avatarHTML}
+                        <div class="profile-info">
+                            <h3 style="margin-top:1rem;">${profile.full_name}</h3>
+                            <p>${profile.role || 'Colaborador'} • ${profile.department || 'Fama'}</p>
+                            <span class="status-badge">${riskText}</span>
                         </div>
-                    `).join('') : '<p class="empty-state">Nenhuma pendência encontrada.</p>'}
-                </div>
-            </div>
-
-            ${isMyProfile && createdPendencies.length > 0 ? `
-                <div class="card">
-                    <h3 class="card-title"><span class="material-icons">outbox</span> Chamados que eu abri (${createdPendencies.length})</h3>
-                    <div class="pendencies-grid">
-                        ${createdPendencies.map(p => `
-                            <div class="pendency-card" style="border-left-color: var(--color-info)">
-                                <div class="pendency-header"><strong>${p.recipients_names}</strong></div>
-                                <div class="pendency-meta">Aberto em: ${new Date(p.created_at).toLocaleDateString('pt-BR')}</div>
-                                ${!p.first_read_at ? '<div class="pendency-alert">Aguardando visualização</div>' : `<div>Visto em: ${new Date(p.first_read_at).toLocaleString('pt-BR')}</div>`}
-                            </div>
-                        `).join('')}
                     </div>
-                </div>
-            ` : ''}
-        `;
-
-        // 5. Renderiza Histórico (Resolved Tickets)
-        if (historyContainer && resolvedTickets.length > 0) {
-            historyContainer.innerHTML = `
-                <div class="card">
-                    <h3 class="card-title"><span class="material-icons">history</span> Histórico de Atividades (${resolvedTickets.length})</h3>
-                    <div class="pendencies-grid">
-                        ${resolvedTickets.map(ticket => `
-                            <div class="pendency-card" style="border-left-color: var(--color-success);">
-                                <div class="pendency-header">
-                                    <h4 class="pendency-title"><span class="material-icons" style="color: var(--color-success);">check_circle</span> Resolvido</h4>
-                                </div>
-                                <div class="pendency-meta">
-                                    <div>De: ${ticket.creator_name}</div>
-                                    <div>Resolvido em: ${new Date(ticket.resolved_at).toLocaleString('pt-BR')}</div>
-                                </div>
-                            </div>
-                        `).join('')}
+                    
+                    <div class="card">
+                        <h3 class="card-title"><span class="material-icons">radar</span> Radar de Engajamento</h3>
+                        <div class="score-display"><span class="score-label">Score Atual</span><span class="score-value">${score}</span></div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${score}%; background-color: ${barColor};"></div>
+                        </div>
                     </div>
-                </div>
-            `;
+
+                    <!-- DASHBOARD DE PERFORMANCE (NOVO) -->
+                    <div class="grid grid-cols-2">
+                        <!-- COLUNA: ATRASOS E PENDÊNCIAS -->
+                        <div class="card" style="border-top: 4px solid var(--color-danger);">
+                            <h3 class="card-title" style="color: var(--color-danger);"><span class="material-icons">report_problem</span> Em Atraso (${overdue.length})</h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                ${overdue.length > 0 ? overdue.map(t => `
+                                    <div style="padding: 10px; background: var(--color-danger-bg); border-radius: 8px; font-size: 0.85rem;">
+                                        <div style="font-weight: 700;">${t.title}</div>
+                                        <div style="color: var(--color-danger); font-weight: 500;">Originalmente em: ${new Date(t.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
+                                    </div>
+                                `).join('') : '<p class="empty-state">Sem atrasos. Parabéns!</p>'}
+                            </div>
+
+                            <h3 class="card-title" style="margin-top: 2rem; color: var(--color-info); border-top: 1px solid var(--color-border); padding-top: 1.5rem;">
+                                <span class="material-icons">pending_actions</span> Em Andamento (${ongoing.length})
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                ${ongoing.length > 0 ? ongoing.map(t => `
+                                    <div style="padding: 10px; background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; font-size: 0.85rem;">
+                                        <div style="font-weight: 600;">${t.title}</div>
+                                        <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Programado: ${new Date(t.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>
+                                    </div>
+                                `).join('') : '<p class="empty-state">Nenhuma tarefa ativa.</p>'}
+                            </div>
+                        </div>
+
+                        <!-- COLUNA: HISTÓRICO DE SUCESSO -->
+                        <div class="card" style="border-top: 4px solid var(--color-success);">
+                            <h3 class="card-title" style="color: var(--color-success);"><span class="material-icons">task_alt</span> Concluídas Recentemente</h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                ${completed.length > 0 ? completed.map(t => `
+                                    <div style="padding: 10px; background: var(--color-success-bg); border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
+                                        <span class="material-icons" style="color: var(--color-success); font-size: 18px;">check_circle</span>
+                                        <div>
+                                            <div style="font-weight: 600;">${t.title}</div>
+                                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Finalizado com sucesso</div>
+                                        </div>
+                                    </div>
+                                `).join('') : '<p class="empty-state">Nenhum histórico disponível.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error("Erro no Perfil:", error);
+                container.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar perfil: ${error.message}</div>`;
+            }
         }
-
-    } catch (error) {
-        console.error("Erro no Perfil:", error);
-        container.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar perfil: ${error.message}</div>`;
-    }
-}
 
         function handleAvatarUpload(event) {
             const file = event.target.files[0]; if (!file) return;
