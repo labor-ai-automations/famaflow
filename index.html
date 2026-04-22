@@ -7249,64 +7249,7 @@ const numParticipants = updatedData.num_participantes || 1;
             selectDate(new Date().toISOString().split('T')[0]);
         }
 
-        async function fetchAndRenderTasks(date) {
-            const tasksContainer = document.getElementById('tasks-list-container');
-            const titleElement = document.getElementById('tasks-list-title');
-            if (!tasksContainer || !titleElement) return;
-            
-            tasksContainer.innerHTML = `<div class="empty-state"><span class="material-icons" style="animation: spin 2s linear infinite;">sync</span><br>Buscando suas tarefas...</div>`;
-
-            const dateObj = new Date(date + 'T12:00:00');
-            const formattedDate = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            titleElement.textContent = `Tarefas para ${formattedDate}`;
-
-            // Busca as tarefas unificadas do novo motor de calendário
-            const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
-
-            if (error) {
-                console.error('Erro ao buscar tarefas:', error);
-                tasksContainer.innerHTML = `<div class="empty-state" style="color: var(--color-danger)">Falha ao carregar tarefas.</div>`;
-                return;
-            }
-
-            if (!tasks || tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa de processo agendada para hoje.</div>`;
-                return;
-            }
-
-            // Agrupa por Processo para organizar a visualização
-            const tasksByProcess = tasks.reduce((acc, task) => {
-                if (!acc[task.process_title]) acc[task.process_title] = [];
-                acc[task.process_title].push(task);
-                return acc;
-            }, {});
-
-            tasksContainer.innerHTML = Object.keys(tasksByProcess).map(processTitle => {
-                const processTasks = tasksByProcess[processTitle];
-                const tasksHTML = processTasks.map(task => `
-                    <div class="task-item" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.75rem 0;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="material-icons" style="font-size: 16px; color: var(--color-brand-primary);">play_circle</span>
-                                <strong style="font-size: 0.95rem;">${task.task_title}</strong>
-                            </div>
-                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 24px;">${task.task_description || 'Sem instruções adicionais.'}</div>
-                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-info); margin-left: 24px; margin-top: 4px;">👤 ${task.instance_name}</div>
-                        </div>
-                        <button class="btn btn-success" onclick="completeProcessTask('${task.instance_id}', this)" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
-                             <span class="material-icons" style="font-size: 16px;">check_circle</span> Concluir
-                        </button>
-                    </div>
-                `).join('');
-
-                return `
-                    <div style="margin-bottom: 2rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; color: var(--color-brand-primary); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">${processTitle}</h4>
-                        ${tasksHTML}
-                    </div>
-                `;
-            }).join('');
-        }
+        
 
         async function renderCalendar(year, month) {
             const container = document.getElementById('calendar-container');
@@ -7399,79 +7342,91 @@ const numParticipants = updatedData.num_participantes || 1;
             const tasksContainer = document.getElementById('tasks-list-container');
             const titleElement = document.getElementById('tasks-list-title');
             if (!tasksContainer || !titleElement) return;
-            tasksContainer.innerHTML = `<div class="empty-state">Carregando tarefas...</div>`;
+
+            tasksContainer.innerHTML = `<div class="empty-state"><span class="material-icons" style="animation: spin 2s linear infinite;">sync</span><br>Buscando suas tarefas...</div>`;
 
             const dateObj = new Date(date + 'T12:00:00');
             const formattedDate = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             titleElement.textContent = `Tarefas para ${formattedDate}`;
 
-            const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_date', { p_date: date });
+            // Chama a RPC unificada
+            const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
 
             if (error) {
-                console.error('Erro ao buscar tarefas:', error);
+                console.error('Erro ao buscar tarefas unificadas:', error);
                 tasksContainer.innerHTML = `<div class="empty-state" style="color: var(--color-danger)">Falha ao carregar tarefas.</div>`;
                 return;
             }
 
-            console.log('Dados recebidos para Minhas Rotinas:', tasks); // ADICIONE ESTA LINHA
-
-            if (tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa atribuída a você para este dia.</div>`;
+            if (!tasks || tasks.length === 0) {
+                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa agendada para este dia.</div>`;
                 return;
             }
 
-            const tasksByRoutine = tasks.reduce((acc, task) => {
-                if (!acc[task.routine_id]) {
-                    acc[task.routine_id] = {
-                        title: task.routine_title,
-                        description: task.routine_description,
-                        assigned_by: task.assigned_by_name,
-                        created_at: task.routine_created_at,
+            // Agrupa as tarefas pelo título da Rotina/Processo
+            const tasksByGroup = tasks.reduce((acc, task) => {
+                const groupName = task.routine_title || 'Tarefas Avulsas';
+                if (!acc[groupName]) {
+                    acc[groupName] = {
+                        title: groupName,
+                        source_type: task.source_type, // 'recurrent' ou 'punctual'
                         tasks: []
                     };
                 }
-                acc[task.routine_id].tasks.push(task);
+                acc[groupName].tasks.push(task);
                 return acc;
             }, {});
 
-            tasksContainer.innerHTML = Object.values(tasksByRoutine).map(routine => {
-                const completedCount = routine.tasks.filter(t => t.status === 'completed').length;
-                const totalCount = routine.tasks.length;
+            tasksContainer.innerHTML = Object.values(tasksByGroup).map(group => {
+                const isRecurrent = group.source_type === 'recurrent';
+                
+                // Tags visuais no cabeçalho do grupo
+                const groupTag = isRecurrent 
+                    ? `<span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); margin-left: 8px;"><span class="material-icons" style="font-size:12px; vertical-align:middle;">account_tree</span> Processo</span>`
+                    : `<span class="tag-fino" style="background: var(--color-warning-bg); color: var(--color-warning); margin-left: 8px;"><span class="material-icons" style="font-size:12px; vertical-align:middle;">assignment</span> Pontual</span>`;
 
-                const tasksHTML = routine.tasks.map(task => {
+                const tasksHTML = group.tasks.map(task => {
                     const isCompleted = task.status === 'completed';
-                    const onClickAction = `completeTask(this, '${task.routine_task_id}', ${task.task_instance_id || null}, '${date}')`;
-                    const dueTimeHTML = task.due_time ? `<span class="task-due-time"> (Prazo: ${task.due_time.substring(0, 5)})</span>` : '';
+                    const isOverdue = task.is_overdue; 
+                    
+                    // Ação de conclusão difere dependendo da origem da tarefa
+                    const onClickAction = isRecurrent 
+                        ? `completeProcessTask('${task.instance_id}', this)`
+                        : `completeTask(this, '${task.task_id}', null, '${date}')`;
+
+                    const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.7rem; font-weight:700; color:var(--color-danger); border: 1px solid var(--color-danger); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
+                    const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: var(--color-info); margin-top: 4px;">👤 Execução: ${task.instance_name}</div>` : '';
 
                     return `
-                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--color-border); padding: 0.5rem 0;">
-                            <label class="custom-checkbox" style="flex-grow: 1;">
-                                <input type="checkbox" onchange="${onClickAction}" ${isCompleted ? 'checked' : ''}>
-                                <span class="checkbox-box"><span class="material-icons">check</span></span>
-                                <div>
-                                    <span class="task-title-span">${task.task_title}</span>${dueTimeHTML}
-                                    <div class="task-description-span">${task.task_description || ''}</div>
+                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.75rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 8px; border-left: 4px solid var(--color-danger);' : ''}">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    ${isRecurrent 
+                                        ? `<span class="material-icons" style="font-size: 16px; color: var(--color-brand-primary);">play_circle</span>`
+                                        : `<label class="custom-checkbox" style="margin:0;"><input type="checkbox" onchange="${onClickAction}" ${isCompleted ? 'checked' : ''}><span class="checkbox-box"><span class="material-icons">check</span></span></label>`
+                                    }
+                                    <strong style="font-size: 0.95rem; ${isCompleted ? 'text-decoration: line-through; color: var(--color-text-secondary);' : ''}">${task.task_title}</strong>
+                                    ${overdueTag}
                                 </div>
-                            </label>
+                                <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 24px;">${task.task_description || 'Sem instruções adicionais.'}</div>
+                                <div style="margin-left: 24px;">${instanceTag}</div>
+                            </div>
+                            ${isRecurrent ? `
+                                <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.5rem 1rem; font-size: 0.8rem;" ${isCompleted ? 'disabled' : ''}>
+                                     <span class="material-icons" style="font-size: 16px;">check_circle</span> ${isCompleted ? 'Concluído' : 'Concluir'}
+                                </button>
+                            ` : ''}
                         </div>
                     `;
                 }).join('');
 
-                const creationDate = new Date(routine.created_at).toLocaleDateString('pt-BR');
-
                 return `
-                    <details class="routine-group" open>
-                        <summary class="routine-group-header">
-                            <h4>${routine.title}</h4>
-<div class="routine-group-meta">
-    <span>Atribuído por: ${routine.assigned_by_name || 'Sistema'} • Criado em: ${creationDate}</span>
-    <span class="score-pill ${completedCount === totalCount ? 'good' : 'med'}">${completedCount}/${totalCount}</span>
-</div>
-                        </summary>
-                        <div class="routine-group-body">
-                            ${tasksHTML}
-                        </div>
-                    </details>
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--color-text-primary); font-size: 1rem; display: flex; align-items: center; border-bottom: 2px solid var(--color-border); padding-bottom: 0.5rem;">
+                            ${group.title} ${groupTag}
+                        </h4>
+                        ${tasksHTML}
+                    </div>
                 `;
             }).join('');
         }
