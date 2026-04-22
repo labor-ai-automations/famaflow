@@ -2551,21 +2551,27 @@ async function loadManageProcessesPage() {
             const listContainer = document.getElementById('process-list-sidebar');
             if(!listContainer) return;
             listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
+            
+            // Busca os processos
             const { data: processes, error } = await supabaseClient.from('processes').select('*').order('created_at', { ascending: false });
+            
             if (error) { listContainer.innerHTML = 'Erro ao carregar.'; return; }
             if (!processes.length) { listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>'; return; }
 
-            listContainer.innerHTML = processes.map(p => `
-                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}')" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
+            listContainer.innerHTML = processes.map(p => {
+                // Define a tag baseada no is_recurring
+                const processTag = p.is_recurring 
+                    ? `<span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">event</span> Programado</span>`
+                    : `<span class="tag-fino" style="background: var(--color-warning-bg); color: var(--color-warning); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">touch_app</span> Manual</span>`;
+
+                return `
+                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}', ${p.is_recurring})" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
                     <div style="display:flex; flex-direction:column; flex: 1;">
-                        <div style="display:flex; align-items:center; gap:5px;">
-                            <span style="font-weight:600">${p.title}</span>
-                            ${p.is_recurring ? '<span class="material-icons" style="font-size:14px; color:var(--color-info);" title="Cronograma de Alertas">calendar_month</span>' : ''}
-                        </div>
-                        ${p.is_recurring ? `<small style="font-size:0.65rem; color:var(--color-text-secondary);">Agendamento Ativo</small>` : ''}
+                        <span style="font-weight:600">${p.title}</span>
+                        <div>${processTag}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurar Calendário" style="color: var(--color-text-secondary); opacity: 0.5;">
+                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurar Processo" style="color: var(--color-text-secondary); opacity: 0.5;">
                             <span class="material-icons" style="font-size: 18px;">settings</span>
                         </button>
                         <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="color: var(--color-danger); opacity: 0.3;">
@@ -2574,7 +2580,8 @@ async function loadManageProcessesPage() {
                         <span class="material-icons arrow-icon" style="font-size:16px;">chevron_right</span>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             document.querySelectorAll('.routines-list-item').forEach(item => {
                 item.onmouseenter = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '1'; };
@@ -2584,11 +2591,10 @@ async function loadManageProcessesPage() {
 		
 		let currentlyOpenProcessId = null;
 
-        function handleProcessClick(processId, title) {
+        function handleProcessClick(processId, title, isRecurring) {
             const container = document.getElementById('process-visualizer-container');
             const items = document.querySelectorAll('#process-list-sidebar .routines-list-item');
             
-            // Se clicar no processo que já está aberto, fecha tudo
             if (currentlyOpenProcessId === processId) {
                 container.innerHTML = '<div class="empty-state">Selecione um processo para editar o fluxo.</div>';
                 items.forEach(item => {
@@ -2599,12 +2605,10 @@ async function loadManageProcessesPage() {
                 return;
             }
 
-            // Caso contrário, abre o novo processo (sempre abre o template limpo)
-            selectProcess(processId, title);
-            currentlyOpenProcessId = processId;
+            // Passa a informação se é recorrente para a função de renderização
+            selectProcess(processId, title, isRecurring);
             currentlyOpenProcessId = processId;
             
-            // Atualiza as setas e estados ativos
             items.forEach(item => {
                 const isThis = item.id === `item-process-${processId}`;
                 item.classList.toggle('active', isThis);
@@ -2613,8 +2617,7 @@ async function loadManageProcessesPage() {
             });
         }
 
-async function selectProcess(processId, title) {
-            // 🔧 SISTEMA DE CACHE INTELIGENTE PARA CONEXÕES
+async function selectProcess(processId, title, isRecurring = false) {
             const flowConnectionSystem = {
                 nodePositionCache: new Map(),
                 pathCache: new Map(),
@@ -2629,23 +2632,30 @@ async function selectProcess(processId, title) {
                     this.isDirty = true;
                 }
             };
-            window.flowConnectionSystem = flowConnectionSystem; // Torna acessível globalmente
+            window.flowConnectionSystem = flowConnectionSystem;
 
-            // Backup de Segurança: Se o título vier genérico, busca o nome real na barra lateral
-    let displayTitle = title;
-    if (title === 'Processo' || !title) {
-        const activeItem = document.querySelector(`#process-list-sidebar .routines-list-item[data-routine-id="${processId}"] span:first-child`);
-        if (activeItem) {
-            displayTitle = activeItem.textContent.trim();
-        }
-    }
+            let displayTitle = title;
+            if (title === 'Processo' || !title) {
+                const activeItem = document.querySelector(`#process-list-sidebar .routines-list-item[data-routine-id="${processId}"] span:first-child`);
+                if (activeItem) {
+                    displayTitle = activeItem.textContent.trim();
+                }
+            }
 
             const container = document.getElementById('process-visualizer-container');
+            
+            // HTML Condicional: O botão de INICIAR só é renderizado se isRecurring for FALSO.
+            const startButtonHTML = isRecurring === false 
+                ? `<button class="btn btn-success" onclick="startProcessInstance('${processId}')" title="Iniciar Nova Execução Manual">
+                        <span class="material-icons">play_arrow</span> Iniciar
+                   </button>` 
+                : '';
+
             container.innerHTML = `
                 <div style="position:absolute; top:1.5rem; left:1.5rem; z-index:100; pointer-events:none;">
                     <div style="pointer-events:auto; background:var(--color-surface); padding:10px 16px; border-radius:10px; border:1px solid var(--color-border); box-shadow: var(--shadow);">
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-<h3 id="current-workflow-title" style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
+                            <h3 id="current-workflow-title" style="margin:0; font-size:1.1rem; font-weight: 700; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
                                 <span class="material-icons" style="font-size: 18px; color: var(--color-brand-primary);">hub</span>
                                 <span id="current-workflow-title-label">${displayTitle.replace(/<[^>]*>?/gm, '').trim()}</span>
                             </h3>
@@ -2654,49 +2664,48 @@ async function selectProcess(processId, title) {
                     </div>
                 </div>
 
-<div id="process-draft-tag" class="flowchart-draft-tag"></div>
-<div class="flowchart-floating-toolbar">
-<button class="btn btn-secondary" onclick="zoomFlow(-0.2)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
+                <div id="process-draft-tag" class="flowchart-draft-tag"></div>
+                <div class="flowchart-floating-toolbar">
+                    <button class="btn btn-secondary" onclick="zoomFlow(-0.2)" title="Zoom Out"><span class="material-icons">zoom_out</span></button>
                     <button class="btn btn-secondary" onclick="zoomFlow(0.2)" title="Zoom In"><span class="material-icons">zoom_in</span></button>
-    <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
-    <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
-    <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
-        <span class="material-icons">auto_fix_high</span>
-    </button>
+                    <button class="btn btn-secondary" onclick="zoomToFit()" title="Centralizar Fluxo"><span class="material-icons">filter_center_focus</span></button>
+                    <button class="btn btn-secondary" onclick="toggleFlowFullscreen()" title="Tela Cheia"><span class="material-icons" id="flow-fullscreen-icon">fullscreen</span></button>
+                    <button class="btn btn-secondary" onclick="autoArrangeNodes()" title="Organizar em ordem">
+                        <span class="material-icons">auto_fix_high</span>
+                    </button>
                     <div class="toolbar-separator"></div>
                     <button class="btn btn-danger" id="btn-save-workflow" onclick="saveWorkflowChanges()">
                         <span class="material-icons">save</span> Salvar
                     </button>
                     <div class="toolbar-separator" id="save-separator" style="display: none;"></div>
-                    <button class="btn btn-success" onclick="startProcessInstance('${processId}')" title="Iniciar Nova Instância">
-                        <span class="material-icons">play_arrow</span> Iniciar
-                    </button>
+                    
+                    ${startButtonHTML}
+                    
                     <button class="btn btn-danger" onclick="openAddStepModal('${processId}')" title="Adicionar Nova Etapa">
                         <span class="material-icons">add</span> Etapa
                     </button>
                     <button class="btn btn-secondary" onclick="showProcessInstances('${processId}')" title="Ver Instâncias Ativas">
                         <span class="material-icons">visibility</span> Execuções
                     </button>
-<button class="btn btn-secondary" onclick="resetProcessInstances('${processId}')" title="Limpar Tudo (Perigoso)">
+                    <button class="btn btn-secondary" onclick="resetProcessInstances('${processId}')" title="Limpar Tudo (Perigoso)">
                         <span class="material-icons" style="color:var(--color-danger);">delete_forever</span>
                     </button>
                 </div>
 
                 <div class="flowchart-wrapper" id="flow-wrapper">
                     <div class="flowchart-world" id="flow-world">
-<svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none; z-index: 1;">
-    <defs>
-        <marker id="arrowhead" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B7280" />
-        </marker>
-    </defs>
-</svg>
+                        <svg id="flow-connections" style="position:absolute; top:0; left:0; width:10000px; height:10000px; pointer-events:none; z-index: 1;">
+                            <defs>
+                                <marker id="arrowhead" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B7280" />
+                                </marker>
+                            </defs>
+                        </svg>
                         <div id="flow-nodes-container"></div>
                     </div>
                 </div>
             `;
 
-            // Garante que o ID do processo esteja disponível para salvamento global
             const qpProcessId = document.getElementById('qp-process-id');
             if(qpProcessId) qpProcessId.value = processId;
 
