@@ -7561,11 +7561,24 @@ async function fetchAndRenderTasks(date) {
                         ? `completeProcessTask('${task.instance_id}', this)`
                         : isFuturePreview ? `startProcessInstance('${task.routine_id}')` : `completeTask(this, '${task.task_id}', null, '${date}')`;
 
-                    const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
-                    const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: ${isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)'}; margin-top: 4px;">👤 ${isFuturePreview ? 'Status: ' : 'Execução: '}${task.instance_name}</div>` : '';
+const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
+                    
+                    // NOVA LÓGICA DE INSTRUÇÃO DE INÍCIO
+                    let displayInstanceName = task.instance_name;
+                    let instanceColor = isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)';
+                    
+                    if (isFuturePreview && isToday) {
+                        displayInstanceName = "Pendente: Clique em 'Iniciar Processo' para começar esta rotina.";
+                        instanceColor = 'var(--color-brand-primary)'; // Cor de destaque (Vermelho Fama)
+                    }
 
-                    // Renderização das tags de documentos (Corrigido para usar a coluna required_docs)
-                    const docsHTML = (task.required_docs && task.required_docs.length > 0) ? `
+                    const instanceTag = task.instance_name ? `
+                        <div style="font-size: 0.75rem; font-weight: 700; color: ${instanceColor}; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                            <span class="material-icons" style="font-size: 14px;">${isFuturePreview && isToday ? 'priority_high' : 'person'}</span> 
+                            ${isFuturePreview ? 'Ação: ' : 'Execução: '}${displayInstanceName}
+                        </div>` : '';
+
+                    const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
                         <div class="execution-doc-checklist">
                             <div style="font-size: 0.7rem; font-weight: 800; color: var(--color-text-secondary); margin-bottom: 2px; text-transform: uppercase;">Ação Documental Obrigatória:</div>
                             ${task.required_docs.map(doc => `
