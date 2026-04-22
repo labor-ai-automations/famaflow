@@ -7529,7 +7529,7 @@ async function fetchAndRenderTasks(date) {
             const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
 
             if (error) {
-                console.error('Erro ao buscar tarefas unificadas:', error);
+                console.error('Erro ao buscar tarefas:', error);
                 tasksContainer.innerHTML = `<div class="empty-state" style="color: var(--color-danger)">Falha ao carregar tarefas.</div>`;
                 return;
             }
@@ -7539,7 +7539,6 @@ async function fetchAndRenderTasks(date) {
                 return;
             }
 
-            // Identifica o "Hoje" no fuso local para comparação de botões
             const todayStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
             const tasksByGroup = tasks.reduce((acc, task) => {
@@ -7577,12 +7576,13 @@ async function fetchAndRenderTasks(date) {
                     const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
                     const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: ${isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)'}; margin-top: 4px;">👤 ${isFuturePreview ? 'Status: ' : 'Execução: '}${task.instance_name}</div>` : '';
 
-                    const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
+                    // Renderização das tags de documentos (Corrigido para usar a coluna required_docs)
+                    const docsHTML = (task.required_docs && task.required_docs.length > 0) ? `
                         <div class="execution-doc-checklist">
                             <div style="font-size: 0.7rem; font-weight: 800; color: var(--color-text-secondary); margin-bottom: 2px; text-transform: uppercase;">Ação Documental Obrigatória:</div>
                             ${task.required_docs.map(doc => `
-                                <label class="doc-check-item">
-                                    <input type="checkbox" class="doc-internal-check">
+                                <label class="doc-check-item" style="${isCompleted ? 'opacity: 0.5; pointer-events: none;' : ''}">
+                                    <input type="checkbox" class="doc-internal-check" ${isCompleted ? 'checked disabled' : ''}>
                                     <span class="material-icons" style="color: ${doc === 'excel' ? '#1D6F42' : '#2B579A'}; font-size:16px;">
                                         ${doc === 'excel' ? 'table_view' : 'description'}
                                     </span>
@@ -7614,7 +7614,7 @@ async function fetchAndRenderTasks(date) {
                             <div style="margin-right: 1.5rem;">
                                 ${isRecurrent ? `
                                     <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;" ${isCompleted ? 'disabled' : ''}>
-                                         <span class="material-icons" style="font-size: 18px;">check_circle</span> ${isCompleted ? 'Concluído' : 'Concluir'}
+                                         <span class="material-icons" style="font-size: 18px;">${isCompleted ? 'done_all' : 'check_circle'}</span> ${isCompleted ? 'Concluído' : 'Concluir'}
                                     </button>
                                 ` : (isFuturePreview ? (isToday ? `
                                     <button class="btn btn-danger" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;">
