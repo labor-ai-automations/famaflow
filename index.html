@@ -3872,8 +3872,7 @@ async function deleteEntireProcess(processId, processTitle) {
             }
         }
 
-        async function saveWorkflowChanges() {
-            // 1. Validação de Contexto
+async function saveWorkflowChanges() {
             const processId = document.getElementById('qp-process-id').value;
             if (!processId) {
                 showToast("Selecione um processo antes de salvar.", "warning");
@@ -3881,54 +3880,48 @@ async function deleteEntireProcess(processId, processTitle) {
             }
 
             if (!workflowHasChanges) {
-                showToast("Não há alterações pendentes para salvar.", "info");
-                document.getElementById('btn-save-workflow').style.display = 'none';
-                document.getElementById('save-separator').style.display = 'none';
+                showToast("Não há alterações pendentes.", "info");
                 return;
             }
 
             const btn = document.getElementById('btn-save-workflow');
             btn.disabled = true;
-            btn.textContent = "Salvando...";
+            btn.innerHTML = '<span class="material-icons refresh-spin" style="font-size:16px;">sync</span> Salvando Fluxo...';
 
-            // Transação 80/20: Deleta o que existe do processo e insere o novo layout
-            // Isso resolve 100% dos erros de duplicidade e ordem
-try {
-                // MODO ATÔMICO: Envia tudo para a RPC salvar em uma única transação
+            try {
+                // Envia os dados locais (incluindo IDs temporários) para a RPC inteligente
                 const { error: rpcError } = await supabaseClient.rpc('save_process_steps', {
                     p_process_id: processId,
-                    p_steps: localStepsData // O PostgreSQL vai converter o array JS em JSONB automaticamente
+                    p_steps: localStepsData
                 });
 
                 if (rpcError) throw rpcError;
-                showToast("Fluxo publicado com sucesso!", "success");
-                workflowHasChanges = false;
-                updateDraftUIState();
-                
-                // Correção de escopo: Busca o elemento diretamente pelo ID
-                const draftTagEl = document.getElementById('process-draft-tag');
-                if(draftTagEl) draftTagEl.style.display = 'none';
 
-                // Restaura a Toolbar original
-                const toolbar = document.querySelector('.flowchart-floating-toolbar');
-                if(toolbar) {
-                    toolbar.querySelectorAll('button').forEach(b => b.style.display = 'flex');
-                }
+                showToast("Fluxo publicado com sucesso!", "success");
                 
-                // Oculta os controles de salvamento
+                // Reseta estado de rascunho
+                workflowHasChanges = false;
+                
+                // UI Cleanup
+                const draftTag = document.getElementById('process-draft-tag');
+                if(draftTag) draftTag.style.display = 'none';
                 document.getElementById('btn-save-workflow').style.display = 'none';
                 document.getElementById('save-separator').style.display = 'none';
+
+                // Recarrega do banco para sincronizar IDs temporários com os UUIDs reais gerados
+                const title = document.getElementById('current-workflow-title-label').textContent;
                 
-                // 4. Recarrega do banco para garantir sincronia total
-                const titleEl = document.getElementById('current-workflow-title');
-                const processTitle = titleEl ? titleEl.textContent.trim() : 'Processo';
-                selectProcess(processId, processTitle);
+                // Busca o estado atualizado do processo (recurrent vs manual) para atualizar o botão iniciar
+                const { data: proc } = await supabaseClient.from('processes').select('is_recurring').eq('id', processId).single();
+                
+                await selectProcess(processId, title, proc ? proc.is_recurring : false);
+
             } catch (e) {
                 console.error("Erro ao salvar fluxo:", e);
-                showToast("Erro ao salvar: " + e.message, "danger");
+                showToast("Falha técnica ao salvar: " + e.message, "danger");
             } finally {
                 btn.disabled = false;
-                btn.textContent = "Salvar";
+                btn.innerHTML = '<span class="material-icons">save</span> Salvar';
             }
         }
 
