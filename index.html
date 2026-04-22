@@ -7692,7 +7692,7 @@ const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; 
             }).join('');
         }
 
-        async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date) {
+async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date) {
             checkboxElement.disabled = true;
             const isCompleted = checkboxElement.checked;
             const action = isCompleted ? 'complete' : 'uncomplete';
@@ -7707,34 +7707,27 @@ const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; 
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`
                     },
-body: JSON.stringify({ 
+                    body: JSON.stringify({ 
                         action: action,
-                        routine_task_id: routineTaskId,
-                        task_instance_id: taskInstanceId,
+                        routine_task_id: routineTaskId, // ID da tarefa pontual
                         date: date,
-                        user_id: currentUserProfile.id // ADICIONE ESTA LINHA
+                        user_id: currentUserProfile.id
                     })
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.text();
-                    console.error("Erro do servidor:", errorData);
                     throw new Error('Falha ao atualizar status da tarefa.');
                 }
                 
                 showToast(`Tarefa marcada como ${isCompleted ? 'concluída' : 'pendente'}!`, 'success');
                 
-                const activeDate = document.querySelector('.calendar-day.active')?.dataset.date;
-                if (activeDate) {
-                   await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
-                   const dayEl = document.querySelector(`.calendar-day[data-date="${activeDate}"]`);
-                   if(dayEl) dayEl.classList.add('active');
-                   fetchAndRenderTasks(activeDate);
-                }
+                // Recarrega o calendário e as tarefas para refletir a mudança no banco
+                await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
+                selectDate(date);
 
             } catch (e) {
                 showToast(e.message, 'danger');
-                checkboxElement.checked = !isCompleted; 
+                checkboxElement.checked = !isCompleted; // Reverte o check visual em caso de erro
             } finally {
                 checkboxElement.disabled = false;
             }
