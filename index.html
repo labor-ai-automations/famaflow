@@ -4096,28 +4096,25 @@ async function loadMyProcessesPage() {
         let isProcessingTask = false;
 
         async function completeProcessTask(instanceId, btnElement) {
-            // 🛡️ Trava de Segurança Nível 1: Variável de Estado
             if (isProcessingTask) return;
             
-            // 🛡️ Trava de Segurança Nível 2: Desativação do Botão
             isProcessingTask = true;
             btnElement.disabled = true;
-            btnElement.style.opacity = "0.5";
+            
+            // FEEDBACK VISUAL IMEDIATO
+            const taskItem = btnElement.closest('.task-item');
+            if (taskItem) taskItem.style.opacity = "0.5";
             btnElement.innerHTML = '<span class="material-icons refresh-spin" style="font-size:16px;">sync</span> Gravando...';
 
             try {
                 const { data: instanceData } = await supabaseClient
-                    .from('process_instances')
-                    .select('current_step_order, process_id')
-                    .eq('id', instanceId)
-                    .single();
+                    .from('process_instances').select('current_step_order, process_id')
+                    .eq('id', instanceId).single();
 
                 const { data: stepData } = await supabaseClient
-                    .from('process_steps')
-                    .select('id')
+                    .from('process_steps').select('id')
                     .eq('process_id', instanceData.process_id)
-                    .eq('step_order', instanceData.current_step_order)
-                    .single();
+                    .eq('step_order', instanceData.current_step_order).single();
 
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 
@@ -4131,23 +4128,30 @@ async function loadMyProcessesPage() {
                     })
                 });
 
-                if (response.ok) {
-                    showToast('Etapa registrada com sucesso!', 'success');
-                    // Recarrega a página após o delay de segurança
-                    setTimeout(() => {
-                        isProcessingTask = false; // Libera a trava global
+                if (!response.ok) throw new Error("Erro na rede");
+
+                showToast('Etapa registrada!', 'success');
+                btnElement.innerHTML = '<span class="material-icons">done_all</span> Concluído';
+
+                // BUFFER DE 1.2 SEGUNDOS PARA O N8N TERMINAR
+                setTimeout(async () => {
+                    isProcessingTask = false;
+                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date || new Date().toISOString().split('T')[0];
+                    await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
+                    selectDate(activeDate);
+                    // Atualiza também a página de processos se ela estiver aberta por trás
+                    if (document.getElementById('my-processes-page').classList.contains('active')) {
                         loadMyProcessesPage();
-                    }, 1500);
-                } else {
-                    throw new Error("Falha no servidor");
-                }
+                    }
+                }, 1200);
+
             } catch (e) {
-                console.error("Erro:", e);
-                showToast("Erro ao gravar. Tente novamente.", "danger");
-                isProcessingTask = false; // Libera em caso de erro
+                showToast("Falha técnica ao concluir.", "danger");
+                isProcessingTask = false;
                 btnElement.disabled = false;
                 btnElement.style.opacity = "1";
-                btnElement.innerHTML = '<span class="material-icons">check_circle</span> Concluir Etapa';
+                btnElement.innerHTML = '<span class="material-icons">check_circle</span> Concluir';
+                if(taskItem) taskItem.style.opacity = "1";
             }
         }
 
@@ -7693,8 +7697,19 @@ const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; 
         }
 
 async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date) {
-            checkboxElement.disabled = true;
             const isCompleted = checkboxElement.checked;
+            const taskItem = checkboxElement.closest('.task-item');
+            
+            // 1. FEEDBACK VISUAL IMEDIATO (UI OTIMISTA)
+            if (isCompleted) {
+                taskItem.classList.add('completed');
+                taskItem.style.opacity = "0.6";
+            } else {
+                taskItem.classList.remove('completed');
+                taskItem.style.opacity = "1";
+            }
+
+            checkboxElement.disabled = true;
             const action = isCompleted ? 'complete' : 'uncomplete';
 
             try {
@@ -7709,25 +7724,28 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
                     },
                     body: JSON.stringify({ 
                         action: action,
-                        routine_task_id: routineTaskId, // ID da tarefa pontual
+                        routine_task_id: routineTaskId,
                         date: date,
                         user_id: currentUserProfile.id
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error('Falha ao atualizar status da tarefa.');
-                }
+                if (!response.ok) throw new Error('Falha no servidor.');
                 
-                showToast(`Tarefa marcada como ${isCompleted ? 'concluída' : 'pendente'}!`, 'success');
+                showToast(`Tarefa ${isCompleted ? 'concluída' : 'reaberta'}!`, 'success');
                 
-                // Recarrega o calendário e as tarefas para refletir a mudança no banco
-                await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
-                selectDate(date);
+                // 2. AGUARDA O BANCO (BUFFER DE 1 SEGUNDO) ANTES DE RECARREGAR
+                setTimeout(async () => {
+                    await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
+                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date || date;
+                    selectDate(activeDate);
+                }, 1000);
 
             } catch (e) {
-                showToast(e.message, 'danger');
-                checkboxElement.checked = !isCompleted; // Reverte o check visual em caso de erro
+                showToast("Erro ao salvar. Tente novamente.", 'danger');
+                checkboxElement.checked = !isCompleted;
+                taskItem.classList.toggle('completed', !isCompleted);
+                taskItem.style.opacity = "1";
             } finally {
                 checkboxElement.disabled = false;
             }
