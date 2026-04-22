@@ -2986,11 +2986,11 @@ async function loadFlowSteps(processId, forceStep = null) {
                 const isActive = step.is_active || false;
                 const isCompleted = step.is_completed || false;
                 
-                // NOVO: Geração de Badges com texto para maior clareza
+                // Geração de Badges com nomes completos (PLANILHA / DOCUMENTO)
                 const docIcons = (step.required_docs || []).map(doc => 
-                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório">
-                        <span class="material-icons">${doc === 'excel' ? 'table_view' : 'description'}</span>
-                        ${doc === 'excel' ? 'XLS' : 'DOC'}
+                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório" style="padding: 2px 6px;">
+                        <span class="material-icons" style="font-size: 10px;">${doc === 'excel' ? 'table_view' : 'description'}</span>
+                        ${doc === 'excel' ? 'PLANILHA' : 'DOCUMENTO'}
                     </span>`
                 ).join('');
 
@@ -3027,7 +3027,7 @@ async function loadFlowSteps(processId, forceStep = null) {
                 node.ondblclick = () => openEditStepModal(node.dataset.id);
             });
         }
-
+		
         function autoArrangeNodes() {
             syncDOMToLocalData();
 
@@ -3124,11 +3124,11 @@ function renderLocalWorkflow() {
                 const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
                 const isCompleted = step.is_completed || false;
                 
-                // NOVO: Geração de Badges com texto para o modo rascunho
+                // Geração de Badges com nomes completos (PLANILHA / DOCUMENTO) para rascunho
                 const docIcons = (step.required_docs || []).map(doc => 
-                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório">
-                        <span class="material-icons">${doc === 'excel' ? 'table_view' : 'description'}</span>
-                        ${doc === 'excel' ? 'XLS' : 'DOC'}
+                    `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório" style="padding: 2px 6px;">
+                        <span class="material-icons" style="font-size: 10px;">${doc === 'excel' ? 'table_view' : 'description'}</span>
+                        ${doc === 'excel' ? 'PLANILHA' : 'DOCUMENTO'}
                     </span>`
                 ).join('');
 
