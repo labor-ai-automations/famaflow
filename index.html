@@ -4101,7 +4101,6 @@ async function loadMyProcessesPage() {
             isProcessingTask = true;
             btnElement.disabled = true;
             
-            // FEEDBACK VISUAL IMEDIATO
             const taskItem = btnElement.closest('.task-item');
             if (taskItem) taskItem.style.opacity = "0.5";
             btnElement.innerHTML = '<span class="material-icons refresh-spin" style="font-size:16px;">sync</span> Gravando...';
@@ -4133,17 +4132,17 @@ async function loadMyProcessesPage() {
                 showToast('Etapa registrada!', 'success');
                 btnElement.innerHTML = '<span class="material-icons">done_all</span> Concluído';
 
-                // BUFFER DE 1.2 SEGUNDOS PARA O N8N TERMINAR
+                // BUFFER COM DATA SEGURA (FIX: Remove o 'Invalid Date')
                 setTimeout(async () => {
                     isProcessingTask = false;
-                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date || new Date().toISOString().split('T')[0];
+                    const currentViewDate = document.querySelector('.calendar-day.active')?.dataset.date || new Date().toISOString().split('T')[0];
                     await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
-                    selectDate(activeDate);
-                    // Atualiza também a página de processos se ela estiver aberta por trás
+                    selectDate(currentViewDate);
+                    
                     if (document.getElementById('my-processes-page').classList.contains('active')) {
                         loadMyProcessesPage();
                     }
-                }, 1200);
+                }, 1500);
 
             } catch (e) {
                 showToast("Falha técnica ao concluir.", "danger");
@@ -7700,11 +7699,11 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
             const isCompleted = checkboxElement.checked;
             const taskItem = checkboxElement.closest('.task-item');
             
-            // 1. UI OTIMISTA: Altera o estilo na hora
+            // 1. UI OTIMISTA
             if (isCompleted) {
                 taskItem.classList.add('completed');
-                taskItem.style.background = "transparent"; // Remove o fundo vermelho do atraso
-                taskItem.style.borderLeftColor = "var(--color-success)"; // Muda borda para verde
+                taskItem.style.background = "transparent"; 
+                taskItem.style.borderLeftColor = "var(--color-success)"; 
                 taskItem.style.opacity = "0.7";
             } else {
                 taskItem.classList.remove('completed');
@@ -7724,7 +7723,7 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
                     body: JSON.stringify({ 
                         action: action,
                         routine_task_id: routineTaskId,
-                        date: date, // Aqui agora vai a data original da tarefa
+                        date: date,
                         user_id: currentUserProfile.id
                     })
                 });
@@ -7733,11 +7732,12 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
                 
                 showToast(`Tarefa registrada!`, 'success');
                 
-                // 2. BUFFER: Recarrega o banco após 1.5s para garantir que o n8n terminou
+                // 2. BUFFER COM DATA SEGURA (FIX: Remove o 'Invalid Date')
                 setTimeout(async () => {
+                    // Pega a data que o calendário está visualizando no momento do clique para não se perder
+                    const currentViewDate = document.querySelector('.calendar-day.active')?.dataset.date || date;
                     await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
-                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date;
-                    selectDate(activeDate);
+                    selectDate(currentViewDate);
                 }, 1500);
 
             } catch (e) {
