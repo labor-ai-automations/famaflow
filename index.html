@@ -7598,7 +7598,7 @@ async function fetchAndRenderTasks(date) {
                     
                     const onClickAction = isRecurrent 
                         ? `completeProcessTask('${task.instance_id}', this)`
-                        : isFuturePreview ? `startProcessInstance('${task.routine_id}')` : `completeTask(this, '${task.task_id}', null, '${date}')`;
+                        : isFuturePreview ? `startProcessInstance('${task.routine_id}')` : `completeTask(this, '${task.task_id}', null, '${task.original_date}')`;
 
 const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
                     
@@ -7700,10 +7700,12 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
             const isCompleted = checkboxElement.checked;
             const taskItem = checkboxElement.closest('.task-item');
             
-            // 1. FEEDBACK VISUAL IMEDIATO (UI OTIMISTA)
+            // 1. UI OTIMISTA: Altera o estilo na hora
             if (isCompleted) {
                 taskItem.classList.add('completed');
-                taskItem.style.opacity = "0.6";
+                taskItem.style.background = "transparent"; // Remove o fundo vermelho do atraso
+                taskItem.style.borderLeftColor = "var(--color-success)"; // Muda borda para verde
+                taskItem.style.opacity = "0.7";
             } else {
                 taskItem.classList.remove('completed');
                 taskItem.style.opacity = "1";
@@ -7718,31 +7720,28 @@ async function completeTask(checkboxElement, routineTaskId, taskInstanceId, date
 
                 const response = await fetch(N8N_COMPLETE_TASK_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
                     body: JSON.stringify({ 
                         action: action,
                         routine_task_id: routineTaskId,
-                        date: date,
+                        date: date, // Aqui agora vai a data original da tarefa
                         user_id: currentUserProfile.id
                     })
                 });
 
                 if (!response.ok) throw new Error('Falha no servidor.');
                 
-                showToast(`Tarefa ${isCompleted ? 'concluída' : 'reaberta'}!`, 'success');
+                showToast(`Tarefa registrada!`, 'success');
                 
-                // 2. AGUARDA O BANCO (BUFFER DE 1 SEGUNDO) ANTES DE RECARREGAR
+                // 2. BUFFER: Recarrega o banco após 1.5s para garantir que o n8n terminou
                 setTimeout(async () => {
                     await renderCalendar(routineCurrentDate.getFullYear(), routineCurrentDate.getMonth());
-                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date || date;
+                    const activeDate = document.querySelector('.calendar-day.active')?.dataset.date;
                     selectDate(activeDate);
-                }, 1000);
+                }, 1500);
 
             } catch (e) {
-                showToast("Erro ao salvar. Tente novamente.", 'danger');
+                showToast("Erro ao processar.", 'danger');
                 checkboxElement.checked = !isCompleted;
                 taskItem.classList.toggle('completed', !isCompleted);
                 taskItem.style.opacity = "1";
