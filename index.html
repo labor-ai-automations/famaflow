@@ -3546,20 +3546,24 @@ async function showStepHistory(stepId) {
             }
 
             container.innerHTML = localSchedules.map((schedule, sIndex) => `
-                <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <span style="font-size: 0.9rem; font-weight: 800; color: var(--color-brand-primary);">🚀 INÍCIO: ${new Date(schedule.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                        <button class="btn-icon" title="Remover esta data de execução" onclick="removeExecutionDate(${sIndex})">
-                            <span class="material-icons" style="color: var(--color-danger); font-size: 20px;">delete_forever</span>
-                        </button>
-                    </div>
+                <details class="routine-group" style="margin-bottom: 0.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 0.75rem;">
+                    <summary class="routine-group-header" style="padding-bottom: 0; border: none; margin: -0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0.75rem;">
+                            <h4 style="color: var(--color-text-primary); font-size: 0.9rem;">
+                                INÍCIO: ${new Date(schedule.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </h4>
+                            <button class="btn-icon" title="Remover esta data de execução" onclick="event.preventDefault(); removeExecutionDate(${sIndex})">
+                                <span class="material-icons" style="color: var(--color-danger); font-size: 20px;">delete_forever</span>
+                            </button>
+                        </div>
+                    </summary>
                     
-                    <div style="background: var(--color-background); padding: 0.75rem; border-radius: 6px;">
+                    <div style="background: var(--color-background); padding: 0.75rem; border-radius: 6px; margin-top: 0.75rem;">
                         <label style="font-size: 0.7rem; font-weight: 700; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">CRONOGRAMA DE ALERTAS:</label>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; min-height: 24px;">
                             ${schedule.alerts.length > 0 ? schedule.alerts.sort().map((alertDate, aIndex) => `
                                 <span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;">
-                                    🔔 ${new Date(alertDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                    ${new Date(alertDate + 'T12:00:00').toLocaleDateString('pt-BR')}
                                     <span class="material-icons" style="font-size: 14px; cursor: pointer;" onclick="removeAlertDate(${sIndex}, ${aIndex})">close</span>
                                 </span>
                             `).join('') : '<small style="color: var(--color-text-secondary); font-size: 0.75rem;">Nenhum alerta configurado.</small>'}
@@ -3575,7 +3579,7 @@ async function showStepHistory(stepId) {
                             </button>
                         </div>
                     </div>
-                </div>
+                </details>
             `).join('');
         }
 
