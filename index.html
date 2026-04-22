@@ -3114,73 +3114,45 @@ function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
-            // 1. Gerenciamento da Tag de Rascunho
-            const container = document.getElementById('process-visualizer-container');
-            let draftTag = document.getElementById('process-draft-tag');
-            if (!draftTag) {
-                draftTag = document.createElement('div');
-                draftTag.id = 'process-draft-tag';
-                draftTag.className = 'flowchart-draft-tag';
-                container.appendChild(draftTag);
-            }
-            draftTag.style.display = 'flex';
-            draftTag.innerHTML = `<span class="material-icons">warning</span> MODO RASCUNHO ATIVO • Clique em "Salvar" para publicar as alterações.`;
+            updateDraftUIState(); // Atualiza tags e botões da toolbar
 
-            // 2. Limpeza da Toolbar (Esconde Execuções e Reset no Rascunho)
-            const toolbar = document.querySelector('.flowchart-floating-toolbar');
-            if(toolbar) {
-                toolbar.querySelectorAll('button[onclick*="showProcessInstances"], button[onclick*="resetProcessInstances"]').forEach(b => b.style.display = 'none');
-            }
+            syncDOMToLocalData();
+            localStepsData.sort((a, b) => a.step_order - b.step_order);
 
-            // Mostra o botão salvar
-            const saveBtn = document.getElementById('btn-save-workflow');
-            const saveSep = document.getElementById('save-separator');
-            if(saveBtn) saveBtn.style.display = 'flex';
-            if(saveSep) saveSep.style.display = 'block';
+            nodesContainer.innerHTML = localStepsData.map((step, index) => {
+                const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
+                const isCompleted = step.is_completed || false;
+                
+                // Geração das tags de documentos para o card
+                const docIcons = (step.required_docs || []).map(doc => 
+                    `<span class="material-icons" style="font-size:12px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
+                ).join(' ');
 
-// Persiste todas as posições visuais atuais do DOM no cache ANTES de destruir os nós
-        syncDOMToLocalData();
-
-        localStepsData.sort((a, b) => a.step_order - b.step_order);
-
-        nodesContainer.innerHTML = localStepsData.map((step, index) => {
-                // Se não houver ui_metadata (erro), gera uma baseada na ordem para não encavalar
-                if (!step.ui_metadata) {
-                    step.ui_metadata = { x: 100 + (index * 280), y: 150 };
-                }
-                const pos = step.ui_metadata;
-                const isEditingThis = document.getElementById('process-quick-panel').dataset.editingStepId == step.id;
-                const isCompleted = step.is_completed || false; // Precisaremos passar esse status
                 return `
-                    <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px; border-color: ${isEditingThis ? 'var(--color-warning)' : 'var(--color-border)'}">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                             <div class="node-label">Etapa ${step.step_order}</div>
-                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">check</span> FEITO</span>' : ''}
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                ${docIcons}
+                                ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">FEITO</span>' : ''}
+                            </div>
                         </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
-<div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                        <div class="node-footer" style="flex-direction: column; align-items: flex-start; gap: 2px;">
                             <div style="display: flex; align-items: center; gap: 5px; width: 100%;">
                                 <small style="font-weight: 600; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">👤 ${step.assignee?.full_name || 'N/A'}</small>
-                                <button class="btn-icon" onclick="showStepHistory('${step.id}')" style="padding: 2px;"><span class="material-icons" style="font-size:16px;">history</span></button>
                             </div>
-                            ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
-                            ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
-                        <!-- Botão de Excluir (Rascunho) -->
-                        <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa">
-                            <span class="material-icons">delete</span>
-                        </div>
-                        <div class="node-quick-add" onclick="openAddStepModal('${step.process_id}', ${step.step_order + 1})" title="Inserir etapa aqui">
-                            <span class="material-icons">add</span>
-                        </div>
+                        <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa"><span class="material-icons">delete</span></div>
+                        <div class="node-quick-add" onclick="openAddStepModal('${step.process_id}', ${step.step_order + 1})" title="Inserir etapa aqui"><span class="material-icons">add</span></div>
                     </div>
                 `;
             }).join('');
 
             localStepsData.forEach(step => makeNodeDraggableLocal(step.id));
             updateFlowConnections();
-
+            
             document.querySelectorAll('.flow-node').forEach(node => {
                 node.ondblclick = () => openEditStepModal(node.dataset.id);
             });
@@ -3496,7 +3468,6 @@ async function showStepHistory(stepId) {
                 modal.classList.add('visible');
             }
 
-            // Ação de Salvar Unificada
             saveBtn.onclick = async (e) => {
                 e.preventDefault();
                 const titleVal = titleInput.value.trim();
@@ -3507,28 +3478,27 @@ async function showStepHistory(stepId) {
 
                 try {
                     let finalProcessId = processId;
+                    const isRecurring = isRecurringCheck.checked;
                     
-                    // Salva ou Atualiza Mestre
                     if (processId) {
                         await supabaseClient.from('processes').update({ 
                             title: titleVal, 
                             description: descInput.value,
-                            is_recurring: isRecurringCheck.checked
+                            is_recurring: isRecurring
                         }).eq('id', processId);
                     } else {
                         const { data: newProc, error } = await supabaseClient.from('processes').insert({ 
                             title: titleVal, 
                             description: descInput.value, 
                             created_by: currentUserProfile.id,
-                            is_recurring: isRecurringCheck.checked
+                            is_recurring: isRecurring
                         }).select().single();
                         if (error) throw error;
                         finalProcessId = newProc.id;
                     }
 
-                    // Atualiza o Calendário de Datas
                     await supabaseClient.from('process_schedules').delete().eq('process_id', finalProcessId);
-                    if (isRecurringCheck.checked && localSchedules.length > 0) {
+                    if (isRecurring && localSchedules.length > 0) {
                         const finalScheds = localSchedules.map(s => ({ 
                             process_id: finalProcessId, 
                             scheduled_date: s.date, 
@@ -3537,18 +3507,37 @@ async function showStepHistory(stepId) {
                         await supabaseClient.from('process_schedules').insert(finalScheds);
                     }
 
-                    showToast("Processo salvo com sucesso!", "success");
+                    showToast("Configurações salvas!", "success");
                     modal.classList.remove('visible');
-                    loadManageProcessesPage();
                     
-                    // Se o processo que acabei de editar é o que está desenhado na tela, atualiza o titulo dele
+                    // 1. Atualiza a barra lateral mas mantém o destaque no processo atual
+                    await loadManageProcessesPage();
+                    const activeItem = document.getElementById(`item-process-${finalProcessId}`);
+                    if(activeItem) activeItem.classList.add('active');
+
+                    // 2. Se for o processo aberto, atualiza apenas os textos e o botão iniciar, SEM limpar o fluxograma
                     if(currentlyOpenProcessId === finalProcessId) {
-                        selectProcess(finalProcessId, titleVal, isRecurringCheck.checked);
+                        document.getElementById('current-workflow-title-label').textContent = titleVal;
+                        document.getElementById('current-workflow-desc').textContent = descInput.value || 'Sem descrição.';
+                        
+                        // Atualiza visibilidade do botão iniciar dinamicamente
+                        const toolbar = document.querySelector('.flowchart-floating-toolbar');
+                        let startBtn = toolbar.querySelector('button[onclick*="startProcessInstance"]');
+                        
+                        if (isRecurring) {
+                            if (startBtn) startBtn.remove();
+                        } else {
+                            if (!startBtn) {
+                                const btnHtml = `<button class="btn btn-success" onclick="startProcessInstance('${finalProcessId}')" title="Iniciar Nova Execução Manual"><span class="material-icons">play_arrow</span> Iniciar</button>`;
+                                toolbar.insertAdjacentHTML('afterbegin', btnHtml);
+                            }
+                        }
                     }
                 } catch (e) {
                     showToast(e.message, "danger");
                 } finally {
                     saveBtn.disabled = false;
+                    saveBtn.textContent = processId ? 'Salvar Alterações' : 'Criar Processo';
                 }
             };
         }
