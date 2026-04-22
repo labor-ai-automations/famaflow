@@ -1750,10 +1750,11 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const themeToggleBtn = document.getElementById('theme-toggle');
 
         const authHTML = `<div class="login-wrapper visible" id="auth-wrapper"><div id="auth-container" class="login-container"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="login-logo"><p class="login-subtitle">Sistema de Governança Fama</p><form id="login-form"><div class="input-group"><input type="email" id="email" class="input-field" placeholder="Email" required></div><div class="input-group"><input type="password" id="password" class="input-field" placeholder="Senha" required></div><button type="submit" class="btn-primary" style="width: 100%;">Entrar</button></form></div></div>`;
-        const appHTML = `<div id="app-container">
+const appHTML = `<div id="app-container">
             <aside class="sidebar" id="main-sidebar">
                 <!-- Botão de encolher/expandir -->
                 <button id="btn-toggle-sidebar" title="Recolher Menu"><span class="material-icons" style="font-size: 16px;">chevron_left</span></button>
+
                 <div class="sidebar-header"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="sidebar-logo"></div>
                 <div class="sidebar-scroll-area">
                     <ul class="nav-menu">
@@ -1979,7 +1980,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                             <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border);">
                                 <div class="routines-column-header" style="background: var(--color-background); padding: 1rem;">
                                     <h3 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Processos Ativos</h3>
-                                    <button class="btn btn-danger btn-icon" onclick="openNewProcessModal()" title="Novo Processo" style="width: 32px; height: 32px;">
+                                    <button class="btn btn-danger btn-icon" onclick="openEditProcessModal(null)" title="Novo Processo" style="width: 32px; height: 32px;">
                                         <span class="material-icons" style="font-size: 18px;">add</span>
                                     </button>
                                 </div>
