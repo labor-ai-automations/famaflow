@@ -5847,16 +5847,16 @@ async function loadUserProfileData(userId) {
             container.innerHTML = `<div class="page-header"><h1>Carregando Perfil...</h1></div>`;
 
             try {
-                // Busca Perfil, Score e o novo Resumo de Performance
-                const [profileRes, statsRes, performanceRes] = await Promise.all([
+                // Busca Perfil, Score em tempo real e o Resumo de Performance corrigido
+                const [profileRes, scoreRes, performanceRes] = await Promise.all([
                     supabaseClient.from('profiles').select('*').eq('id', targetId).single(),
-                    supabaseClient.rpc('get_dashboard_stats', { p_user_id: targetId }).single(), // Adaptado para aceitar ID se necessário
+                    supabaseClient.rpc('calculate_user_score', { target_user_id: targetId }),
                     supabaseClient.rpc('get_user_performance_summary', { p_user_id: targetId })
                 ]);
 
                 const profile = profileRes.data;
                 const perfData = performanceRes.data || [];
-                const score = Math.min(profile.score || 100, 100);
+                const score = scoreRes.data || 0; // Puxa o score calculado dinamicamente
 
                 let riskZone = 'green', riskText = 'Em Dia', barColor = 'var(--color-success)';
                 if (score < 50) { riskZone = 'red'; riskText = 'Crítico'; barColor = 'var(--color-danger)'; }
@@ -5866,10 +5866,9 @@ async function loadUserProfileData(userId) {
                     ? `<div class="user-avatar" style="background-image: url('https://lh3.googleusercontent.com/d/${profile.avatar_url}'); background-size: cover; background-position: center; border-radius: 50%; width: 120px; height: 120px; border: 5px solid ${barColor};"></div>`
                     : `<div class="user-avatar" style="width: 120px; height: 120px; font-size: 3.5rem; border: 5px solid ${barColor};">${profile.full_name.charAt(0).toUpperCase()}</div>`;
 
-                // Filtragem dos grupos de performance
                 const overdue = perfData.filter(t => t.status_group === 'overdue');
                 const ongoing = perfData.filter(t => t.status_group === 'ongoing');
-                const completed = perfData.filter(t => t.status_group === 'completed').slice(0, 6); // Top 6 recentes
+                const completed = perfData.filter(t => t.status_group === 'completed').slice(0, 6);
 
                 container.innerHTML = `
                     <div class="profile-header-card zone-${riskZone}">
@@ -5889,9 +5888,7 @@ async function loadUserProfileData(userId) {
                         </div>
                     </div>
 
-                    <!-- DASHBOARD DE PERFORMANCE (NOVO) -->
                     <div class="grid grid-cols-2">
-                        <!-- COLUNA: ATRASOS E PENDÊNCIAS -->
                         <div class="card" style="border-top: 4px solid var(--color-danger);">
                             <h3 class="card-title" style="color: var(--color-danger);"><span class="material-icons">report_problem</span> Em Atraso (${overdue.length})</h3>
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -5916,7 +5913,6 @@ async function loadUserProfileData(userId) {
                             </div>
                         </div>
 
-                        <!-- COLUNA: HISTÓRICO DE SUCESSO -->
                         <div class="card" style="border-top: 4px solid var(--color-success);">
                             <h3 class="card-title" style="color: var(--color-success);"><span class="material-icons">task_alt</span> Concluídas Recentemente</h3>
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
