@@ -3342,6 +3342,8 @@ function openNewProcessModal() {
             modal.classList.add('visible');
         }
 
+        let localSchedules = []; // <-- ESTA É A LINHA QUE FALTAVA
+
         function renderLocalSchedules() {
             const container = document.getElementById('local-schedules-list');
             if (!container) return;
