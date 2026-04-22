@@ -1886,25 +1886,70 @@ body.fullscreen-flow .flowchart-monitor-bar {
                     </div>
                 </div>
                 <div id="my-routines-page" class="page-content"></div>
-                <div id="manage-routines-page" class="page-content"></div>
                 
-                <!-- NOVAS PÁGINAS DE PROCESSOS -->
+                <!-- PÁGINA UNIFICADA DE GERENCIAMENTO DE PROCESSOS/ROTINAS -->
                 <div id="manage-processes-page" class="page-content">
-                    <div class="page-header">
-                        <div><h1>Gerenciar Processos</h1><p>Desenhe fluxos e gerencie a execução em tempo real.</p></div>
-                    </div>
-                    <div class="grid" style="grid-template-columns: 300px 1fr; gap: 1.5rem; align-items: flex-start;">
-                        <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border);">
-                            <div class="routines-column-header" style="background: var(--color-background); padding: 1rem;">
-                                <h3 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Processos Ativos</h3>
-                                <button class="btn btn-danger btn-icon" onclick="openNewProcessModal()" title="Novo Processo" style="width: 32px; height: 32px;">
-                                    <span class="material-icons" style="font-size: 18px;">add</span>
-                                </button>
-                            </div>
-                            <div class="routines-list" id="process-list-sidebar"><div class="empty-state">Carregando...</div></div>
+                    <div class="page-header" style="margin-bottom: 1rem;">
+                        <div>
+                            <h1>Gerenciar Processos e Tarefas</h1>
+                            <p>Crie fluxos recorrentes ou delegue tarefas pontuais para a equipe.</p>
                         </div>
-                        <div class="card" id="process-visualizer-container" style="min-height: 500px; position: relative; padding: 2rem;">
-                            <div class="empty-state">Selecione um processo para editar o fluxo.</div>
+                    </div>
+
+                    <!-- Seletor de Tipo de Processo -->
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border);">
+                        <button class="tab-link active" id="tab-btn-recurrent" onclick="switchProcessTab('recurrent')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
+                            <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">account_tree</span> Processos Recorrentes
+                        </button>
+                        <button class="tab-link" id="tab-btn-punctual" onclick="switchProcessTab('punctual')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
+                            <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">assignment</span> Tarefas Pontuais
+                        </button>
+                    </div>
+
+                    <!-- ABA 1: PROCESSOS RECORRENTES (FLUXOGRAMA) -->
+                    <div id="tab-content-recurrent">
+                        <div class="grid" style="grid-template-columns: 300px 1fr; gap: 1.5rem; align-items: flex-start;">
+                            <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border);">
+                                <div class="routines-column-header" style="background: var(--color-background); padding: 1rem;">
+                                    <h3 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Processos Ativos</h3>
+                                    <button class="btn btn-danger btn-icon" onclick="openNewProcessModal()" title="Novo Processo" style="width: 32px; height: 32px;">
+                                        <span class="material-icons" style="font-size: 18px;">add</span>
+                                    </button>
+                                </div>
+                                <div class="routines-list" id="process-list-sidebar"><div class="empty-state">Carregando...</div></div>
+                            </div>
+                            <div class="card" id="process-visualizer-container" style="min-height: 500px; position: relative; padding: 2rem;">
+                                <div class="empty-state">Selecione um processo para editar o fluxo.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ABA 2: TAREFAS PONTUAIS (TRÊS COLUNAS) -->
+                    <div id="tab-content-punctual" style="display: none;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+                            <button class="btn btn-danger" onclick="openNewRoutineModal()">
+                                <span class="material-icons">add</span> Nova Tarefa Pontual
+                            </button>
+                        </div>
+                        <div class="manage-routines-layout">
+                            <div class="card routines-column-card">
+                                <div class="routines-column-header"><h3>Tarefas Criadas</h3></div>
+                                <div class="routines-list" id="routines-list-col1"><div class="empty-state">Carregando...</div></div>
+                            </div>
+                            <div class="card routines-column-card">
+                                <div class="routines-column-header">
+                                    <h3>Itens da Tarefa</h3>
+                                    <div id="add-task-button-container"></div>
+                                </div>
+                                <div class="routines-list" id="tasks-list-col2"><div class="empty-state">Selecione uma tarefa pontual</div></div>
+                            </div>
+                            <div class="card routines-column-card">
+                                <div class="routines-column-header">
+                                    <h3>Usuários Atribuídos</h3>
+                                    <div id="assign-user-button-container"></div>
+                                </div>
+                                <div class="routines-list" id="assignments-list-col3"><div class="empty-state">Selecione uma tarefa pontual</div></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2241,7 +2286,6 @@ async function showApp() {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
         }
         if (hasMasterAccess || currentUserProfile.permissions.includes('manage_routines')) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-routines-page"><span class="material-icons">rule</span> Gerenciar Rotinas</a></li>`;
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
         }
 
@@ -2331,11 +2375,34 @@ function showPage(pageId, targetUserId = null) {
             if (pageId === 'request-management-page') loadRequestManagementPage();
             if (pageId === 'travel-request-management-page') loadTravelRequestManagementPage();
             if (pageId === 'my-routines-page') loadMyRoutinesPage();
-            if (pageId === 'manage-routines-page') loadManageRoutinesPage();
+            // A página manage-routines-page foi removida, a lógica foi movida para manage-processes-page
             if (pageId === 'organograma-page') loadOrganogramaPage();
-            if (pageId === 'manage-processes-page') loadManageProcessesPage();
+            if (pageId === 'manage-processes-page') {
+                loadManageProcessesPage(); // Carrega a aba padrão (Recorrentes)
+                switchProcessTab('recurrent'); // Garante que a UI inicie no estado correto
+            }
             if (pageId === 'kb-page') loadKBPage();
             if (pageId === 'users-page') loadUsersForAdmin(); 
+        }
+		
+		// NOVA FUNÇÃO: Controle das Abas de Processos
+        function switchProcessTab(tabId) {
+            // Controle dos Botões
+            document.getElementById('tab-btn-recurrent').classList.remove('active');
+            document.getElementById('tab-btn-punctual').classList.remove('active');
+            document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+
+            // Controle do Conteúdo
+            document.getElementById('tab-content-recurrent').style.display = 'none';
+            document.getElementById('tab-content-punctual').style.display = 'none';
+            document.getElementById(`tab-content-${tabId}`).style.display = 'block';
+
+            // Carrega os dados sob demanda
+            if (tabId === 'punctual') {
+                loadManageRoutinesPage();
+            } else {
+                loadManageProcessesPage();
+            }
         }
 
         function toggleKBFields() {
@@ -7458,52 +7525,30 @@ body: JSON.stringify({
         }
 
         async function loadManageRoutinesPage() {
-            const page = document.getElementById('manage-routines-page');
-            page.innerHTML = `
-                <div class="page-header">
-                    <div><h1>Gerenciar Rotinas Pontuais</h1><p>Crie, edite e atribua rotinas com datas específicas.</p></div>
-                    <div class="page-header-actions"><button class="btn btn-danger" onclick="openNewRoutineModal()"><span class="material-icons">add</span> Nova Rotina Pontual</button></div>
-                </div>
-                <div class="manage-routines-layout">
-                    <div class="card routines-column-card">
-                        <div class="routines-column-header"><h3>Rotinas Criadas</h3></div>
-                        <div class="routines-list" id="routines-list-col1"><div class="empty-state">Carregando...</div></div>
-                    </div>
-                    <div class="card routines-column-card">
-                        <div class="routines-column-header">
-                            <h3>Tarefas da Rotina</h3>
-                            <div id="add-task-button-container"></div>
-                        </div>
-                        <div class="routines-list" id="tasks-list-col2"><div class="empty-state">Selecione uma rotina</div></div>
-                    </div>
-                    <div class="card routines-column-card">
-                        <div class="routines-column-header">
-                            <h3>Usuários Atribuídos</h3>
-                            <div id="assign-user-button-container"></div>
-                        </div>
-                        <div class="routines-list" id="assignments-list-col3"><div class="empty-state">Selecione uma rotina</div></div>
-                    </div>
-                </div>
-            `;
+            const listContainer = document.getElementById('routines-list-col1');
+            if(!listContainer) return;
+            
+            listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
 
             const { data: routines, error } = await supabaseClient.rpc('get_manageable_routines');
-            const listContainer = document.getElementById('routines-list-col1');
 
             if(error) {
-                listContainer.innerHTML = '<div class="empty-state">Erro ao carregar rotinas.</div>';
+                listContainer.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar tarefas.</div>';
                 return;
             }
             if(routines.length === 0) {
-                listContainer.innerHTML = '<div class="empty-state">Nenhuma rotina criada.</div>';
+                listContainer.innerHTML = '<div class="empty-state">Nenhuma tarefa pontual criada.</div>';
                 return;
             }
 
             listContainer.innerHTML = routines.map(r => `
                 <div class="routines-list-item" data-routine-id="${r.id}" onclick="selectRoutine('${r.id}')">
-                    <span>${r.title}</span>
+                    <div style="display:flex; flex-direction:column; flex:1;">
+                        <span style="font-weight:600;">${r.title}</span>
+                    </div>
                     <div class="routine-actions" style="margin-left:auto; display:flex;">
-                        <button class="btn btn-icon" title="Editar Rotina" onclick="event.stopPropagation(); openEditRoutineModal('${r.id}', '${r.title.replace(/'/g, "\\'")}', \`${(r.description || '').replace(/`/g, "\\`")}\`)"><span class="material-icons">edit</span></button>
-                        <button class="btn btn-icon" title="Excluir Rotina" onclick="event.stopPropagation(); deleteRoutineHandler('${r.id}', '${r.title.replace(/'/g, "\\'")}')"><span class="material-icons">delete</span></button>
+                        <button class="btn btn-icon" title="Editar Tarefa" onclick="event.stopPropagation(); openEditRoutineModal('${r.id}', '${r.title.replace(/'/g, "\\'")}', \`${(r.description || '').replace(/`/g, "\\`")}\`)"><span class="material-icons" style="font-size:18px;">edit</span></button>
+                        <button class="btn btn-icon" title="Excluir Tarefa" onclick="event.stopPropagation(); deleteRoutineHandler('${r.id}', '${r.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
                     </div>
                 </div>
             `).join('');
