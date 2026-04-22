@@ -28,6 +28,54 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
             --color-background: #121212; --color-surface: #1E1E1E; --color-text-primary: #FFFFFF; --color-text-secondary: #A8A8A8; --color-border: #383838; --color-success-bg: #052e16; --color-warning-bg: #2a2105; --color-danger-bg: #3b1212; --color-info-bg: #1e293b; --shadow: none;
             --read-bg: #1a1a1a; --unread-bg: #252525;
         }
+
+        /* --- SIDEBAR RETRÁTIL (NOVO) --- */
+        .sidebar { transition: width 0.3s ease; overflow-x: hidden; z-index: 4000; }
+        .sidebar.collapsed { width: 80px; padding: 1.5rem 0.5rem; align-items: center; }
+        .sidebar.collapsed .sidebar-logo { display: none; }
+        .sidebar.collapsed .nav-section-title { display: none; }
+        .sidebar.collapsed .nav-link span:not(.material-icons) { display: none; }
+        .sidebar.collapsed .nav-link .material-icons { margin-right: 0; font-size: 24px; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 0.75rem; }
+        .sidebar.collapsed .profile-shortcut { flex-direction: column; text-align: center; padding: 0; background: transparent; }
+        .sidebar.collapsed .profile-shortcut div:not(.user-avatar) { display: none; }
+        main.content { transition: margin-left 0.3s ease; }
+        main.content.expanded { margin-left: 80px; }
+        
+        #btn-toggle-sidebar {
+            position: absolute; top: 1rem; right: -15px; width: 30px; height: 30px;
+            background: var(--color-surface); border: 1px solid var(--color-border);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 4001; color: var(--color-text-secondary);
+            box-shadow: var(--shadow); transition: transform 0.3s;
+        }
+        .sidebar.collapsed #btn-toggle-sidebar { transform: rotate(180deg); }
+
+        /* --- OTIMIZAÇÃO DA LISTA DE PROCESSOS (NOVO) --- */
+        .routines-list-item {
+            padding: 0.6rem 1rem !important; /* Menos altura */
+            border-bottom: 1px solid var(--color-border) !important;
+        }
+        .process-list-title {
+            font-size: 0.9rem; font-weight: 600;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; text-overflow: ellipsis; line-height: 1.2;
+        }
+        .process-actions-hover { opacity: 0; transition: opacity 0.2s; display: flex; gap: 2px; }
+        .routines-list-item:hover .process-actions-hover { opacity: 1; }
+        
+        /* --- MODAL INTELIGENTE (NOVO) --- */
+        .read-only-box {
+            padding: 1rem; background: var(--color-background); border: 1px solid var(--color-border);
+            border-radius: 8px; margin-bottom: 1rem; position: relative;
+        }
+        .read-only-box h4 { margin: 0 0 0.5rem 0; font-size: 1.1rem; padding-right: 30px; }
+        .read-only-box p { margin: 0; font-size: 0.85rem; color: var(--color-text-secondary); white-space: pre-wrap; }
+        .btn-edit-floating {
+            position: absolute; top: 10px; right: 10px; padding: 4px; background: none; border: none;
+            cursor: pointer; color: var(--color-text-secondary);
+        }
+        .btn-edit-floating:hover { color: var(--color-brand-primary); }
         body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--color-background); color: var(--color-text-primary); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
         * { box-sizing: border-box; }
         .login-wrapper { display: flex; align-items: center; justify-content: center; height: 100vh; }
@@ -1532,41 +1580,58 @@ body.fullscreen-flow .flowchart-monitor-bar {
         </div>
     </div>
 
-<!-- NOVO: MODAL DE CRIAR PROCESSO -->
+<!-- MODAL DE CONFIGURAR PROCESSO (INTELIGENTE) -->
     <div id="new-process-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header"><h3>Configurar Processo e Alertas</h3><span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span></div>
-            <div class="modal-body">
-                <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Fechamento de Folha" required></div>
-                <div class="form-group"><label>Descrição</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Objetivo do fluxo..."></textarea></div>
+            <div class="modal-header">
+                <h3 id="modal-process-main-title">Configurar Processo</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="document.getElementById('new-process-modal').classList.remove('visible')">close</span>
+            </div>
+            <div class="modal-body" id="modal-process-body-content">
+                <!-- MODO CRIAÇÃO (Sempre visível ao criar um novo) -->
+                <div id="process-edit-mode">
+                    <div class="form-group"><label>Nome do Processo</label><input type="text" id="new-process-title" class="input-field" placeholder="Ex: Fechamento de Folha"></div>
+                    <div class="form-group"><label>Descrição / Objetivo</label><textarea id="new-process-desc" class="input-field" rows="2" placeholder="Descreva brevemente..."></textarea></div>
+                </div>
+
+                <!-- MODO LEITURA (Padrão ao abrir um existente) -->
+                <div id="process-read-mode" class="read-only-box" style="display: none;">
+                    <button class="btn-edit-floating" onclick="toggleProcessEditMode(true)" title="Editar Textos"><span class="material-icons">edit</span></button>
+                    <h4 id="read-process-title">Nome do Processo</h4>
+                    <p id="read-process-desc">Descrição do processo...</p>
+                </div>
                 
+                <!-- ÁREA DE AGENDAMENTO (Sempre visível, mas contida) -->
                 <div style="background: var(--color-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); margin-top: 1rem;">
-                    <label class="custom-checkbox" style="margin-bottom: 1rem;">
+                    <label class="custom-checkbox" style="margin-bottom: 0.5rem;">
                         <input type="checkbox" id="process-is-recurring" onchange="document.getElementById('recurrence-calendar-area').style.display = this.checked ? 'block' : 'none'">
                         <span class="checkbox-box"><span class="material-icons">check</span></span>
-                        <strong>Agendar no Calendário (Início e Alertas)</strong>
+                        <strong>Agendamento Automático (Calendário)</strong>
                     </label>
+                    <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0; margin-bottom: 1rem; padding-left: 28px;">
+                        Se desmarcado, este processo só iniciará quando alguém clicar no botão "Iniciar" manualmente.
+                    </p>
                     
-                    <div id="recurrence-calendar-area" style="display: none; margin-top: 1rem;">
-                        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--color-border);">
+                    <div id="recurrence-calendar-area" style="display: none; border-top: 1px dashed var(--color-border); padding-top: 1rem;">
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;">
                             <div style="flex: 1;">
-                                <label style="font-size: 0.75rem; font-weight: 700;">Nova Data de Execução (Início)</label>
-                                <input type="date" id="sched-date-input" class="input-field">
+                                <label style="font-size: 0.75rem; font-weight: 700;">Adicionar Data de Início</label>
+                                <input type="date" id="sched-date-input" class="input-field" style="height: 38px;">
                             </div>
-                            <button type="button" class="btn btn-danger" onclick="addExecutionDate()" id="btn-add-exec-date" style="height: 42px; padding: 0 1rem; white-space: nowrap;">
-                                <span class="material-icons" style="vertical-align: middle;">add_circle</span> Programar
+                            <button type="button" class="btn btn-secondary" onclick="addExecutionDate()" style="height: 38px; padding: 0 1rem; border-color: var(--color-border); background: var(--color-surface);">
+                                <span class="material-icons" style="color: var(--color-brand-primary);">add</span> Programar
                             </button>
                         </div>
                         
-                        <label style="font-size: 0.75rem; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Cronograma Programado:</label>
-                        <div id="local-schedules-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                            <!-- Cards de agendamento serão renderizados aqui pelo JS -->
+                        <label style="font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem;">Datas Programadas:</label>
+                        <div id="local-schedules-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                            <!-- Cards de agendamento -->
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="document.getElementById('new-process-modal').classList.remove('visible')">Cancelar</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('new-process-modal').classList.remove('visible')">Fechar</button>
                 <button class="btn btn-danger" id="btn-save-process-master">Salvar Alterações</button>
             </div>
         </div>
@@ -1686,7 +1751,9 @@ body.fullscreen-flow .flowchart-monitor-bar {
 
         const authHTML = `<div class="login-wrapper visible" id="auth-wrapper"><div id="auth-container" class="login-container"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="login-logo"><p class="login-subtitle">Sistema de Governança Fama</p><form id="login-form"><div class="input-group"><input type="email" id="email" class="input-field" placeholder="Email" required></div><div class="input-group"><input type="password" id="password" class="input-field" placeholder="Senha" required></div><button type="submit" class="btn-primary" style="width: 100%;">Entrar</button></form></div></div>`;
         const appHTML = `<div id="app-container">
-            <aside class="sidebar">
+            <aside class="sidebar" id="main-sidebar">
+                <!-- Botão de encolher/expandir -->
+                <button id="btn-toggle-sidebar" title="Recolher Menu"><span class="material-icons" style="font-size: 16px;">chevron_left</span></button>
                 <div class="sidebar-header"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="sidebar-logo"></div>
                 <div class="sidebar-scroll-area">
                     <ul class="nav-menu">
@@ -2118,6 +2185,23 @@ body.fullscreen-flow .flowchart-monitor-bar {
         function renderAppLayout() { root.innerHTML = appHTML; updateLogos(); setupEventListeners(); showApp(); }
 
         function setupEventListeners() {
+		// Logica Sidebar Retrátil
+            const toggleBtn = document.getElementById('btn-toggle-sidebar');
+            const sidebarEl = document.getElementById('main-sidebar');
+            const mainContent = document.querySelector('main.content');
+            
+            if(toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebarEl.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    localStorage.setItem('sidebarCollapsed', sidebarEl.classList.contains('collapsed'));
+                });
+                
+                if(localStorage.getItem('sidebarCollapsed') === 'true') {
+                    sidebarEl.classList.add('collapsed');
+                    mainContent.classList.add('expanded');
+                }
+            }
             document.getElementById('logout-button').addEventListener('click', handleLogout);
             document.getElementById('new-message-form').addEventListener('submit', sendMessage);
             document.getElementById('btn-new-user')?.addEventListener('click', () => openUserModal(null));
@@ -2552,41 +2636,36 @@ async function loadManageProcessesPage() {
             if(!listContainer) return;
             listContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
             
-            // Busca os processos
             const { data: processes, error } = await supabaseClient.from('processes').select('*').order('created_at', { ascending: false });
             
             if (error) { listContainer.innerHTML = 'Erro ao carregar.'; return; }
             if (!processes.length) { listContainer.innerHTML = '<div class="empty-state">Nenhum processo criado.</div>'; return; }
 
             listContainer.innerHTML = processes.map(p => {
-                // Define a tag baseada no is_recurring
                 const processTag = p.is_recurring 
-                    ? `<span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">event</span> Programado</span>`
-                    : `<span class="tag-fino" style="background: var(--color-warning-bg); color: var(--color-warning); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">touch_app</span> Manual</span>`;
+                    ? `<span class="tag-fino" style="background: transparent; padding:0; color: var(--color-info); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">event</span> Programado</span>`
+                    : `<span class="tag-fino" style="background: transparent; padding:0; color: var(--color-warning); margin-top: 4px; display: inline-flex;"><span class="material-icons" style="font-size: 12px; margin-right: 2px;">touch_app</span> Manual</span>`;
 
                 return `
-                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', '${p.title}', ${p.is_recurring})" style="display: flex; justify-content: space-between; align-items: center; position: relative;">
-                    <div style="display:flex; flex-direction:column; flex: 1;">
-                        <span style="font-weight:600">${p.title}</span>
+                <div class="routines-list-item" id="item-process-${p.id}" onclick="handleProcessClick('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, ${p.is_recurring})">
+                    <div style="display:flex; flex-direction:column; flex: 1; overflow: hidden; padding-right: 5px;">
+                        <span class="process-list-title" title="${p.title}">${p.title}</span>
                         <div>${processTag}</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}', \`${p.title.replace(/`/g, "\\`")}\`, \`${(p.description || '').replace(/`/g, "\\`")}\`, ${p.is_recurring})" title="Configurar Processo" style="color: var(--color-text-secondary); opacity: 0.5;">
-                            <span class="material-icons" style="font-size: 18px;">settings</span>
-                        </button>
-                        <button class="btn-icon delete-process-btn" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="color: var(--color-danger); opacity: 0.3;">
-                            <span class="material-icons" style="font-size: 18px;">delete</span>
-                        </button>
-                        <span class="material-icons arrow-icon" style="font-size:16px;">chevron_right</span>
+                    <div style="display: flex; align-items: center;">
+                        <div class="process-actions-hover">
+                            <button class="btn-icon" onclick="event.stopPropagation(); openEditProcessModal('${p.id}')" title="Configurações e Alertas" style="padding: 2px; color: var(--color-text-secondary);">
+                                <span class="material-icons" style="font-size: 18px;">settings</span>
+                            </button>
+                            <button class="btn-icon" onclick="event.stopPropagation(); deleteEntireProcess('${p.id}', '${p.title.replace(/'/g, "\\'")}')" title="Excluir" style="padding: 2px; color: var(--color-danger);">
+                                <span class="material-icons" style="font-size: 18px;">delete</span>
+                            </button>
+                        </div>
+                        <span class="material-icons arrow-icon" style="font-size:16px; margin-left: 5px; color: var(--color-border);">chevron_right</span>
                     </div>
                 </div>
             `;
             }).join('');
-
-            document.querySelectorAll('.routines-list-item').forEach(item => {
-                item.onmouseenter = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '1'; };
-                item.onmouseleave = () => { if(item.querySelector('.delete-process-btn')) item.querySelector('.delete-process-btn').style.opacity = '0.3'; };
-            });
         }
 		
 		let currentlyOpenProcessId = null;
@@ -3327,28 +3406,129 @@ async function showStepHistory(stepId) {
             `).join('');
         }
 
-function openNewProcessModal() {
+// Alterna entre modo leitura e edição do cabeçalho do processo
+        function toggleProcessEditMode(isEditing) {
+            document.getElementById('process-edit-mode').style.display = isEditing ? 'block' : 'none';
+            document.getElementById('process-read-mode').style.display = isEditing ? 'none' : 'block';
+        }
+
+        // Função unificada para abrir o modal de processo (Novo ou Editar)
+        async function openEditProcessModal(processId = null) {
             const modal = document.getElementById('new-process-modal');
             const titleInput = document.getElementById('new-process-title');
             const descInput = document.getElementById('new-process-desc');
-            // CORREÇÃO: Busca o botão de salvar especificamente pelo ID, evitando sequestrar o botão de adicionar data
+            const isRecurringCheck = document.getElementById('process-is-recurring');
             const saveBtn = document.getElementById('btn-save-process-master');
             
-            // Limpa os campos
-            titleInput.value = '';
-            descInput.value = '';
-            
-            // Seta os textos de CRIAR
-            modal.querySelector('h3').textContent = 'Novo Processo';
-            saveBtn.textContent = 'Criar Processo';
-            
-            // Vincula a função de CRIAÇÃO e garante reset do estado
-            saveBtn.onclick = (e) => { 
-                e.preventDefault(); 
-                createProcess(); 
+            // Reseta a interface
+            localSchedules = [];
+            renderLocalSchedules();
+            document.getElementById('sched-date-input').value = '';
+
+            if (processId) {
+                // MODO EDIÇÃO
+                modal.querySelector('#modal-process-main-title').textContent = 'Configurações do Processo';
+                saveBtn.textContent = 'Salvar Alterações';
+                
+                // Exibe "Buscando..." e ativa modo leitura
+                document.getElementById('read-process-title').innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Carregando...';
+                document.getElementById('read-process-desc').textContent = '';
+                toggleProcessEditMode(false); 
+                modal.classList.add('visible');
+
+                // Busca dados fresquinhos do banco
+                const { data: proc } = await supabaseClient.from('processes').select('*').eq('id', processId).single();
+                if(!proc) return;
+
+                // Preenche inputs ocultos
+                titleInput.value = proc.title;
+                descInput.value = proc.description || '';
+                
+                // Preenche cards de leitura
+                document.getElementById('read-process-title').textContent = proc.title;
+                document.getElementById('read-process-desc').textContent = proc.description || 'Nenhuma descrição fornecida.';
+
+                // Checkbox e Calendário
+                isRecurringCheck.checked = proc.is_recurring;
+                document.getElementById('recurrence-calendar-area').style.display = proc.is_recurring ? 'block' : 'none';
+
+                // Busca as datas
+                const { data: scheds } = await supabaseClient.from('process_schedules').select('*').eq('process_id', processId);
+                localSchedules = (scheds || []).map(s => ({ 
+                    date: s.scheduled_date, 
+                    alerts: Array.isArray(s.notification_dates) ? s.notification_dates : [] 
+                }));
+                renderLocalSchedules();
+
+            } else {
+                // MODO CRIAÇÃO (NOVO PROCESSO)
+                modal.querySelector('#modal-process-main-title').textContent = 'Criar Novo Processo';
+                saveBtn.textContent = 'Criar Processo';
+                
+                titleInput.value = '';
+                descInput.value = '';
+                isRecurringCheck.checked = false;
+                document.getElementById('recurrence-calendar-area').style.display = 'none';
+                
+                toggleProcessEditMode(true); // Força modo edição
+                modal.classList.add('visible');
+            }
+
+            // Ação de Salvar Unificada
+            saveBtn.onclick = async (e) => {
+                e.preventDefault();
+                const titleVal = titleInput.value.trim();
+                if (!titleVal) { showToast("O nome do processo é obrigatório", "warning"); return; }
+                
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
+
+                try {
+                    let finalProcessId = processId;
+                    
+                    // Salva ou Atualiza Mestre
+                    if (processId) {
+                        await supabaseClient.from('processes').update({ 
+                            title: titleVal, 
+                            description: descInput.value,
+                            is_recurring: isRecurringCheck.checked
+                        }).eq('id', processId);
+                    } else {
+                        const { data: newProc, error } = await supabaseClient.from('processes').insert({ 
+                            title: titleVal, 
+                            description: descInput.value, 
+                            created_by: currentUserProfile.id,
+                            is_recurring: isRecurringCheck.checked
+                        }).select().single();
+                        if (error) throw error;
+                        finalProcessId = newProc.id;
+                    }
+
+                    // Atualiza o Calendário de Datas
+                    await supabaseClient.from('process_schedules').delete().eq('process_id', finalProcessId);
+                    if (isRecurringCheck.checked && localSchedules.length > 0) {
+                        const finalScheds = localSchedules.map(s => ({ 
+                            process_id: finalProcessId, 
+                            scheduled_date: s.date, 
+                            notification_dates: s.alerts 
+                        }));
+                        await supabaseClient.from('process_schedules').insert(finalScheds);
+                    }
+
+                    showToast("Processo salvo com sucesso!", "success");
+                    modal.classList.remove('visible');
+                    loadManageProcessesPage();
+                    
+                    // Se o processo que acabei de editar é o que está desenhado na tela, atualiza o titulo dele
+                    if(currentlyOpenProcessId === finalProcessId) {
+                        selectProcess(finalProcessId, titleVal, isRecurringCheck.checked);
+                    }
+                } catch (e) {
+                    showToast(e.message, "danger");
+                } finally {
+                    saveBtn.disabled = false;
+                }
             };
-            
-            modal.classList.add('visible');
         }
 
         let localSchedules = []; // <-- ESTA É A LINHA QUE FALTAVA
@@ -8421,56 +8601,11 @@ async function exitMonitorMode(processId) {
             );
         }
 		
-async function openEditProcessModal(id, title, desc, isRecurring = false) {
-            const modal = document.getElementById('new-process-modal');
-            const isRecurringCheck = document.getElementById('process-is-recurring');
-            // CORREÇÃO: Busca o botão de salvar especificamente pelo ID
-            const saveBtn = document.getElementById('btn-save-process-master');
-
-            document.getElementById('new-process-title').value = title.replace(/<[^>]*>?/gm, '').trim();
-            document.getElementById('new-process-desc').value = desc;
-            isRecurringCheck.checked = isRecurring;
-            document.getElementById('recurrence-calendar-area').style.display = isRecurring ? 'block' : 'none';
-            
-            const { data: scheds } = await supabaseClient.from('process_schedules').select('*').eq('process_id', id);
-            localSchedules = (scheds || []).map(s => ({ 
-                date: s.scheduled_date, 
-                alerts: Array.isArray(s.notification_dates) ? s.notification_dates : [] 
-            }));
-            renderLocalSchedules();
-
-            modal.querySelector('h3').textContent = 'Configurar Processo e Alertas';
-            saveBtn.textContent = 'Salvar Alterações';
-            
-            saveBtn.onclick = async (e) => {
-                e.preventDefault();
-                saveBtn.disabled = true;
-                const titleVal = document.getElementById('new-process-title').value;
-
-                await supabaseClient.from('processes').update({ 
-                    title: titleVal, 
-                    description: document.getElementById('new-process-desc').value,
-                    is_recurring: isRecurringCheck.checked
-                }).eq('id', id);
-
-                await supabaseClient.from('process_schedules').delete().eq('process_id', id);
-                if (isRecurringCheck.checked && localSchedules.length > 0) {
-                    const finalScheds = localSchedules.map(s => ({ 
-                        process_id: id, 
-                        scheduled_date: s.date, 
-                        notification_dates: s.alerts 
-                    }));
-                    await supabaseClient.from('process_schedules').insert(finalScheds);
-                }
-
-                showToast("Processo e Agenda de Alertas atualizados!", "success");
-                modal.classList.remove('visible');
-                loadManageProcessesPage();
-                if(currentlyOpenProcessId === id) selectProcess(id, titleVal);
-                saveBtn.disabled = false;
-            };
-            modal.classList.add('visible');
-        }
+/*
+        // A função openEditProcessModal(id, title, ...) foi descontinuada em 16/04/2026.
+        // A lógica foi unificada na nova função openEditProcessModal(processId = null),
+        // que agora lida tanto com a criação quanto com a edição de processos.
+        */
 async function openKBEditModal(id) {
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
             if (error || !data) return;
