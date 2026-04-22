@@ -2943,15 +2943,12 @@ setTimeout(() => {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
-            // Busca a descrição do processo dinamicamente
             supabaseClient.from('processes').select('description').eq('id', processId).single()
                 .then(({ data }) => {
                     const descEl = document.getElementById('current-workflow-desc');
                     if (descEl) descEl.textContent = data?.description || 'Sem descrição definida.';
                 });
             
-            // Se forceStep for passado (pelo botão Visualizar), usamos ele. 
-            // Caso contrário, activeOrder é null e o gráfico fica limpo.
             const activeOrder = forceStep;
 
             const { data: steps } = await supabaseClient
@@ -2962,37 +2959,35 @@ setTimeout(() => {
 
             if (!steps) return;
             
-            // Inicializa cache local e marca os status de execução para os cards
             localStepsData = steps.map(step => {
                 return {
                     ...step,
-                    // Marca como concluído se a ordem for menor que a ativa
                     is_completed: (activeOrder !== null && step.step_order < activeOrder),
-                    // Marca como ativo se for a ordem atual
                     is_active: (activeOrder !== null && step.step_order === activeOrder)
                 };
             });
             workflowHasChanges = false;
-            const saveBtn = document.getElementById('btn-save-workflow');
-            const saveSep = document.getElementById('save-separator');
-            if(saveBtn) saveBtn.style.display = 'none';
-            if(saveSep) saveSep.style.display = 'none';
+            updateDraftUIState();
 
             nodesContainer.innerHTML = localStepsData.map((step, index) => {
                 const defaultX = 100 + (index * 280);
                 const defaultY = 150;
-                
-                const pos = (step.ui_metadata && (step.ui_metadata.x !== 100 || step.ui_metadata.y !== 100)) 
-                            ? step.ui_metadata 
-                            : { x: defaultX, y: defaultY };
-                            
+                const pos = (step.ui_metadata && (step.ui_metadata.x !== 100 || step.ui_metadata.y !== 100)) ? step.ui_metadata : { x: defaultX, y: defaultY };
                 const isActive = step.is_active || false;
                 const isCompleted = step.is_completed || false;
                 
+                // Geração dinâmica dos ícones de documentos para o cabeçalho do nó
+                const docIcons = (step.required_docs || []).map(doc => 
+                    `<span class="material-icons" style="font-size:14px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
+                ).join('');
+
                 return `
                     <div class="flow-node ${isActive ? 'active-step' : ''} ${isCompleted ? 'completed-step' : ''}" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <div class="node-label">Etapa ${step.step_order}</div>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <div class="node-label">Etapa ${step.step_order}</div>
+                                ${docIcons}
+                            </div>
                             ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">check</span> FEITO</span>' : ''}
                             ${isActive ? '<span style="font-size: 0.6rem; background: var(--color-warning); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 2px;"><span class="material-icons" style="font-size: 10px;">pending</span> PENDENTE</span>' : ''}
                         </div>
@@ -3006,22 +3001,15 @@ setTimeout(() => {
                             ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
                             ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
-                        <!-- Botão de Excluir -->
-                        <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa">
-                            <span class="material-icons">delete</span>
-                        </div>
-                        <!-- Botão Quick Add estilo n8n -->
-                        <div class="node-quick-add" onclick="openAddStepModal('${processId}', ${step.step_order + 1})" title="Inserir etapa aqui">
-                            <span class="material-icons">add</span>
-                        </div>
+                        <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa"><span class="material-icons">delete</span></div>
+                        <div class="node-quick-add" onclick="openAddStepModal('${processId}', ${step.step_order + 1})" title="Inserir etapa aqui"><span class="material-icons">add</span></div>
                     </div>
                 `;
             }).join('');
 
-            steps.forEach(step => makeNodeDraggable(step.id));
+            localStepsData.forEach(step => makeNodeDraggable(step.id));
             updateFlowConnections();
 
-            // Adiciona evento de clique duplo para edição
             document.querySelectorAll('.flow-node').forEach(node => {
                 node.ondblclick = () => openEditStepModal(node.dataset.id);
             });
@@ -3114,7 +3102,7 @@ function renderLocalWorkflow() {
             const nodesContainer = document.getElementById('flow-nodes-container');
             if (!nodesContainer) return;
 
-            updateDraftUIState(); // Atualiza tags e botões da toolbar
+            updateDraftUIState(); 
 
             syncDOMToLocalData();
             localStepsData.sort((a, b) => a.step_order - b.step_order);
@@ -3123,19 +3111,19 @@ function renderLocalWorkflow() {
                 const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
                 const isCompleted = step.is_completed || false;
                 
-                // Geração das tags de documentos para o card
+                // Geração dinâmica dos ícones de documentos para o modo rascunho
                 const docIcons = (step.required_docs || []).map(doc => 
-                    `<span class="material-icons" style="font-size:12px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
-                ).join(' ');
+                    `<span class="material-icons" style="font-size:14px; color:${doc === 'excel' ? '#10B981' : '#3B82F6'}" title="${doc.toUpperCase()} Obrigatório">description</span>`
+                ).join('');
 
                 return `
                     <div class="flow-node" id="node-${step.id}" data-id="${step.id}" style="left:${pos.x}px; top:${pos.y}px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <div class="node-label">Etapa ${step.step_order}</div>
-                            <div style="display:flex; gap:4px; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <div class="node-label">Etapa ${step.step_order}</div>
                                 ${docIcons}
-                                ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">FEITO</span>' : ''}
                             </div>
+                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 66x; border-radius: 4px; font-weight: bold;">FEITO</span>' : ''}
                         </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
