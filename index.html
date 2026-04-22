@@ -7534,7 +7534,7 @@ const numParticipants = updatedData.num_participantes || 1;
             fetchAndRenderTasks(dateString);
         }
 
-        async function fetchAndRenderTasks(date) {
+async function fetchAndRenderTasks(date) {
             const tasksContainer = document.getElementById('tasks-list-container');
             const titleElement = document.getElementById('tasks-list-title');
             if (!tasksContainer || !titleElement) return;
@@ -7545,7 +7545,7 @@ const numParticipants = updatedData.num_participantes || 1;
             const formattedDate = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             titleElement.textContent = `Tarefas para ${formattedDate}`;
 
-            // Chama a RPC unificada
+            // Busca as tarefas via RPC atualizada
             const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
 
             if (error) {
@@ -7559,13 +7559,12 @@ const numParticipants = updatedData.num_participantes || 1;
                 return;
             }
 
-            // Agrupa as tarefas pelo título da Rotina/Processo
             const tasksByGroup = tasks.reduce((acc, task) => {
                 const groupName = task.routine_title || 'Tarefas Avulsas';
                 if (!acc[groupName]) {
                     acc[groupName] = {
                         title: groupName,
-                        source_type: task.source_type, // 'recurrent' ou 'punctual'
+                        source_type: task.source_type,
                         tasks: []
                     };
                 }
@@ -7576,49 +7575,63 @@ const numParticipants = updatedData.num_participantes || 1;
             tasksContainer.innerHTML = Object.values(tasksByGroup).map(group => {
                 const isRecurrent = group.source_type === 'recurrent';
                 
-                // Tags visuais no cabeçalho do grupo
+                // Melhora visual das Tags de Origem
                 const groupTag = isRecurrent 
-                    ? `<span class="tag-fino" style="background: var(--color-info-bg); color: var(--color-info); margin-left: 8px;"><span class="material-icons" style="font-size:12px; vertical-align:middle;">account_tree</span> Processo</span>`
-                    : `<span class="tag-fino" style="background: var(--color-warning-bg); color: var(--color-warning); margin-left: 8px;"><span class="material-icons" style="font-size:12px; vertical-align:middle;">assignment</span> Pontual</span>`;
+                    ? `<span class="tag-fino" style="background: var(--color-info); color: white; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; text-transform: uppercase;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">account_tree</span> Processo</span>`
+                    : `<span class="tag-fino" style="background: var(--color-warning); color: black; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; text-transform: uppercase;"><span class="material-icons" style="font-size:10px; vertical-align:middle;">assignment</span> Tarefa Pontual</span>`;
 
                 const tasksHTML = group.tasks.map(task => {
                     const isCompleted = task.status === 'completed';
                     const isOverdue = task.is_overdue; 
+                    const origDate = new Date(task.original_date + 'T12:00:00').toLocaleDateString('pt-BR');
                     
-                    // Ação de conclusão difere dependendo da origem da tarefa
                     const onClickAction = isRecurrent 
                         ? `completeProcessTask('${task.instance_id}', this)`
                         : `completeTask(this, '${task.task_id}', null, '${date}')`;
 
-                    const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.7rem; font-weight:700; color:var(--color-danger); border: 1px solid var(--color-danger); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
+                    const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
+                    
+                    // Exibe data original apenas se estiver atrasada
+                    const dateReference = isOverdue && !isCompleted 
+                        ? `<div style="font-size: 0.75rem; color: var(--color-danger); font-weight: 600; margin-top: 2px;">Data Original: ${origDate}</div>` 
+                        : '';
+
                     const instanceTag = task.instance_name ? `<div style="font-size: 0.75rem; font-weight: 700; color: var(--color-info); margin-top: 4px;">👤 Execução: ${task.instance_name}</div>` : '';
 
                     return `
-                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 0.75rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 8px; border-left: 4px solid var(--color-danger);' : ''}">
+                        <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 1rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 12px; border-left: 4px solid var(--color-danger);' : ''}">
                             <div style="flex: 1;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
                                     ${isRecurrent 
-                                        ? `<span class="material-icons" style="font-size: 16px; color: var(--color-brand-primary);">play_circle</span>`
+                                        ? `<span class="material-icons" style="font-size: 20px; color: var(--color-brand-primary);">play_circle</span>`
                                         : `<label class="custom-checkbox" style="margin:0;"><input type="checkbox" onchange="${onClickAction}" ${isCompleted ? 'checked' : ''}><span class="checkbox-box"><span class="material-icons">check</span></span></label>`
                                     }
-                                    <strong style="font-size: 0.95rem; ${isCompleted ? 'text-decoration: line-through; color: var(--color-text-secondary);' : ''}">${task.task_title}</strong>
-                                    ${overdueTag}
+                                    <div style="display:flex; flex-direction:column;">
+                                        <div style="display:flex; align-items:center;">
+                                            <strong style="font-size: 1rem; ${isCompleted ? 'text-decoration: line-through; color: var(--color-text-secondary);' : ''}">${task.task_title}</strong>
+                                            ${overdueTag}
+                                        </div>
+                                        ${dateReference}
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 24px;">${task.task_description || 'Sem instruções adicionais.'}</div>
-                                <div style="margin-left: 24px;">${instanceTag}</div>
+                                <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 30px; margin-top: 4px;">${task.task_description || 'Sem instruções adicionais.'}</div>
+                                <div style="margin-left: 30px;">${instanceTag}</div>
                             </div>
-                            ${isRecurrent ? `
-                                <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.5rem 1rem; font-size: 0.8rem;" ${isCompleted ? 'disabled' : ''}>
-                                     <span class="material-icons" style="font-size: 16px;">check_circle</span> ${isCompleted ? 'Concluído' : 'Concluir'}
-                                </button>
-                            ` : ''}
+                            <!-- AJUSTE: margin-right para respiro lateral do botão -->
+                            <div style="margin-right: 1.5rem;">
+                                ${isRecurrent ? `
+                                    <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px; box-shadow: var(--shadow);" ${isCompleted ? 'disabled' : ''}>
+                                         <span class="material-icons" style="font-size: 18px;">check_circle</span> ${isCompleted ? 'Concluído' : 'Concluir'}
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     `;
                 }).join('');
 
                 return `
-                    <div style="margin-bottom: 2rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; color: var(--color-text-primary); font-size: 1rem; display: flex; align-items: center; border-bottom: 2px solid var(--color-border); padding-bottom: 0.5rem;">
+                    <div style="margin-bottom: 2.5rem; background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: var(--shadow);">
+                        <h4 style="margin: 0 0 1rem 0; color: var(--color-text-primary); font-size: 1.1rem; display: flex; align-items: center; border-bottom: 2px solid var(--color-background); padding-bottom: 0.75rem;">
                             ${group.title} ${groupTag}
                         </h4>
                         ${tasksHTML}
