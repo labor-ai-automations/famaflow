@@ -7563,20 +7563,38 @@ async function fetchAndRenderTasks(date) {
 
 const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
                     
-                    // NOVA LÓGICA DE INSTRUÇÃO DE INÍCIO (REFORÇO DE GOVERNANÇA)
+                    // LÓGICA DE ALERTAS E GOVERNANÇA (REFORÇADA)
                     let displayInstanceName = task.instance_name;
                     let instanceColor = isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)';
+                    let warningIcon = isFuturePreview && isToday ? 'assignment_late' : 'person';
                     
+                    // Caso 1: Processo agendado para HOJE mas não iniciado
                     if (isFuturePreview && isToday) {
-                        displayInstanceName = "Ação Obrigatória: Este fluxo depende de você. Inicie o processo e conclua sua etapa para que os próximos responsáveis recebam suas tarefas.";
+                        displayInstanceName = "AÇÃO OBRIGATÓRIA: Este fluxo depende do seu início. Comece o processo para que os próximos responsáveis consigam trabalhar.";
                         instanceColor = 'var(--color-brand-primary)'; 
                     }
 
-                    const instanceTag = task.instance_name ? `
+                    // Caso 2: Tarefa (ativa ou pontual) em ATRASO
+                    let overdueWarningHTML = '';
+                    if (isOverdue && !isCompleted) {
+                        overdueWarningHTML = `
+                            <div style="margin-top: 8px; padding: 10px; background: rgba(216, 25, 32, 0.1); border: 1.5px solid var(--color-brand-primary); border-radius: 8px; color: var(--color-brand-primary); font-size: 0.75rem; line-height: 1.4; max-width: 600px; display: flex; align-items: flex-start; gap: 8px;">
+                                <span class="material-icons" style="font-size: 20px; flex-shrink: 0;">report_problem</span>
+                                <div>
+                                    <strong style="display: block; margin-bottom: 2px; text-transform: uppercase;">⚠️ ALERTA DE ATRASO E IMPACTO OPERACIONAL</strong>
+                                    Esta tarefa deveria ter sido concluída em ${new Date(task.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}. 
+                                    Seu atraso bloqueia o trabalho dos próximos responsáveis e está reduzindo o seu <strong>Score de Performance</strong> no sistema.
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    const instanceTag = (task.instance_name || isFuturePreview) ? `
                         <div style="font-size: 0.75rem; font-weight: 700; color: ${instanceColor}; margin-top: 4px; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; max-width: 600px;">
-                            <span class="material-icons" style="font-size: 18px; flex-shrink: 0;">${isFuturePreview && isToday ? 'assignment_late' : 'person'}</span> 
+                            <span class="material-icons" style="font-size: 18px; flex-shrink: 0;">${warningIcon}</span> 
                             <span>${isFuturePreview ? '' : 'Execução: '}${displayInstanceName}</span>
-                        </div>` : '';
+                        </div>
+                        ${overdueWarningHTML}` : '';
 
                     const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
                         <div class="execution-doc-checklist">
