@@ -1638,31 +1638,66 @@ body.fullscreen-flow .flowchart-monitor-bar {
         </div>
     </div>
 
-    <!-- MODAL BASE DE CONHECIMENTO -->
+    <!-- MODAL BASE DE CONHECIMENTO COM CONTROLE DE ACESSO -->
     <div id="kb-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header"><h3>Novo Conteúdo - Base de Conhecimento</h3><span class="material-icons" style="cursor:pointer;" onclick="closeRequestModal()">close</span></div>
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="kb-modal-title">Novo Conteúdo</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="closeRequestModal()">close</span>
+            </div>
             <div class="modal-body">
                 <form id="kb-form">
                     <div class="form-group"><label>Título do Documento</label><input type="text" id="kb-title" class="input-field" required></div>
-                    <div class="form-group"><label>Categoria</label>
-                        <select id="kb-category" class="input-field">
-                            <option value="Geral">Geral</option>
-                        </select>
+                    
+                    <div class="grid grid-cols-2">
+                        <div class="form-group"><label>Categoria</label>
+                            <select id="kb-category" class="input-field">
+                                <option value="Geral">Geral</option>
+                                <option value="Procedimento">Procedimento</option>
+                                <option value="Manual">Manual</option>
+                                <option value="Recursos Humanos">Recursos Humanos</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Tipo de Conteúdo</label>
+                            <select id="kb-type" class="input-field" onchange="toggleKBFields()">
+                                <option value="file">Arquivo (PDF/Imagem)</option>
+                                <option value="text">Texto Informativo</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group"><label>Tipo de Conteúdo</label>
-                        <select id="kb-type" class="input-field" onchange="toggleKBFields()">
-                            <option value="file">Arquivo (PDF/Imagem)</option>
-                            <option value="text">Texto Informativo</option>
-                        </select>
+
+                    <!-- SELETOR DE PÚBLICO ALVO -->
+                    <div style="background: var(--color-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 1.5rem;">
+                        <label style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); display: block; margin-bottom: 0.75rem;">Visibilidade e Acesso</label>
+                        <div class="grid grid-cols-2">
+                            <div class="form-group">
+                                <label>Escopo de Visualização</label>
+                                <select id="kb-scope" class="input-field" onchange="toggleScopeTargetFields()">
+                                    <option value="public">Público (Todos)</option>
+                                    <option value="department">Por Departamento</option>
+                                    <option value="role">Por Cargo</option>
+                                    <option value="individual">Individual / Confidencial</option>
+                                    <option value="manager_plus">Colaborador + Gestor</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="kb-target-area" style="display: none;">
+                                <label id="kb-target-label">Selecione o Alvo</label>
+                                <div id="kb-target-selector" class="input-field" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openKBScopeSelector()">
+                                    <span id="kb-target-name">Selecionar...</span>
+                                    <span class="material-icons" style="font-size:18px;">search</span>
+                                </div>
+                                <input type="hidden" id="kb-target-value">
+                            </div>
+                        </div>
                     </div>
+
                     <div id="kb-file-group" class="form-group"><label>Selecionar Arquivo</label><input type="file" id="kb-file" class="input-field"></div>
                     <div id="kb-text-group" class="form-group" style="display:none;"><label>Conteúdo</label><textarea id="kb-content-body" class="input-field" rows="5"></textarea></div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
-                <button class="btn btn-danger" onclick="submitKBContent()">Publicar</button>
+                <button class="btn btn-danger" id="btn-submit-kb" onclick="submitKBContent()">Publicar</button>
             </div>
         </div>
     </div>
@@ -2516,31 +2551,41 @@ function showPage(pageId, targetUserId = null) {
 
 async function loadKBPage() {
             const tbody = document.getElementById('kb-table-body');
-            
-            // Gerencia visibilidade do botão de Adicionar Conteúdo
-            const canAddKB = currentUserProfile && currentUserProfile.permissions && (
-                currentUserProfile.permissions.includes('manage_users') || 
-                currentUserProfile.permissions.includes('manage_hr')
-            );
-            const addBtn = document.querySelector('#kb-page .btn-danger');
-            if (addBtn) addBtn.style.display = canAddKB ? 'flex' : 'none';
             if (!tbody) return;
+
+            const isAdmin = currentUserProfile?.permissions?.some(p => ['manage_users', 'manage_hr'].includes(p));
+            const addBtn = document.querySelector('#kb-page .btn-danger');
+            if (addBtn) addBtn.style.display = isAdmin ? 'flex' : 'none';
+
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Carregando documentos...</td></tr>';
-            const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('is_active', true).order('created_at', { ascending: false });
-            if (error || !data || !data.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum documento encontrado.</td></tr>'; return; }
+            
+            // CHAMADA DA NOVA RPC SEGURA
+            const { data, error } = await supabaseClient.rpc('get_kb_items_secure');
+            
+            if (error || !data || !data.length) { 
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum documento disponível para seu acesso.</td></tr>'; 
+                return; 
+            }
             
             tbody.innerHTML = data.map(item => `
                 <tr>
-                    <td><strong>${item.title}</strong></td>
+                    <td>
+                        <div style="display:flex; flex-direction:column;">
+                            <strong>${item.title}</strong>
+                            <small style="color:var(--color-text-secondary); font-size:0.7rem; display:flex; align-items:center; gap:4px;">
+                                <span class="material-icons" style="font-size:12px;">visibility</span> ${item.scope.toUpperCase()}
+                            </small>
+                        </div>
+                    </td>
                     <td><span class="tag-fino" style="background:var(--color-info-bg); color:var(--color-info);">${item.category}</span></td>
                     <td>${item.content_type === 'text' ? '📝 Texto' : '📄 Arquivo'}</td>
                     <td>
-<div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
                             ${item.google_drive_file_id 
                                 ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ver</a>`
                                 : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ler</button>`}
                             
-                            ${canAddKB ? `
+                            ${isAdmin ? `
                                 <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>
                                 <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
                             ` : ''}
@@ -8772,17 +8817,77 @@ async function openKBEditModal(id) {
             const { data, error } = await supabaseClient.from('knowledge_base').select('*').eq('id', id).single();
             if (error || !data) return;
 
-            currentEditingKBId = id; // Define que estamos em modo edição
+            currentEditingKBId = id;
             document.getElementById('kb-title').value = data.title;
             document.getElementById('kb-category').value = data.category;
             document.getElementById('kb-type').value = data.content_type;
             document.getElementById('kb-content-body').value = data.content_body || '';
             
-            toggleKBFields(); // Ajusta campos visíveis (arquivo ou texto)
+            document.getElementById('kb-scope').value = data.scope || 'public';
+            document.getElementById('kb-target-value').value = data.target_value || '';
+            
+            if (data.scope === 'individual' || data.scope === 'manager_plus') {
+                const user = allUsers.find(u => u.id === data.target_value);
+                document.getElementById('kb-target-name').textContent = user ? user.full_name : 'Usuário Selecionado';
+            } else {
+                document.getElementById('kb-target-name').textContent = data.target_value || 'Selecionar...';
+            }
+
+            toggleKBFields();
+            toggleScopeTargetFields();
             
             const modalTitle = document.querySelector('#kb-modal h3');
             if (modalTitle) modalTitle.textContent = 'Editar Conteúdo';
             
+            document.getElementById('kb-modal').classList.add('visible');
+        }
+
+        function toggleScopeTargetFields() {
+            const scope = document.getElementById('kb-scope').value;
+            const targetArea = document.getElementById('kb-target-area');
+            const targetLabel = document.getElementById('kb-target-label');
+            
+            targetArea.style.display = scope === 'public' ? 'none' : 'block';
+
+            if (scope === 'department') targetLabel.textContent = "Departamento Alvo";
+            if (scope === 'role') targetLabel.textContent = "Cargo Alvo";
+            if (scope === 'individual' || scope === 'manager_plus') targetLabel.textContent = "Colaborador Alvo";
+        }
+
+        function openKBScopeSelector() {
+            const scope = document.getElementById('kb-scope').value;
+            if (scope === 'department') {
+                const depts = [...new Set(allUsers.map(u => u.department).filter(Boolean))].sort();
+                promptSelection("Selecionar Departamento", depts, (val) => {
+                    document.getElementById('kb-target-value').value = val;
+                    document.getElementById('kb-target-name').textContent = val;
+                });
+            } else if (scope === 'role') {
+                const roles = [...new Set(allUsers.map(u => u.role).filter(Boolean))].sort();
+                promptSelection("Selecionar Cargo", roles, (val) => {
+                    document.getElementById('kb-target-value').value = val;
+                    document.getElementById('kb-target-name').textContent = val;
+                });
+            } else {
+                openAssigneeSelector('kb'); 
+            }
+        }
+
+        function promptSelection(title, options, callback) {
+            const modal = document.getElementById('request-modal');
+            document.getElementById('request-modal-title').textContent = title;
+            document.getElementById('request-modal-body').innerHTML = `
+                <div class="routines-list">
+                    ${options.map(opt => `<div class="routines-list-item" onclick="confirmPromptSelection('${opt.replace(/'/g, "\\'")}')">${opt}</div>`).join('')}
+                </div>`;
+            document.getElementById('request-modal-footer').innerHTML = `<button class="btn btn-secondary" onclick="document.getElementById('request-modal').classList.remove('visible'); document.getElementById('kb-modal').classList.add('visible');">Voltar</button>`;
+            window._promptCallback = callback;
+            modal.classList.add('visible');
+        }
+
+        window.confirmPromptSelection = (val) => {
+            window._promptCallback(val);
+            document.getElementById('request-modal').classList.remove('visible');
             document.getElementById('kb-modal').classList.add('visible');
         }
 
@@ -8807,77 +8912,65 @@ async function openKBEditModal(id) {
             );
         }
 
-        // ATUALIZAÇÃO: Modificar submitKBContent para suportar Edição
-        // Por favor, localize a submitKBContent que alteramos anteriormente e substitua por esta:
-async function submitKBContent() {
-    // Captura os elementos no momento exato do clique
-    const btn = event.currentTarget;
-    const title = document.getElementById('kb-title').value;
-    const category = document.getElementById('kb-category').value;
-    const type = document.getElementById('kb-type').value;
-    const fileInput = document.getElementById('kb-file');
-    const contentBody = document.getElementById('kb-content-body').value;
+        async function submitKBContent() {
+            const btn = document.getElementById('btn-submit-kb');
+            const title = document.getElementById('kb-title').value;
+            const category = document.getElementById('kb-category').value;
+            const type = document.getElementById('kb-type').value;
+            const fileInput = document.getElementById('kb-file');
+            const contentBody = document.getElementById('kb-content-body').value;
+            const scope = document.getElementById('kb-scope').value;
+            const targetValue = document.getElementById('kb-target-value').value;
 
-    if (!title) { showToast("Título é obrigatório", "warning"); return; }
+            if (!title) { showToast("Título é obrigatório", "warning"); return; }
+            if (scope !== 'public' && !targetValue) { showToast("Selecione o público-alvo", "warning"); return; }
 
-    // Bloqueio de segurança do botão
-    btn.disabled = true;
-    btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Enviando...';
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> PROCESSANDO...';
 
-    // Construção do FormData (Obrigatório para arquivos)
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('category', category);
-    formData.append('content_type', type);
-    
-    if (currentEditingKBId) {
-        formData.append('action', 'update');
-        formData.append('id', currentEditingKBId);
-    } else {
-        formData.append('action', 'create');
-    }
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('category', category);
+            formData.append('content_type', type);
+            formData.append('scope', scope);
+            formData.append('target_value', targetValue);
+            
+            if (currentEditingKBId) {
+                formData.append('action', 'update');
+                formData.append('id', currentEditingKBId);
+            } else {
+                formData.append('action', 'create');
+            }
 
-    if (type === 'file' && fileInput.files[0]) {
-        formData.append('file', fileInput.files[0]); // A chave DEVE ser 'file'
-    } else {
-        formData.append('content_body', contentBody);
-    }
+            if (type === 'file' && fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            } else {
+                formData.append('content_body', contentBody);
+            }
 
-    try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        
-        // URL Dinâmica
-        const url = currentEditingKBId 
-            ? 'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' 
-            : 'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const url = currentEditingKBId ? 'https://n8n-n8n.znxk1t.easypanel.host/webhook/kb-manage' : 'https://n8n-n8n.znxk1t.easypanel.host/webhook/base-conhecimento';
 
-        const response = await fetch(url, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 
-                // AQUI ESTÁ O SEGREDO: NÃO DEFINA CONTENT-TYPE. 
-                // O navegador faz isso sozinho ao detectar o FormData.
-                'Authorization': `Bearer ${session.access_token}` 
-            },
-            body: formData
-        });
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${session.access_token}` },
+                    body: formData
+                });
 
-        if (response.ok) {
-            showToast("Sucesso!", "success");
-            document.getElementById('kb-modal').classList.remove('visible');
-            currentEditingKBId = null;
-            setTimeout(() => loadKBPage(), 500); // Delay para o banco processar
-        } else {
-            throw new Error("Erro na resposta do servidor");
+                if (response.ok) {
+                    showToast("Sucesso!", "success");
+                    document.getElementById('kb-modal').classList.remove('visible');
+                    currentEditingKBId = null;
+                    setTimeout(() => loadKBPage(), 500);
+                } else { throw new Error(); }
+            } catch (e) {
+                showToast("Erro ao publicar.", "danger");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Publicar';
+            }
         }
-    } catch (e) {
-        console.error("Falha crítica no envio:", e);
-        showToast("Erro ao publicar. Verifique sua conexão.", "danger");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Publicar';
-    }
-}
     </script>
 
 <!-- NOTES MODAL (FOR APPROVAL/REJECTION) -->
