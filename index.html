@@ -1756,7 +1756,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'view_mural': 'Ver Mural Cultural',
             'view_dashboard': 'Ver Dashboard',
 
-            // 2. Gerenciamento e Aprovação (O ESPELHO)
+            // 2. Gerenciamento e Aprovação (Quem cuida dos pedidos dos outros)
             'mgt_new_hire': 'Gerenciar Contratação',
             'mgt_termination': 'Gerenciar Desligamento',
             'mgt_promotion': 'Gerenciar Promoção',
@@ -1766,15 +1766,15 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'mgt_maintenance': 'Gerenciar Manutenção',
             'mgt_travel': 'Gerenciar Viagens',
 
-            // 3. Solicitações (O que o usuário pode abrir)
+            // 3. Pedidos (O que o usuário pode pedir para si ou setor)
             'req_new_hire': 'Pedir Contratação',
             'req_termination': 'Pedir Desligamento',
             'req_promotion': 'Pedir Promoção',
             'req_overtime': 'Pedir Horas Extras',
             'req_training': 'Pedir Treinamento',
-            'req_disciplinary_action': 'Aplicar Medida Disciplinar',
+            'req_disciplinary_action': 'Pedir Medida Disciplinar',
             'req_maintenance': 'Pedir Manutenção',
-            'req_travel': 'Pedir Viagens',
+            'req_travel': 'Pedir Viagem',
 
             // 4. Especiais
             'manage_routines': 'Gerenciar Processos',
@@ -4803,30 +4803,30 @@ async function openRequestDetailsModal(requestId) {
 
             let cardsHTML = '';
 
-            // Injeta apenas os cards permitidos
+            // Injeta apenas os cards permitidos com as novas nomenclaturas limpas
             if (isAdmin || p.includes('req_new_hire')) {
                 cardsHTML += `<div class="type-card" data-type="new_hire"><span class="material-icons">person_add</span><h3>Contratação de Pessoal</h3></div>`;
             }
             if (isAdmin || p.includes('req_termination')) {
-                cardsHTML += `<div class="type-card" data-type="termination"><span class="material-icons">person_remove</span><h3>Solicitar Desligamento</h3></div>`;
+                cardsHTML += `<div class="type-card" data-type="termination"><span class="material-icons">person_remove</span><h3>Desligamento</h3></div>`;
             }
             if (isAdmin || p.includes('req_promotion')) {
                 cardsHTML += `<div class="type-card" data-type="promotion"><span class="material-icons">trending_up</span><h3>Promoção Interna</h3></div>`;
             }
             if (isAdmin || p.includes('req_overtime')) {
-                cardsHTML += `<div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Solicitar Horas Extras</h3></div>`;
+                cardsHTML += `<div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Horas Extras</h3></div>`;
             }
             if (isAdmin || p.includes('req_training')) {
-                cardsHTML += `<div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Solicitar Treinamento</h3></div>`;
+                cardsHTML += `<div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Treinamento</h3></div>`;
             }
-            if (isAdmin || p.includes('req_disciplinary')) {
+            if (isAdmin || p.includes('req_disciplinary_action')) { // Corrigido para bater com a chave mgt_disciplinary_action
                 cardsHTML += `<div class="type-card" data-type="disciplinary_action"><span class="material-icons">gavel</span><h3>Medida Disciplinar</h3></div>`;
             }
             if (isAdmin || p.includes('req_maintenance')) {
-                cardsHTML += `<div class="type-card" data-type="maintenance"><span class="material-icons">settings_suggest</span><h3>Solicitação de Manutenção</h3></div>`;
+                cardsHTML += `<div class="type-card" data-type="maintenance"><span class="material-icons">settings_suggest</span><h3>Manutenção</h3></div>`;
             }
             if (isAdmin || p.includes('req_travel')) {
-                cardsHTML += `<div class="type-card" data-type="travel"><span class="material-icons">flight_takeoff</span><h3>Requisição de Viagem</h3></div>`;
+                cardsHTML += `<div class="type-card" data-type="travel"><span class="material-icons">flight_takeoff</span><h3>Viagem</h3></div>`;
             }
 
             if (cardsHTML === '') {
