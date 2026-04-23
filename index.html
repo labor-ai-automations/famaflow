@@ -6867,33 +6867,45 @@ async function syncUserPermissions(userId) {
             }
         }
 
-        async function openApprovalModal(action, requestId) {
+        function openApprovalModal(action, requestId) {
+            console.log("Abrindo Modal para:", action, requestId); // Log de depuração
+            
             const modal = document.getElementById('notes-modal');
             const title = document.getElementById('notes-modal-title');
             const message = document.getElementById('notes-modal-message');
             const confirmBtn = document.getElementById('btn-confirm-action-with-notes');
+            const notesInput = document.getElementById('action-notes');
+
+            if (!confirmBtn || !modal) {
+                showToast("Erro crítico: Elementos do modal não encontrados.", "danger");
+                return;
+            }
+
+            // Reseta o botão para o estado inicial
+            confirmBtn.disabled = false;
+            notesInput.value = '';
 
             if (action === 'approve') {
-                title.textContent = 'Aprovar Requisição';
-                message.textContent = 'Adicione observações para o solicitante antes de confirmar a aprovação.';
+                title.textContent = 'Confirmar Aprovação';
+                message.textContent = 'Informe observações sobre esta aprovação (opcional):';
                 confirmBtn.className = 'btn btn-success';
                 confirmBtn.textContent = 'Sim, Aprovar';
             } else {
-                title.textContent = 'Reprovar Requisição';
-                message.textContent = 'É altamente recomendado informar o motivo da reprovação ao solicitante.';
+                title.textContent = 'Confirmar Reprovação';
+                message.textContent = 'Por favor, informe o motivo da reprovação:';
                 confirmBtn.className = 'btn btn-danger';
                 confirmBtn.textContent = 'Sim, Reprovar';
             }
 
-            // Limpa o campo de notas anterior
-            document.getElementById('action-notes').value = '';
-
-            // Armazena os dados da ação no botão para uso posterior
-            confirmBtn.dataset.action = action;
-            confirmBtn.dataset.requestId = requestId;
+            // Gravação segura dos metadados no botão
+            confirmBtn.setAttribute('data-action', action);
+            confirmBtn.setAttribute('data-request-id', requestId);
             
-            // Adiciona o listener de clique dinamicamente
-            confirmBtn.onclick = submitRequestActionWithNotes;
+            // Atribuição limpa da função de clique
+            confirmBtn.onclick = (e) => {
+                e.preventDefault();
+                submitRequestActionWithNotes();
+            };
 
             modal.classList.add('visible');
         }
@@ -6904,18 +6916,31 @@ async function syncUserPermissions(userId) {
         
         async function submitRequestActionWithNotes() {
             const btn = document.getElementById('btn-confirm-action-with-notes');
-            const action = btn.dataset.action;
-            const requestId = btn.dataset.requestId;
+            const action = btn.getAttribute('data-action');
+            const requestId = btn.getAttribute('data-request-id');
             const notes = document.getElementById('action-notes').value.trim();
+
+            console.log("Enviando Decisão:", { action, requestId, notes }); // Log de depuração
+
+            if (!requestId) {
+                showToast("Erro: ID da requisição não capturado.", "danger");
+                return;
+            }
+
+            if (action === 'reject' && !notes) {
+                showToast("Por favor, informe o motivo da reprovação.", "warning");
+                return;
+            }
 
             const url = action === 'approve' ? N8N_APPROVE_REQUEST_URL : N8N_REJECT_REQUEST_URL;
             
             btn.disabled = true;
-            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; font-size:18px;">sync</span> Processando...';
+            const originalLabel = btn.textContent;
+            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; font-size:18px;">sync</span> Gravando...';
 
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) throw new Error("Sessão inválida.");
+                if (!session) throw new Error("Sessão expirada.");
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -6927,23 +6952,24 @@ async function syncUserPermissions(userId) {
                     })
                 });
 
-                if (!response.ok) throw new Error(`Falha ao processar.`);
+                if (!response.ok) throw new Error("Falha na comunicação com o servidor.");
 
-                showToast(`Ação registrada! Atualizando lista...`, 'success');
-                closeApprovalModal();
-
-                // Aguarda 1.5 segundos para o n8n terminar a gravação no banco
+                showToast(`Sucesso! Atualizando painel...`, 'success');
+                
+                // Fecha o modal e limpa o botão
+                document.getElementById('notes-modal').classList.remove('visible');
+                
+                // Refresh com delay para o banco processar
                 setTimeout(() => {
                     loadRequestManagementPage();
                     loadTravelRequestManagementPage();
-                    showToast("Lista atualizada com sucesso!", "info");
                 }, 1500);
 
             } catch (error) {
-                console.error("Erro na ação da requisição:", error);
-                showToast("Erro ao processar ação.", "danger");
+                console.error("Erro técnico:", error);
+                showToast("Erro ao gravar decisão. Tente novamente.", "danger");
                 btn.disabled = false;
-                btn.textContent = 'Confirmar';
+                btn.textContent = originalLabel;
             }
         }
 		
