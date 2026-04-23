@@ -1751,7 +1751,12 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'manage_travel': 'Gerenciar Viagens (Controladoria)',
             'manage_hr': 'Gerenciar Requisições Gerais (RH)',
             'manage_routines': 'Gerenciar Rotinas do Setor',
-            'manage_users': 'Administrador Geral'
+            'manage_users': 'Administrador Geral',
+            'view_organograma': 'Ver Organograma',
+            'view_rankings': 'Ver Rankings e Performance',
+            'view_team': 'Ver Equipe',
+            'view_mural': 'Ver Mural Cultural',
+            'view_dashboard': 'Ver Dashboard Geral'
         };
 
         let currentUserProfile = null;
@@ -2180,7 +2185,7 @@ const appHTML = `<div id="app-container">
                                         <input type="checkbox" id="perm-manage_routines">
                                         <span class="perm-checkmark"></span>
                                         <span class="material-icons perm-icon">checklist</span>
-                                        <span class="perm-text">Gerenciar Rotinas (Do Departamento)</span>
+                                        <span class="perm-text">Gerenciar Rotinas</span>
                                     </label>
                                     
                                     <label class="perm-checkbox">
@@ -2190,14 +2195,46 @@ const appHTML = `<div id="app-container">
                                         <span class="perm-text">Admin Geral</span>
                                     </label>
                                 </div>
+
+                                <!-- NOVA SEÇÃO: PERMISSÕES DE VISUALIZAÇÃO -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-info);">visibility</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Permissões de Visualização</label>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">
+                                    Defina quais telas extras este usuário pode acessar.
+                                </p>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-view_organograma">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Ver Organograma</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-view_rankings">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Ver Rankings</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-view_team">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Ver Equipe</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-view_mural">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Ver Mural Cultural</span>
+                                    </label>
+                                    <label class="perm-checkbox" style="grid-column: 1 / -1;">
+                                        <input type="checkbox" id="perm-view_dashboard">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Ver Dashboard Geral</span>
+                                    </label>
+                                </div>
                                 
                                 <div style="margin-top: 1rem; padding: 0.875rem; background: var(--color-info-bg); border-left: 3px solid var(--color-info); border-radius: 6px;">
                                     <p style="margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--color-text-primary);">
                                         <strong style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
-                                            <span style="font-size: 1rem;">💡</span> Entenda as Regras:
+                                            <span style="font-size: 1rem;">💡</span> Lembrete de Sistema:
                                         </strong>
                                         <span style="color: var(--color-text-secondary);">
-                                            Gerenciar Viagens é centralizado na <strong>Controladoria</strong>. Gerentes e Supervisores gerenciam Rotinas de seus setores <strong>por padrão</strong>. Use as permissões acima apenas para exceções ou cargos administrativos.
+                                            Qualquer usuário com a permissão de <strong>Admin Geral</strong> tem acesso automático a todas as telas, ignorando os checkboxes de visualização acima.
                                         </span>
                                     </p>
                                 </div>
@@ -2395,22 +2432,28 @@ async function showApp() {
     const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || canManageUsers;
     const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || canManageUsers;
     
-    // Permissão estendida: se tiver qualquer gestão, vê painéis globais (Dashboard, Equipe, Rankings)
-    const hasExtendedView = canManageUsers || canManageHR || canManageTravel || canManageRoutines;
+    // Novas permissões específicas de visualização (O Admin sempre vê tudo)
+    const canViewOrg = currentUserProfile.permissions.includes('view_organograma') || canManageUsers;
+    const canViewPerf = currentUserProfile.permissions.includes('view_rankings') || canManageUsers;
+    const canViewTeam = currentUserProfile.permissions.includes('view_team') || canManageUsers;
+    const canViewMural = currentUserProfile.permissions.includes('view_mural') || canManageUsers;
+    const canViewDash = currentUserProfile.permissions.includes('view_dashboard') || canManageUsers;
 
-    // 3. Filtra a Sidebar Principal estritamente baseada nas capacidades
+    // 3. Filtra a Sidebar Principal estritamente baseada nas capacidades individuais
     document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
         const page = link.getAttribute('data-page');
         
-        // Páginas essenciais que TODOS os colaboradores têm acesso
-        const basePages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page'];
-        
-        if (basePages.includes(page)) {
+        // Páginas base que TODOS veem
+        if (['requests-page', 'kb-page', 'profile-page', 'my-routines-page', 'messages-page'].includes(page)) {
             link.parentElement.style.display = 'block';
-        } else {
-            // Páginas como Dashboard, Mensagens, Equipe, etc.
-            link.parentElement.style.display = hasExtendedView ? 'block' : 'none';
-        }
+        } 
+        // Páginas controladas pelos novos checkboxes
+        else if (page === 'organograma-page') { link.parentElement.style.display = canViewOrg ? 'block' : 'none'; }
+        else if (page === 'rankings-page') { link.parentElement.style.display = canViewPerf ? 'block' : 'none'; }
+        else if (page === 'team-page') { link.parentElement.style.display = canViewTeam ? 'block' : 'none'; }
+        else if (page === 'mural-page') { link.parentElement.style.display = canViewMural ? 'block' : 'none'; }
+        else if (page === 'dashboard-page') { link.parentElement.style.display = canViewDash ? 'block' : 'none'; }
+        else { link.parentElement.style.display = 'none'; } // Canais, etc (escondidos por padrão se não mapeados)
     });
 
     // 4. Monta e Controla a Seção de ADMINISTRAÇÃO agnóstica
