@@ -1830,24 +1830,19 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const authHTML = `<div class="login-wrapper visible" id="auth-wrapper"><div id="auth-container" class="login-container"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="login-logo"><p class="login-subtitle">Sistema de Governança Fama</p><form id="login-form"><div class="input-group"><input type="email" id="email" class="input-field" placeholder="Email" required></div><div class="input-group"><input type="password" id="password" class="input-field" placeholder="Senha" required></div><button type="submit" class="btn-primary" style="width: 100%;">Entrar</button></form></div></div>`;
 const appHTML = `<div id="app-container">
             <aside class="sidebar" id="main-sidebar">
-                <!-- Botão de encolher/expandir -->
-                <button id="btn-toggle-sidebar" title="Recolher Menu"><span class="material-icons" style="font-size: 16px;">chevron_left</span></button>
-
                 <div class="sidebar-header"><img src="${LOGO_LIGHT_URL}" alt="Logo Fama" class="sidebar-logo"></div>
                 <div class="sidebar-scroll-area">
                     <ul class="nav-menu">
                         <li><a href="#" class="nav-link" data-page="dashboard-page"><span class="material-icons">dashboard</span> Dashboard</a></li>
-                        <li><a href="#" class="nav-link" data-page="messages-page"><span class="material-icons">inbox</span> Mensagens</a></li>
+                        <li><a href="#" class="nav-link" data-page="messages-page"><span class="material-icons">chat</span> Mensagens</a></li>
                         <li><a href="#" class="nav-link" data-page="requests-page"><span class="material-icons">description</span> Requisições</a></li>
                         <li><a href="#" class="nav-link" data-page="my-routines-page"><span class="material-icons">checklist</span> Minhas Rotinas</a></li>
-                        <li><a href="#" class="nav-link" data-page="channels-page"><span class="material-icons">tag</span> Canais</a></li>
                         <li><a href="#" class="nav-link" data-page="team-page"><span class="material-icons">people</span> Equipe</a></li>
                         <li><a href="#" class="nav-link" data-page="organograma-page"><span class="material-icons">account_tree</span> Organograma</a></li>
                         <li><a href="#" class="nav-link" data-page="rankings-page"><span class="material-icons">leaderboard</span> Performance e Rankings</a></li>
                         <li><a href="#" class="nav-link" data-page="mural-page"><span class="material-icons">campaign</span> Mural Cultural</a></li>
                         <li><a href="#" class="nav-link" data-page="kb-page"><span class="material-icons">school</span> Base de Conhecimento</a></li>
                     </ul>
-                    <!-- SEÇÃO DE ADMINISTRAÇÃO - CONTROLADA EXCLUSIVAMENTE PELO JS -->
                     <div id="admin-section" style="display: none;">
                         <div class="nav-section-title">Administração</div>
                         <ul class="nav-menu" id="admin-menu-list"></ul>
@@ -1862,140 +1857,39 @@ const appHTML = `<div id="app-container">
             </aside>
             <main class="content">
                 <button id="mobile-menu-toggle" class="btn btn-icon" title="Menu"><span class="material-icons">menu</span></button>
+                
+                <!-- TELA DE SEM PERMISSÃO (AVISO) -->
+                <div id="no-permissions-page" class="page-content">
+                    <div style="height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
+                        <div style="background: var(--color-warning-bg); width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                            <span class="material-icons" style="font-size: 48px; color: var(--color-warning);">lock</span>
+                        </div>
+                        <h1 style="margin-bottom: 0.5rem; color: var(--color-text-primary);">Acesso Restrito</h1>
+                        <p style="color: var(--color-text-secondary); max-width: 400px; margin-bottom: 2rem;">Você ainda não possui permissões de acesso liberadas no sistema Fama Flow.</p>
+                        <div style="padding: 1.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: var(--shadow);">
+                            <p style="margin: 0; font-weight: 600; color: var(--color-text-primary);">O que fazer?</p>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: var(--color-text-secondary);">Entre em contato com o administrador do sistema ou com o RH para solicitar a liberação das suas abas de trabalho.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="dashboard-page" class="page-content"><div class="page-header"><div><h1 id="dashboard-title">Dashboard</h1><p>Visão geral do seu desempenho</p></div></div><div class="grid grid-cols-2"><div class="card stat-card card-warning"><div class="stat-icon"><span class="material-icons">mark_email_unread</span></div><div class="stat-info"><h3>Mensagens Pendentes</h3><p id="pending-messages-count">0</p></div></div><div class="card stat-card card-danger"><div class="stat-icon"><span class="material-icons">report_problem</span></div><div class="stat-info"><h3>Chamados Abertos</h3><p id="urgent-tickets-count">0</p></div></div></div></div>
-                <div id="messages-page" class="page-content"><div class="page-header"><h1>Mensagens</h1></div><div class="message-actions-header">
-    <div class="tabs-container"><button class="tab-link active" data-tab="inbox-content">Caixa de Entrada</button><button class="tab-link" data-tab="sent-content">Enviados</button><button class="tab-link" data-tab="tickets-content">Chamados</button><button class="tab-link" data-tab="archived-content">Arquivados</button></div>
-    <div class="page-header-actions">
-        <div id="sort-menu-container" style="position: relative;">
-            <button id="sort-button" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
-                <span class="material-icons">sort</span>
-                Ordenar por: <span id="sort-label" style="font-weight: 700;">Mais Recente</span>
-            </button>
-            <div id="sort-options" style="display: none; position: absolute; top: 100%; right: 0; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 10; min-width: 220px; padding: 0.5rem; margin-top: 0.25rem;">
-                <a href="#" data-sort="newest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Recente)</a>
-                <a href="#" data-sort="oldest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Antigo)</a>
-                <a href="#" data-sort="priority" class="nav-link" style="padding: 0.5rem 1rem;">Prioridade (Urgente Primeiro)</a>
-            </div>
-        </div>
-        <button id="refresh-messages-btn" class="refresh-btn" title="Atualizar mensagens"><span class="material-icons">refresh</span></button>
-    </div>
-</div><div class="card" style="padding: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><div id="inbox-content" class="tab-content active"></div><div id="sent-content" class="tab-content"></div><div id="tickets-content" class="tab-content"></div><div id="archived-content" class="tab-content"></div></div></div>
+                <div id="messages-page" class="page-content"><div class="page-header"><h1>Mensagens</h1></div><div class="message-actions-header"><div class="tabs-container"><button class="tab-link active" data-tab="inbox-content">Caixa de Entrada</button><button class="tab-link" data-tab="sent-content">Enviados</button><button class="tab-link" data-tab="tickets-content">Chamados</button><button class="tab-link" data-tab="archived-content">Arquivados</button></div><div class="page-header-actions"><div id="sort-menu-container" style="position: relative;"><button id="sort-button" class="btn btn-secondary" style="padding: 0.5rem 1rem;"><span class="material-icons">sort</span> Ordenar por: <span id="sort-label" style="font-weight: 700;">Mais Recente</span></button><div id="sort-options" style="display: none; position: absolute; top: 100%; right: 0; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 10; min-width: 220px; padding: 0.5rem; margin-top: 0.25rem;"><a href="#" data-sort="newest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Recente)</a><a href="#" data-sort="oldest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Antigo)</a><a href="#" data-sort="priority" class="nav-link" style="padding: 0.5rem 1rem;">Prioridade (Urgente Primeiro)</a></div></div><button id="refresh-messages-btn" class="refresh-btn" title="Atualizar mensagens"><span class="material-icons">refresh</span></button></div></div><div class="card" style="padding: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><div id="inbox-content" class="tab-content active"></div><div id="sent-content" class="tab-content"></div><div id="tickets-content" class="tab-content"></div><div id="archived-content" class="tab-content"></div></div></div>
                 <div id="requests-page" class="page-content"><div class="page-header"><div><h1>Requisições</h1><p>Gerencie solicitações de RH e administrativas.</p></div><div class="page-header-actions"><button id="btn-new-request" class="btn btn-danger"><span class="material-icons">add</span> Nova Requisição</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 18%;">Tipo</th><th style="width: 25%;">Solicitante</th><th style="width: 14%;">Data</th><th style="width: 20%;">Status</th><th style="width: 23%;">Ações</th></tr></thead><tbody id="request-table-body"></tbody></table></div></div>
                 <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
-                <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div>
-                    <div class="card team-filters">
-                        <div class="form-group" style="margin:0;"><label for="team-search-name">Buscar por Nome</label><input type="text" id="team-search-name" class="input-field" placeholder="Digite um nome..."></div>
-                        <div class="form-group" style="margin:0;"><label for="team-filter-dept">Filtrar por Setor</label><select id="team-filter-dept" class="input-field"></select></div>
-                        <div class="form-group" style="margin:0;"><label for="team-filter-role">Filtrar por Cargo</label><select id="team-filter-role" class="input-field"></select></div>
-                    </div>
-                <div id="team-list-content">Carregando equipe...</div></div>
-                <div id="organograma-page" class="page-content">
-                    <div class="page-header organograma-header">
-                        <div>
-                            <h1>Organograma Vivo</h1>
-                            <p>Estrutura hierárquica da empresa</p>
-                        </div>
-                    </div>
-                    
-                    <div class="card organograma-actions-bar" style="margin-bottom: 2rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-                            <label for="org-filter-dept" style="font-weight: 600; font-size: 0.9rem; color: var(--color-text-secondary); white-space: nowrap;">Visualizar Área:</label>
-                            <select id="org-filter-dept" class="input-field" onchange="loadOrganogramaPage(this.value)" style="max-width: 300px; flex-grow: 1;"></select>
-                        </div>
-                        <button class="btn btn-danger" onclick="openUserModal(null)">
-                            <span class="material-icons">person_add</span> Novo Colaborador
-                        </button>
-                    </div>
-                    
-                    <div class="card organograma-tree-card" id="organograma-tree-container" style="overflow-x: auto; position: relative;">
-<div class="zoom-controls" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; gap: 0.5rem;">
-                            <button onclick="zoomOrganograma(-0.1)" class="btn-icon-secondary" title="Diminuir Zoom">
-                                <span class="material-icons">zoom_out</span>
-                            </button>
-                            <span id="zoom-level" style="padding: 0.5rem 1rem; background: var(--color-surface); border-radius: 6px; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">100%</span>
-                            <button onclick="zoomOrganograma(0.1)" class="btn-icon-secondary" title="Aumentar Zoom">
-                                <span class="material-icons">zoom_in</span>
-                            </button>
-                            <button onclick="resetZoomOrganograma()" class="btn-icon-secondary" title="Resetar Zoom">
-                                <span class="material-icons">restart_alt</span>
-                            </button>
-                        </div>
-                        <div class="empty-state">Carregando organograma...</div>
-                    </div>
-                </div>
+                <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div><div class="card team-filters"><div class="form-group" style="margin:0;"><label for="team-search-name">Buscar por Nome</label><input type="text" id="team-search-name" class="input-field" placeholder="Digite um nome..."></div><div class="form-group" style="margin:0;"><label for="team-filter-dept">Filtrar por Setor</label><select id="team-filter-dept" class="input-field"></select></div><div class="form-group" style="margin:0;"><label for="team-filter-role">Filtrar por Cargo</label><select id="team-filter-role" class="input-field"></select></div></div><div id="team-list-content">Carregando equipe...</div></div>
+                <div id="organograma-page" class="page-content"><div class="page-header organograma-header"><div><h1>Organograma Vivo</h1><p>Estrutura hierárquica da empresa</p></div></div><div class="card organograma-actions-bar" style="margin-bottom: 2rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 1rem; flex: 1;"><label for="org-filter-dept" style="font-weight: 600; font-size: 0.9rem; color: var(--color-text-secondary); white-space: nowrap;">Visualizar Área:</label><select id="org-filter-dept" class="input-field" onchange="loadOrganogramaPage(this.value)" style="max-width: 300px; flex-grow: 1;"></select></div><button class="btn btn-danger" onclick="openUserModal(null)"><span class="material-icons">person_add</span> Novo Colaborador</button></div><div class="card organograma-tree-card" id="organograma-tree-container" style="overflow-x: auto; position: relative;"><div class="zoom-controls" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; gap: 0.5rem;"><button onclick="zoomOrganograma(-0.1)" class="btn-icon-secondary" title="Diminuir Zoom"><span class="material-icons">zoom_out</span></button><span id="zoom-level" style="padding: 0.5rem 1rem; background: var(--color-surface); border-radius: 6px; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">100%</span><button onclick="zoomOrganograma(0.1)" class="btn-icon-secondary" title="Aumentar Zoom"><span class="material-icons">zoom_in</span></button><button onclick="resetZoomOrganograma()" class="btn-icon-secondary" title="Resetar Zoom"><span class="material-icons">restart_alt</span></button></div><div class="empty-state">Carregando organograma...</div></div></div>
                 <div id="channels-page" class="page-content"><div class="page-header"><h1>Canais</h1></div><div class="empty-state">Funcionalidade em desenvolvimento.</div></div>
-                <div id="rankings-page" class="page-content">
-                    <div class="page-header">
-                        <h1>Performance e Rankings</h1>
-                        <p>Acompanhe o desempenho e celebre as conquistas da equipe</p>
-                    </div>
-
-                    <div class="grid grid-cols-2">
-                        <!-- Card para Respondedores Rápidos -->
-                        <div class="card">
-                            <h3 class="card-title" style="margin-bottom: 2rem;">
-                                <span class="material-icons" style="color: var(--color-success);">trending_up</span>
-                                Top 5 - Respondedores Mais Rápidos
-                            </h3>
-                            <div id="fastest-responders-list">
-                                <div class="empty-state">Carregando ranking...</div>
-                            </div>
-                        </div>
-
-                        <!-- Card para Maior Volume de Pendências -->
-                        <div class="card">
-                            <h3 class="card-title" style="margin-bottom: 2rem;">
-                                <span class="material-icons" style="color: var(--color-danger);">report_problem</span>
-                                Top 5 - Maior Volume de Pendências
-                            </h3>
-                            <div id="most-pending-list">
-                                <div class="empty-state">Carregando ranking...</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div id="rankings-page" class="page-content"><div class="page-header"><h1>Performance e Rankings</h1><p>Acompanhe o desempenho e celebre as conquistas da equipe</p></div><div class="grid grid-cols-2"><div class="card"><h3 class="card-title" style="margin-bottom: 2rem;"><span class="material-icons" style="color: var(--color-success);">trending_up</span> Top 5 - Respondedores Mais Rápidos</h3><div id="fastest-responders-list"><div class="empty-state">Carregando ranking...</div></div></div><div class="card"><h3 class="card-title" style="margin-bottom: 2rem;"><span class="material-icons" style="color: var(--color-danger);">report_problem</span> Top 5 - Maior Volume de Pendências</h3><div id="most-pending-list"><div class="empty-state">Carregando ranking...</div></div></div></div></div>
                 <div id="mural-page" class="page-content"><div class="page-header"><h1>Mural Cultural</h1><p>Acompanhe os eventos e novidades da Fama.</p></div><div id="mural-content">Carregando...</div><button class="fab hidden" id="fab-new-post" title="Nova Postagem"><span class="material-icons">add</span></button></div>
-                <div id="kb-page" class="page-content">
-    <div class="page-header">
-        <div><h1>Base de Conhecimento</h1><p>Manuais, normas e procedimentos internos.</p></div>
-        <div class="page-header-actions"><button class="btn btn-danger" onclick="currentEditingKBId = null; document.querySelector('#kb-modal h3').textContent = 'Novo Conteúdo'; document.getElementById('kb-form').reset(); toggleKBFields(); document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div>
-    </div>
-    
-    <!-- BANNER DE OBSERVAÇÃO -->
-    <div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;">
-        <span class="material-icons" style="color: var(--color-info);">info</span>
-        <p style="margin: 0; font-size: 0.9rem; color: var(--color-text-primary);">
-            <strong>Observação:</strong> Para atualizar o arquivo de um documento existente, por favor, <strong>exclua o registro atual e crie um novo</strong> com o arquivo atualizado. Atualmente, a edição direta é permitida apenas para o título e conteúdos em formato de texto.
-        </p>
-    </div>
-    <div class="card" style="padding:0;">
-        <table class="data-table">
-            <thead><tr><th style="width: 40%;">Título</th><th style="width: 20%;">Categoria</th><th style="width: 20%;">Tipo</th><th style="width: 20%;">Ação</th></tr></thead>
-            <tbody id="kb-table-body"></tbody>
-        </table>
-    </div>
-</div>
+                <div id="kb-page" class="page-content"><div class="page-header"><div><h1>Base de Conhecimento</h1><p>Manuais, normas e procedimentos internos.</p></div><div class="page-header-actions"><button class="btn btn-danger" onclick="currentEditingKBId = null; document.querySelector('#kb-modal h3').textContent = 'Novo Conteúdo'; document.getElementById('kb-form').reset(); toggleKBFields(); document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div></div><div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;"><span class="material-icons" style="color: var(--color-info);">info</span><p style="margin: 0; font-size: 0.9rem; color: var(--color-text-primary);"><strong>Observação:</strong> Para atualizar o arquivo de um documento existente, por favor, <strong>exclua o registro atual e crie um novo</strong> com o arquivo atualizado. Atualmente, a edição direta é permitida apenas para o título e conteúdos em formato de texto.</p></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 40%;">Título</th><th style="width: 20%;">Categoria</th><th style="width: 20%;">Tipo</th><th style="width: 20%;">Ação</th></tr></thead><tbody id="kb-table-body"></tbody></table></div></div>
                 <div id="admin-dashboard-page" class="page-content"><div class="page-header"><h1>Dashboard Administrativo</h1></div><div class="card">Métricas da plataforma aparecerão aqui.</div></div>
                 <div id="users-page" class="page-content"><div class="page-header"><div class="page-header-title"><h1>Gerenciamento de Usuários</h1></div><div class="page-header-actions"><button id="refresh-users-btn" class="refresh-btn" title="Atualizar usuários"><span class="material-icons">refresh</span></button><button id="btn-new-user" class="btn btn-danger"><span class="material-icons">add</span> Novo Usuário</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Usuário & Email</th><th>Departamento & Cargo</th><th>Score</th><th>Ações</th></tr></thead><tbody id="user-table-body"></tbody></table></div></div>
-                <div id="profile-page" class="page-content">
-                    <div id="user-profile-content"></div>
-                    <div id="user-history-content"></div>
-                </div>
-                <div id="request-management-page" class="page-content">
-                    <div class="page-header">
-                        <div>
-                            <h1>Gerenciamento de Requisições</h1>
-                            <p>Visualize e gerencie todas as solicitações da plataforma.</p>
-                        </div>
-                    </div>
-                    <div class="card" style="padding:0;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20%;">Solicitante</th>
-                                    <th style="width: 25%;">Tipo</th>
-                                    <th style="width: 20%;">Data</th>
-                                    <th style="width: 15%;">Status</th>
+                <div id="profile-page" class="page-content"><div id="user-profile-content"></div><div id="user-history-content"></div></div>
+                <div id="request-management-page" class="page-content"><div class="page-header"><div><h1>Gerenciamento de Requisições</h1><p>Visualize e gerencie todas as solicitações da plataforma.</p></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 20%;">Solicitante</th><th style="width: 25%;">Tipo</th><th style="width: 20%;">Data</th><th style="width: 15%;">Status</th><th style="width: 20%;">Ações</th></tr></thead><tbody id="request-management-table-body"><tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr></tbody></table></div></div>
+                <div id="travel-request-management-page" class="page-content"><div class="page-header"><div><h1>Gerenciamento de Requisições de Viagem</h1><p>Analise e gerencie todas as solicitações de viagem.</p></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 20%;">Solicitante</th><th style="width: 25%;">Título</th><th style="width: 20%;">Destino</th><th style="width: 15%;">Período</th><th style="width: 10%;">Status</th><th style="width: 10%;">Ações</th></tr></thead><tbody id="travel-request-management-table-body"><tr><td colspan="6" class="empty-state">Carregando requisições...</td></tr></tbody></table></div></div>
+                <div id="my-routines-page" class="page-content"></div>
+                <div id="manage-processes-page" class="page-content"><div class="page-header" style="margin-bottom: 1rem;"><div><h1>Gerenciar Processos e Tarefas</h1><p>Crie fluxos recorrentes ou delegue tarefas pontuais para a equipe.</p></div></div><div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border);"><button class="tab-link active" id="tab-btn-recurrent" onclick="switchProcessTab('recurrent')" style="padding: 0.75rem 1.5rem; font-weight: 600;"><span class="material-icons" style="vertical-align: middle; margin-right: 5px;">account_tree</span</th>
                                     <th style="width: 20%;">Ações</th>
                                 </tr>
                             </thead>
@@ -2529,11 +2423,19 @@ async function showApp() {
     profileShortcut.innerHTML = `${avatarHTML}<div><div class="user-name">${currentUserProfile.full_name}</div><div class="user-role">${currentUserProfile.role || 'Colaborador'}</div></div>`;
     profileShortcut.onclick = () => showPage('profile-page');
 
-    // Redirecionamento Inicial
-    if (canViewDash) {
-        showPage('dashboard-page');
+    // Redirecionamento Inteligente (Agnóstico)
+    const hasAnyPerm = p.length > 0;
+
+    if (isAdmin || hasAnyPerm) {
+        if (isAdmin || canViewDash) showPage('dashboard-page');
+        else if (p.includes('view_requests')) showPage('requests-page');
+        else if (p.includes('view_routines')) showPage('my-routines-page');
+        else if (p.includes('view_messages')) showPage('messages-page');
+        else if (p.includes('view_kb')) showPage('kb-page');
+        else showPage('profile-page');
     } else {
-        showPage('requests-page');
+        // Usuário com ZERO permissões cai na tela de aviso
+        showPage('no-permissions-page');
     }
 
     loadAllDynamicData();
