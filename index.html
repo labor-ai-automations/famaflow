@@ -1750,6 +1750,9 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const PERMISSION_MAPPING = {
             // 1. Visualização de Telas
             'view_messages': 'Mensagens (Envio e Visualização)',
+            'view_requests': 'Requisições (Meus Pedidos)',
+            'view_routines': 'Minhas Rotinas (Calendário)',
+            'view_kb': 'Base de Conhecimento',
             'view_organograma': 'Organograma',
             'view_rankings': 'Rankings e Performance',
             'view_team': 'Equipe',
@@ -2189,12 +2192,15 @@ const appHTML = `<div id="app-container">
                                 </div>
                                 <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode acessar na barra lateral esquerda.</p>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Mensagens (Envio e Visualização)</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Mensagens</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_requests"><span class="perm-checkmark"></span><span class="material-icons perm-icon">description</span><span class="perm-text">Requisições</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">checklist</span><span class="perm-text">Minhas Rotinas</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Rankings e Performance</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Rankings</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_team"><span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Equipe</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard Geral</span></label>
+                                    <label class="perm-checkbox" style="grid-column: 1 / -1;"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard Geral</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 2: GERENCIAMENTO DE REQUISIÇÕES -->
@@ -2447,19 +2453,38 @@ async function showApp() {
     const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || isAdmin;
     const canViewAdminDash = currentUserProfile.permissions.includes('view_admin_dash') || isAdmin;
 
-    // 3. Filtra a Sidebar Principal estritamente baseada nas capacidades
+// 3. Filtra a Sidebar Principal - Zero Imunidade (Tudo depende das chaves)
+    const p = currentUserProfile.permissions || [];
+    
     document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
         const page = link.getAttribute('data-page');
-        if (['requests-page', 'kb-page', 'profile-page', 'my-routines-page'].includes(page)) {
+        
+        // Apenas o atalho de Perfil permanece visível por ser o acesso às configurações do usuário
+        if (page === 'profile-page') {
             link.parentElement.style.display = 'block';
-        } 
-        else if (page === 'messages-page') { link.parentElement.style.display = canViewMessages ? 'block' : 'none'; }
-        else if (page === 'organograma-page') { link.parentElement.style.display = canViewOrg ? 'block' : 'none'; }
-        else if (page === 'rankings-page') { link.parentElement.style.display = canViewPerf ? 'block' : 'none'; }
-        else if (page === 'team-page') { link.parentElement.style.display = canViewTeam ? 'block' : 'none'; }
-        else if (page === 'mural-page') { link.parentElement.style.display = canViewMural ? 'block' : 'none'; }
-        else if (page === 'dashboard-page') { link.parentElement.style.display = canViewDash ? 'block' : 'none'; }
-        else { link.parentElement.style.display = 'none'; }
+            return;
+        }
+
+        let isVisible = false;
+        if (isAdmin) {
+            isVisible = true; // Admin vê tudo
+        } else {
+            // Mapeamento página -> chave de permissão
+            const pageToKeyMap = {
+                'messages-page': 'view_messages',
+                'requests-page': 'view_requests',
+                'my-routines-page': 'view_routines',
+                'kb-page': 'view_kb',
+                'organograma-page': 'view_organograma',
+                'rankings-page': 'view_rankings',
+                'team-page': 'view_team',
+                'mural-page': 'view_mural',
+                'dashboard-page': 'view_dashboard'
+            };
+            isVisible = p.includes(pageToKeyMap[page]);
+        }
+
+        link.parentElement.style.display = isVisible ? 'block' : 'none';
     });
 
     // 4. Monta e Controla a Seção de ADMINISTRAÇÃO agnóstica
