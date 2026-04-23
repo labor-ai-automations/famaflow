@@ -7043,18 +7043,15 @@ async function syncUserPermissions(userId) {
             const p = currentUserProfile.permissions || [];
             const isAdmin = p.includes('manage_users');
 
-            // FILTRO CIRÚRGICO: O usuário só vê na lista o que ele tem 'mgt_' marcado
             const filteredData = data.filter(req => {
-                if (isAdmin) return req.type !== 'travel'; // Admin vê tudo exceto viagem (que tem tela própria)
+                if (isAdmin) return req.type !== 'travel';
                 if (req.type === 'travel') return false; 
-                
-                // Mapeia o tipo da requisição para a chave de permissão correspondente
                 const mgtKey = `mgt_${req.type}`;
                 return p.includes(mgtKey);
             });
 
             if (!filteredData || filteredData.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para sua aprovação.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições para sua aprovação.</td></tr>`;
                 return;
             }
 
@@ -7065,12 +7062,8 @@ async function syncUserPermissions(userId) {
             };
             
             const statusLabels = {
-                pending: 'Pendente',
-                approved: 'Aprovado',
-                rejected: 'Recusado',
-                planned: 'Planejado',
-                executed: 'Executado',
-                cancelled_by_requester: 'Cancelada pelo Solicitante'
+                pending: 'Pendente', approved: 'Aprovado', rejected: 'Recusado',
+                planned: 'Planejado', executed: 'Executado', cancelled_by_requester: 'Cancelada'
             };
 
             tableBody.innerHTML = filteredData.map(req => {
@@ -7079,32 +7072,34 @@ async function syncUserPermissions(userId) {
                 const statusLabel = statusLabels[req.status] || req.status;
                 const statusClass = `status-${req.status}`;
                 
-                let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+                // Botão principal de Detalhes
+                let actionButtonsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
 
-                if (req.type === 'maintenance') {
-                    if (req.status === 'pending') {
-                        actionsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem; margin-left: 0.5rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
-                    } else if (req.status === 'planned') {
-                        actionsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem; margin-left: 0.5rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executado</button>`;
-                    }
-                } else {
-                    if (req.status === 'pending') {
-                        actionsHTML += `
-                            <span data-request-id="${req.id}">
-                                <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
-                                <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
-                            </span>
+                // Lógica de botões extras
+                if (req.status === 'pending') {
+                    if (req.type === 'maintenance') {
+                        actionButtonsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
+                    } else {
+                        actionButtonsHTML += `
+                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
+                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
                         `;
                     }
+                } else if (req.status === 'planned' && req.type === 'maintenance') {
+                    actionButtonsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executado</button>`;
                 }
 
                 return `
                     <tr>
-                        <td>${req.requester_name || 'Desconhecido'}</td>
+                        <td>${req.requester_name || 'N/A'}</td>
                         <td><strong>${typeLabel}</strong></td>
                         <td>${date}</td>
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td>${actionsHTML}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                ${actionButtonsHTML}
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
