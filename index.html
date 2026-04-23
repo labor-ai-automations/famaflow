@@ -4608,20 +4608,13 @@ async function openRequestDetailsModal(requestId) {
             modal.classList.add('visible');
 
             try {
-                // Unifica as buscas em paralelo para máxima eficiência
-                const [requestRes, historyRes] = await Promise.all([
-                    supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single(),
-                    supabaseClient.from('request_history').select('*, changed_by_profile:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
-                ]);
-                
-                const { data: request, error: requestError } = requestRes;
-                const { data: history, error: historyError } = historyRes;
+                const { data: request, error: requestError } = await supabaseClient
+                    .from('requests')
+                    .select('*, requester:profiles(full_name)')
+                    .eq('id', requestId)
+                    .single();
 
-                if (requestError || !request) throw new Error('Não foi possível carregar os detalhes da requisição.');
-                if (historyError) {
-                    // Não é um erro fatal, apenas registramos no console.
-                    console.warn("Aviso: Não foi possível carregar o histórico da requisição:", historyError.message);
-                }
+                if (requestError || !request) throw new Error('Não foi possível carregar os detalhes.');
 
                 if (request.type === 'travel') {
                     await openTravelRequestDetailsModal(requestId);
@@ -4630,85 +4623,88 @@ async function openRequestDetailsModal(requestId) {
                 
                 modalTitle.textContent = 'Detalhes da Requisição';
 
-                const translations = {
-                    funcao: 'Função', quantidade: 'Quantidade de Vagas', motivo_contratacao: 'Motivo da Contratação',
-                    substituicao_nome: 'Nome do Colaborador Substituído', substituicao_motivo: 'Motivo da Saída',
-                    tipo_contrato: 'Tipo de Contrato', horario: 'Horário de Trabalho', escolaridade: 'Escolaridade Mínima',
-                    experiencia: 'Experiência Necessária', conhecimentos: 'Conhecimentos Específicos',
-                    competencias: 'Competências Comportamentais', local_trabalho: 'Local de Trabalho',
-                    candidato_interno: 'Possui Candidato Interno?', candidato_interno_nome: 'Nome do Candidato Interno',
-                    urgencia: 'Urgência', urgencia_data: 'Data Limite (Urgência)', nome_colaborador: 'Nome do Colaborador',
-                    cargo_colaborador: 'Cargo', data_demissao: 'Data da Demissão', tipo_rescisao: 'Tipo de Rescisão',
-                    aviso_previo: 'Aviso Prévio', reposicao_vaga: 'Reposição da Vaga',
-                    motivo_desligamento: 'Motivos do Desligamento', motivo_breve: 'Relato do Motivo',
-                    observacoes_adicionais: 'Observações Adicionais', nome_funcionario: 'Nome do Funcionário',
-                    data_admissao: 'Data de Admissão', cargo_atual: 'Cargo Atual', salario_atual: 'Salário Atual (R$)',
-                    cargo_pretendido: 'Cargo Pretendido', salario_pretendido: 'Salário Pretendido (R$)',
-                    justificativa: 'Justificativa', data_he: 'Data das Horas Extras',
-                    horario_adicional: 'Horário Adicional', qtd_funcionarios: 'Qtd. de Funcionários',
-                    setor_he: 'Setor', titulo: 'Título do Treinamento/Evento', instituicao: 'Instituição',
-                    modalidade: 'Modalidade', local: 'Local', datas: 'Datas', carga_horaria: 'Carga Horária',
-                    participacao_tipo: 'Tipo de Participação', nomes_participantes: 'Participantes',
-                    custo_inscricao: 'Custo Inscrição (R$)', custo_transporte: 'Custo Transporte (R$)',
-                    custo_hospedagem: 'Custo Hospedagem (R$)', custo_outras: 'Outras Despesas (R$)',
-                    solicitante_nome: 'Solicitante', 
-                    setor: 'Setor', 
-                    equipamento: 'Código/Equipamento', 
-                    descricao_problema: 'Descrição Objetiva do Problema', 
-                    situacao_maquina: 'Situação Atual da Máquina'
-                };
+                // BLOCO DE FEEDBACK DO GESTOR (O que você viu no SELECT)
+                let feedbackHTML = '';
+                const statusLabels = { pending: 'Pendente', planned: 'Planejada', executed: 'Executada', approved: 'Aprovada', rejected: 'Recusada' };
+                const statusColors = { pending: '#F59E0B', planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920' };
 
-                let detailsHTML = `<div class="card" style="margin:0; box-shadow:none; border:none; padding:0;">`;
-                
-                // Renderiza os dados originais da requisição (do objeto 'data')
-                for (const key in request.data) {
-                    if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
-                        const label = translations[key] || key.replace(/_/g, ' ');
-                        const value = request.data[key];
-                        detailsHTML += `
-                            <div class="form-group" style="border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
-                                <label style="font-size:0.8rem; color: var(--color-text-secondary);">${label}</label>
-                                <p style="margin:0; font-weight: 500;">${value}</p>
-                            </div>
-                        `;
-                    }
-                }
-                detailsHTML += `</div>`;
-                
-                // --- SEÇÃO DE HISTÓRICO ---
-                if (history && history.length > 0) {
-                    const statusIcons = { pending: 'hourglass_top', planned: 'event', executed: 'check_circle', approved: 'thumb_up', rejected: 'thumb_down' };
-                    const historyItemsHTML = history.map(item => `
-                        <div class="history-item">
-                            <div class="icon-wrapper">
-                                <span class="material-icons" style="color: ${item.status === 'rejected' ? 'var(--color-danger)' : (item.status === 'planned' ? 'var(--color-info)' : 'var(--color-success)')};">${statusIcons[item.status] || 'info'}</span>
-                            </div>
-                            <div class="info-wrapper">
-                                <div class="action-text">
-                                    Status alterado para <strong>${(item.status || 'desconhecido').charAt(0).toUpperCase() + (item.status || 'desconhecido').slice(1)}</strong>
-                                    por ${item.changed_by_profile?.full_name || 'Sistema'}
+                if (request.status !== 'pending') {
+                    feedbackHTML = `
+                        <div style="background: var(--color-background); border: 2px solid ${statusColors[request.status]}; border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: ${statusColors[request.status]}; display: flex; align-items: center; justify-content: center;">
+                                    <span class="material-icons" style="color: white; font-size: 20px;">info</span>
                                 </div>
-                                <div class="timestamp">${new Date(item.created_at).toLocaleString('pt-BR')}</div>
-                                ${item.notes ? `<p style="font-size:0.85rem; margin: 4px 0 0; padding: 8px; background:var(--color-background); border-radius:6px; border: 1px solid var(--color-border); white-space: pre-wrap;">${item.notes}</p>` : ''}
+                                <div>
+                                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--color-text-secondary);">Status Atual</div>
+                                    <div style="font-weight: 800; font-size: 1.1rem; color: ${statusColors[request.status]};">${statusLabels[request.status]}</div>
+                                </div>
                             </div>
-                        </div>
-                    `).join('');
+                            
+                            ${request.maintenance_scheduled_at ? `
+                                <p style="margin: 0.5rem 0; font-size: 0.95rem;"><strong>📅 Data Programada:</strong> ${new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR')}</p>
+                            ` : ''}
 
-                    detailsHTML += `
-                        <div class="history-card">
-                            <details class="history-details" open>
-                                <summary class="history-summary">
-                                    <span class="material-icons">timeline</span> Linha do Tempo da Requisição
-                                </summary>
-                                <div class="history-list">
-                                    ${historyItemsHTML}
+                            ${request.approval_notes ? `
+                                <div style="margin-top: 1rem; padding: 1rem; background: var(--color-surface); border-radius: 8px; border-left: 4px solid ${statusColors[request.status]};">
+                                    <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 0.25rem;">Observações do Gestor:</label>
+                                    <p style="margin: 0; font-size: 0.9rem; font-style: italic;">"${request.approval_notes}"</p>
                                 </div>
-                            </details>
+                            ` : ''}
                         </div>
                     `;
                 }
 
-                modalBody.innerHTML = detailsHTML;
+                const translations = {
+                    funcao: 'Função', quantidade: 'Quantidade de Vagas', motivo_contratacao: 'Motivo da Contratação',
+                    substituicao_nome: 'Colaborador Substituído', substituicao_motivo: 'Motivo da Saída',
+                    tipo_contrato: 'Tipo de Contrato', horario: 'Horário de Trabalho', escolaridade: 'Escolaridade',
+                    experiencia: 'Experiência', conhecimentos: 'Conhecimentos',
+                    competencias: 'Competências', local_trabalho: 'Local',
+                    candidato_interno: 'Possui Candidato Interno?', candidato_interno_nome: 'Nome do Candidato',
+                    urgencia: 'Urgência', urgencia_data: 'Data Limite', nome_colaborador: 'Colaborador',
+                    cargo_colaborador: 'Cargo', data_demissao: 'Data da Demissão', tipo_rescisao: 'Tipo de Rescisão',
+                    aviso_previo: 'Aviso Prévio', reposicao_vaga: 'Reposição da Vaga',
+                    motivo_desligamento: 'Motivos', motivo_breve: 'Relato do Motivo',
+                    observacoes_adicionais: 'Observações', nome_funcionario: 'Funcionário',
+                    data_admissao: 'Data de Admissão', cargo_atual: 'Cargo Atual', salario_atual: 'Salário Atual',
+                    cargo_pretendido: 'Cargo Pretendido', salario_pretendido: 'Salário Pretendido',
+                    justificativa: 'Justificativa', data_he: 'Data das Horas Extras',
+                    horario_adicional: 'Horário Adicional', qtd_funcionarios: 'Qtd. de Funcionários',
+                    setor_he: 'Setor', titulo: 'Título', instituicao: 'Instituição',
+                    modalidade: 'Modalidade', local: 'Local', datas: 'Datas', carga_horaria: 'Carga Horária',
+                    participacao_tipo: 'Tipo de Participação', nomes_participantes: 'Participantes',
+                    custo_inscricao: 'Custo Inscrição', custo_transporte: 'Custo Transporte',
+                    custo_hospedagem: 'Custo Hospedagem', custo_outras: 'Outras Despesas',
+                    solicitante_nome: 'Solicitante', setor: 'Setor', equipamento: 'Equipamento',
+                    descricao_problema: 'Problema', situacao_maquina: 'Situação'
+                };
+
+                let formFieldsHTML = `
+                    <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem;">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-secondary);">Dados Enviados no Pedido</h4>
+                `;
+                
+                for (const key in request.data) {
+                    if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
+                        const label = translations[key] || key.replace(/_/g, ' ');
+                        formFieldsHTML += `
+                            <div style="margin-bottom: 0.75rem;">
+                                <label style="font-size:0.75rem; color: var(--color-text-secondary); display:block;">${label}</label>
+                                <span style="font-weight: 500; font-size: 0.9rem;">${request.data[key]}</span>
+                            </div>
+                        `;
+                    }
+                }
+                formFieldsHTML += `</div>`;
+
+                modalBody.innerHTML = `
+                    <div style="padding: 1rem;">
+                        ${feedbackHTML}
+                        ${formFieldsHTML}
+                    </div>
+                `;
+                
                 modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
 
             } catch (error) {
