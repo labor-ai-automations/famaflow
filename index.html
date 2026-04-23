@@ -1748,10 +1748,19 @@ body.fullscreen-flow .flowchart-monitor-bar {
 
         // Mapeamento de permissões RBAC
         const PERMISSION_MAPPING = {
+            // 1. Gestão (Quem aprova/cria)
             'manage_travel': 'Gerenciar Viagens (Controladoria)',
-            'manage_hr': 'Gerenciar Requisições Gerais (RH)',
-            'manage_routines': 'Gerenciar Rotinas do Setor',
+            'manage_hr': 'Gerenciar Requisições (RH)',
+            'manage_maint': 'Gerenciar Manutenção',
+            'manage_routines': 'Gerenciar Rotinas e Processos',
             'manage_users': 'Administrador Geral',
+            
+            // 2. Solicitação (O que a pessoa pode pedir)
+            'req_submit_hr': 'Solicitar RH (Contratação, Férias, etc)',
+            'req_submit_maint': 'Solicitar Manutenção de Máquinas',
+            'req_submit_travel': 'Solicitar Viagens',
+            
+            // 3. Visualização (Telas extras)
             'view_organograma': 'Ver Organograma',
             'view_rankings': 'Ver Rankings e Performance',
             'view_team': 'Ver Equipe',
@@ -2166,44 +2175,58 @@ const appHTML = `<div id="app-container">
                                     Marcadas = substituem permissões do cargo
                                 </p>
                                 
+                                <!-- BLOCO 1: GESTÃO E APROVAÇÃO -->
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
                                     <label class="perm-checkbox">
                                         <input type="checkbox" id="perm-manage_travel">
-                                        <span class="perm-checkmark"></span>
-                                        <span class="material-icons perm-icon">flight_takeoff</span>
-                                        <span class="perm-text">Gerenciar Viagens</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Aprovar Viagens</span>
                                     </label>
-                                    
                                     <label class="perm-checkbox">
                                         <input type="checkbox" id="perm-manage_hr">
-                                        <span class="perm-checkmark"></span>
-                                        <span class="material-icons perm-icon">assignment</span>
-                                        <span class="perm-text">Gerenciar Requisições (Gerais)</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">assignment</span><span class="perm-text">Aprovar RH</span>
                                     </label>
-                                    
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-manage_maint">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">build</span><span class="perm-text">Gerenciar Manutenção</span>
+                                    </label>
                                     <label class="perm-checkbox">
                                         <input type="checkbox" id="perm-manage_routines">
-                                        <span class="perm-checkmark"></span>
-                                        <span class="material-icons perm-icon">checklist</span>
-                                        <span class="perm-text">Gerenciar Rotinas</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">hub</span><span class="perm-text">Criar Processos</span>
                                     </label>
-                                    
-                                    <label class="perm-checkbox">
+                                    <label class="perm-checkbox" style="grid-column: 1 / -1;">
                                         <input type="checkbox" id="perm-manage_users">
-                                        <span class="perm-checkmark"></span>
-                                        <span class="material-icons perm-icon">admin_panel_settings</span>
-                                        <span class="perm-text">Admin Geral</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">admin_panel_settings</span><span class="perm-text">Admin Geral (Acesso Total)</span>
                                     </label>
                                 </div>
 
-                                <!-- NOVA SEÇÃO: PERMISSÕES DE VISUALIZAÇÃO -->
+                                <!-- BLOCO 2: O QUE PODE SOLICITAR (PEDIR) -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">add_circle_outline</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Permissões de Solicitação</label>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Quais tipos de requisição este usuário pode abrir?</p>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_submit_hr">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">badge</span><span class="perm-text">Pedir RH (Contratar/Demitir)</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_submit_maint">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Pedir Manutenção</span>
+                                    </label>
+                                    <label class="perm-checkbox" style="grid-column: 1 / -1;">
+                                        <input type="checkbox" id="perm-req_submit_travel">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">airplane_ticket</span><span class="perm-text">Pedir Viagens</span>
+                                    </label>
+                                </div>
+
+                                <!-- BLOCO 3: VISUALIZAÇÃO -->
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-info);">visibility</span>
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Permissões de Visualização</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">
-                                    Defina quais telas extras este usuário pode acessar.
-                                </p>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Defina quais telas extras este usuário pode acessar.</p>
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
                                     <label class="perm-checkbox">
@@ -2220,23 +2243,12 @@ const appHTML = `<div id="app-container">
                                     </label>
                                     <label class="perm-checkbox">
                                         <input type="checkbox" id="perm-view_mural">
-                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Ver Mural Cultural</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Ver Mural</span>
                                     </label>
                                     <label class="perm-checkbox" style="grid-column: 1 / -1;">
                                         <input type="checkbox" id="perm-view_dashboard">
-                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Ver Dashboard Geral</span>
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Ver Dashboard</span>
                                     </label>
-                                </div>
-                                
-                                <div style="margin-top: 1rem; padding: 0.875rem; background: var(--color-info-bg); border-left: 3px solid var(--color-info); border-radius: 6px;">
-                                    <p style="margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--color-text-primary);">
-                                        <strong style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
-                                            <span style="font-size: 1rem;">💡</span> Lembrete de Sistema:
-                                        </strong>
-                                        <span style="color: var(--color-text-secondary);">
-                                            Qualquer usuário com a permissão de <strong>Admin Geral</strong> tem acesso automático a todas as telas, ignorando os checkboxes de visualização acima.
-                                        </span>
-                                    </p>
                                 </div>
                             </div>
                         </form>
@@ -4791,41 +4803,44 @@ async function openRequestDetailsModal(requestId) {
             
             document.getElementById('request-modal-title').textContent = 'Nova Requisição';
 
-modalBody.innerHTML = `
+            // Verifica as chaves do usuário (Admin vê tudo)
+            const isAdmin = currentUserProfile.permissions.includes('manage_users');
+            const canReqHR = currentUserProfile.permissions.includes('req_submit_hr') || isAdmin;
+            const canReqMaint = currentUserProfile.permissions.includes('req_submit_maint') || isAdmin;
+            const canReqTravel = currentUserProfile.permissions.includes('req_submit_travel') || isAdmin;
+
+            let cardsHTML = '';
+
+            // Grupo RH
+            if (canReqHR) {
+                cardsHTML += `
+                    <div class="type-card" data-type="new_hire"><span class="material-icons">person_add</span><h3>Contratação de Pessoal</h3></div>
+                    <div class="type-card" data-type="termination"><span class="material-icons">person_remove</span><h3>Solicitar Desligamento</h3></div>
+                    <div class="type-card" data-type="promotion"><span class="material-icons">trending_up</span><h3>Promoção Interna</h3></div>
+                    <div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Solicitar Horas Extras</h3></div>
+                    <div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Solicitar Treinamento</h3></div>
+                    <div class="type-card" data-type="disciplinary_action"><span class="material-icons">gavel</span><h3>Medida Disciplinar</h3></div>
+                `;
+            }
+            
+            // Grupo Manutenção
+            if (canReqMaint) {
+                cardsHTML += `<div class="type-card" data-type="maintenance"><span class="material-icons">settings_suggest</span><h3>Solicitação de Manutenção</h3></div>`;
+            }
+
+            // Grupo Viagem
+            if (canReqTravel) {
+                cardsHTML += `<div class="type-card" data-type="travel"><span class="material-icons">flight_takeoff</span><h3>Requisição de Viagem</h3></div>`;
+            }
+
+            if (cardsHTML === '') {
+                cardsHTML = `<div class="empty-state" style="grid-column: 1 / -1;">Você não possui permissão para abrir requisições no momento.</div>`;
+            }
+
+            modalBody.innerHTML = `
                 <h3>Selecione o tipo de solicitação</h3>
                 <div class="request-type-selection">
-                    <div class="type-card" data-type="new_hire">
-                        <span class="material-icons">person_add</span>
-                        <h3>Contratação de Pessoal</h3>
-                    </div>
-                    <div class="type-card" data-type="termination">
-                        <span class="material-icons">person_remove</span>
-                        <h3>Solicitar Desligamento</h3>
-                    </div>
-                    <div class="type-card" data-type="maintenance">
-                        <span class="material-icons">settings_suggest</span>
-                        <h3>Solicitação de Manutenção</h3>
-                    </div>
-                    <div class="type-card" data-type="promotion">
-                        <span class="material-icons">trending_up</span>
-                        <h3>Promoção Interna</h3>
-                    </div>
-                    <div class="type-card" data-type="overtime">
-                        <span class="material-icons">schedule</span>
-                        <h3>Solicitar Horas Extras</h3>
-                    </div>
-                     <div class="type-card" data-type="training">
-                        <span class="material-icons">school</span>
-                        <h3>Solicitar Treinamento</h3>
-                    </div>
-                    <div class="type-card" data-type="travel">
-                        <span class="material-icons">flight_takeoff</span>
-                        <h3>Requisição de Viagem</h3>
-                    </div>
-                    <div class="type-card" data-type="disciplinary_action">
-                        <span class="material-icons">gavel</span>
-                        <h3>Medida Disciplinar</h3>
-                    </div>
+                    ${cardsHTML}
                 </div>
             `;
 
