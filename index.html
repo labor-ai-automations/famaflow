@@ -1746,7 +1746,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_EXECUTE_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/execute-maintenance-request';
 
 
-        // Mapeamento de permissões RBAC (Categorizado e Espelhado)
+// Mapeamento de permissões RBAC (Categorizado e Espelhado)
         const PERMISSION_MAPPING = {
             // 1. Visualização de Telas
             'view_messages': 'Ver Mensagens',
@@ -1756,25 +1756,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'view_mural': 'Ver Mural Cultural',
             'view_dashboard': 'Ver Dashboard',
 
-            // 2. Gerenciamento e Aprovação (Quem cuida dos pedidos dos outros)
-            'mgt_new_hire': 'Gerenciar Contratação',
+            // 2. Gerenciamento de Requisições
+            'mgt_new_hire': 'Gerenciar Contratação de Pessoal',
             'mgt_termination': 'Gerenciar Desligamento',
-            'mgt_promotion': 'Gerenciar Promoção',
+            'mgt_promotion': 'Gerenciar Promoção Interna',
             'mgt_overtime': 'Gerenciar Horas Extras',
             'mgt_training': 'Gerenciar Treinamento',
             'mgt_disciplinary_action': 'Gerenciar Medida Disciplinar',
             'mgt_maintenance': 'Gerenciar Manutenção',
-            'mgt_travel': 'Gerenciar Viagens',
+            'mgt_travel': 'Gerenciar Viagem',
 
-            // 3. Pedidos (O que o usuário pode pedir para si ou setor)
-            'req_new_hire': 'Pedir Contratação',
-            'req_termination': 'Pedir Desligamento',
-            'req_promotion': 'Pedir Promoção',
-            'req_overtime': 'Pedir Horas Extras',
-            'req_training': 'Pedir Treinamento',
-            'req_disciplinary_action': 'Pedir Medida Disciplinar',
-            'req_maintenance': 'Pedir Manutenção',
-            'req_travel': 'Pedir Viagem',
+            // 3. Permissão de Solicitação de Requisições
+            'req_new_hire': 'Solicitar Contratação de Pessoal',
+            'req_termination': 'Solicitar Desligamento',
+            'req_promotion': 'Solicitar Promoção Interna',
+            'req_overtime': 'Solicitar Horas Extras',
+            'req_training': 'Solicitar Treinamento',
+            'req_disciplinary_action': 'Solicitar Medida Disciplinar',
+            'req_maintenance': 'Solicitar Manutenção',
+            'req_travel': 'Solicitar Viagem',
 
             // 4. Especiais
             'manage_routines': 'Gerenciar Processos',
@@ -2204,31 +2204,31 @@ const appHTML = `<div id="app-container">
                                 </div>
                                 <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode aprovar ou administrar de terceiros.</p>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Gere. Contratação</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Gere. Desligamento</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Gere. Promoção</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Gere. Horas Extras</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Gere. Treinamento</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Gere. Disciplinar</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Gere. Manutenção</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Gere. Viagens</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
                                 </div>
 
-                                <!-- FAMÍLIA 3: SOLICITAÇÃO -->
+                                <!-- FAMÍLIA 3: SOLICITAÇÃO DE REQUISIÇÕES -->
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">add_circle_outline</span>
-                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">3. Permissões de Solicitação</label>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">3. Permissão de Solicitação de Requisições</label>
                                 </div>
                                 <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Quais tipos de requisição este usuário pode abrir para si mesmo ou setor?</p>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Solicitar Contratação</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Solicitar Desligamento</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Solicitar Promoção</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Solicitar Horas Extras</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Solicitar Treinamento</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_disciplinary"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Solicitar Manutenção</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Solicitar Viagem</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 4: GLOBAIS / ESPECIAIS -->
