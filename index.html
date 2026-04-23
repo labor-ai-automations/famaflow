@@ -5043,20 +5043,44 @@ function renderRequestForm(type) {
                     title = 'Solicitação de Rescisão de Contrato';
                     formHTML = `
                         <h3 class="form-section-title">1. Dados do Colaborador</h3>
-                        <div class="form-group"><label for="req-nome-colaborador">Nome Completo*</label><input type="text" id="req-nome-colaborador" name="nome_colaborador" class="input-field" required></div>
+                        <div class="form-group">
+                            <label for="req-nome-colaborador">Nome Completo do Colaborador*</label>
+                            <input type="text" id="req-nome-colaborador" name="nome_colaborador" class="input-field" required>
+                        </div>
                         <div class="grid grid-cols-2">
-                            <div class="form-group"><label for="req-cargo-colaborador">Cargo</label><input type="text" id="req-cargo-colaborador" name="cargo_colaborador" class="input-field"></div>
-                            <div class="form-group"><label for="req-data-demissao">Data Prevista Demissão*</label><input type="date" id="req-data-demissao" name="data_demissao" class="input-field" required></div>
+                            <div class="form-group">
+                                <label for="req-cargo-colaborador">Cargo</label>
+                                <input type="text" id="req-cargo-colaborador" name="cargo_colaborador" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label for="req-data-demissao">Data Prevista Demissão*</label>
+                                <input type="date" id="req-data-demissao" name="data_demissao" class="input-field" required>
+                            </div>
                         </div>
 
                         <h3 class="form-section-title">2. Informações da Rescisão</h3>
-                        <div class="form-group"><label>Tipo de rescisão solicitada*</label>
-                            <div class="radio-group" style="flex-direction: column; align-items: flex-start;">
-                                <label><input type="radio" name="tipo_rescisao" value="pedido_demissao"> Pedido de demissão (iniciativa do colaborador)</label>
-                                <label><input type="radio" name="tipo_rescisao" value="sem_justa_causa"> Demissão sem justa causa (iniciativa da empresa)</label>
-                                <label><input type="radio" name="tipo_rescisao" value="com_justa_causa"> Demissão com justa causa</label>
-                                <label><input type="radio" name="tipo_rescisao" value="termino_contrato"> Término de contrato por prazo determinado</l      <h3 class="form-section-title">4. Observações Adicionais</h3>
-                        <div class="form-group"><textarea name="observacoes_adicionais" class="input-field"></textarea></div>
+                        <div class="form-group">
+                            <label>Tipo de rescisão solicitada*</label>
+                            <div class="radio-group" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 0.5rem;">
+                                <label style="font-weight: normal;"><input type="radio" name="tipo_rescisao" value="pedido_demissao" required> Pedido de demissão (Iniciativa do colaborador)</label>
+                                <label style="font-weight: normal;"><input type="radio" name="tipo_rescisao" value="sem_justa_causa"> Demissão sem justa causa (Iniciativa da empresa)</label>
+                                <label style="font-weight: normal;"><input type="radio" name="tipo_rescisao" value="com_justa_causa"> Demissão com justa causa</label>
+                                <label style="font-weight: normal;"><input type="radio" name="tipo_rescisao" value="termino_contrato"> Término de contrato por prazo determinado</label>
+                            </div>
+                        </div>
+
+                        <h3 class="form-section-title">3. Cumprimento de Aviso</h3>
+                        <div class="form-group">
+                            <div class="radio-group" style="display: flex; gap: 1.5rem;">
+                                <label style="font-weight: normal;"><input type="radio" name="aviso_previo" value="trabalhado" checked> Aviso Trabalhado</label>
+                                <label style="font-weight: normal;"><input type="radio" name="aviso_previo" value="indenizado"> Aviso Indenizado</label>
+                            </div>
+                        </div>
+
+                        <h3 class="form-section-title">4. Observações Adicionais</h3>
+                        <div class="form-group">
+                            <textarea name="observacoes_adicionais" class="input-field" rows="3" placeholder="Detalhes relevantes sobre o desligamento..."></textarea>
+                        </div>
                     `;
                     break;
 
