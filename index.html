@@ -4598,121 +4598,131 @@ function initOrgZoomPan() {
         }
 
 async function openRequestDetailsModal(requestId) {
-            const modal = document.getElementById('request-modal');
-            const modalTitle = document.getElementById('request-modal-title');
-            const modalBody = document.getElementById('request-modal-body');
-            const modalFooter = document.getElementById('request-modal-footer');
+    const modal = document.getElementById('request-modal');
+    const modalTitle = document.getElementById('request-modal-title');
+    const modalBody = document.getElementById('request-modal-body');
+    const modalFooter = document.getElementById('request-modal-footer');
 
-            modalTitle.textContent = 'Carregando Detalhes...';
-            modalBody.innerHTML = '<div class="empty-state">Buscando informações...</div>';
-            modal.classList.add('visible');
+    modalTitle.textContent = 'Acompanhamento da Requisição';
+    modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
+    modal.classList.add('visible');
 
-            try {
-                const { data: request, error: requestError } = await supabaseClient
-                    .from('requests')
-                    .select('*, requester:profiles(full_name)')
-                    .eq('id', requestId)
-                    .single();
+    try {
+        // Busca a Requisição e o Histórico em paralelo
+        const [reqRes, historyRes] = await Promise.all([
+            supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single(),
+            supabaseClient.from('request_history').select('*, profiles(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
+        ]);
 
-                if (requestError || !request) throw new Error('Não foi possível carregar os detalhes.');
+        if (reqRes.error) throw reqRes.error;
+        const request = reqRes.data;
+        const history = historyRes.data || [];
 
-                if (request.type === 'travel') {
-                    await openTravelRequestDetailsModal(requestId);
-                    return; 
-                }
+        // 1. Cabeçalho Resumido
+        let headerHTML = `
+            <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${request.type === 'maintenance' ? 'Manutenção Corretiva' : 'Solicitação Geral'}</h3>
+                    <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
+                </div>
+                <span class="status-tag status-${request.status}">${request.status.toUpperCase()}</span>
+            </div>
+        `;
+
+        // 2. Construção da Timeline Vertical
+        let timelineHTML = `
+            <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
                 
-                modalTitle.textContent = 'Detalhes da Requisição';
+                <!-- ETAPA 1: SEMPRE É A ABERTURA -->
+                <div style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
+                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
+                        Por: ${request.requester?.full_name} • ${new Date(request.created_at).toLocaleString('pt-BR')}
+                    </div>
+                </div>
+        `;
 
-                // BLOCO DE FEEDBACK DO GESTOR (O que você viu no SELECT)
-                let feedbackHTML = '';
-                const statusLabels = { pending: 'Pendente', planned: 'Planejada', executed: 'Executada', approved: 'Aprovada', rejected: 'Recusada' };
-                const statusColors = { pending: '#F59E0B', planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920' };
+        // MAPEAMENTO DINÂMICO DO HISTÓRICO (ETAPAS 2, 3...)
+        history.forEach((step, index) => {
+            const labels = { planned: 'Planejamento e Agenda', executed: 'Conclusão da Tarefa', approved: 'Aprovação Gestora', rejected: 'Solicitação Recusada' };
+            const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel' };
+            const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920' };
 
-                if (request.status !== 'pending') {
-                    feedbackHTML = `
-                        <div style="background: var(--color-background); border: 2px solid ${statusColors[request.status]}; border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-                                <div style="width: 40px; height: 40px; border-radius: 50%; background: ${statusColors[request.status]}; display: flex; align-items: center; justify-content: center;">
-                                    <span class="material-icons" style="color: white; font-size: 20px;">info</span>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--color-text-secondary);">Status Atual</div>
-                                    <div style="font-weight: 800; font-size: 1.1rem; color: ${statusColors[request.status]};">${statusLabels[request.status]}</div>
-                                </div>
-                            </div>
-                            
-                            ${request.maintenance_scheduled_at ? `
-                                <p style="margin: 0.5rem 0; font-size: 0.95rem;"><strong>📅 Data Programada:</strong> ${new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR')}</p>
-                            ` : ''}
-
-                            ${request.approval_notes ? `
-                                <div style="margin-top: 1rem; padding: 1rem; background: var(--color-surface); border-radius: 8px; border-left: 4px solid ${statusColors[request.status]};">
-                                    <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 0.25rem;">Observações do Gestor:</label>
-                                    <p style="margin: 0; font-size: 0.9rem; font-style: italic;">"${request.approval_notes}"</p>
-                                </div>
-                            ` : ''}
+            timelineHTML += `
+                <div style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${colors[step.status] || '#ccc'}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${colors[step.status] || '#ccc'};"></div>
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${colors[step.status] || 'var(--color-text-primary)'}; display:flex; align-items:center; gap:5px; letter-spacing: 0.05em;">
+                        <span class="material-icons" style="font-size:14px;">${icons[step.status] || 'info'}</span>
+                        Etapa ${index + 2}: ${labels[step.status] || step.status}
+                    </div>
+                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Ação realizada por ${step.profiles?.full_name || 'Gestor'}</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>
+                    
+                    ${step.status === 'planned' && request.maintenance_scheduled_at ? `
+                        <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
+                            <span class="material-icons" style="font-size:16px;">event</span>
+                            <strong>AGENDADO PARA:</strong> ${new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR')}
                         </div>
-                    `;
-                }
+                    ` : ''}
 
-                const translations = {
-                    funcao: 'Função', quantidade: 'Quantidade de Vagas', motivo_contratacao: 'Motivo da Contratação',
-                    substituicao_nome: 'Colaborador Substituído', substituicao_motivo: 'Motivo da Saída',
-                    tipo_contrato: 'Tipo de Contrato', horario: 'Horário de Trabalho', escolaridade: 'Escolaridade',
-                    experiencia: 'Experiência', conhecimentos: 'Conhecimentos',
-                    competencias: 'Competências', local_trabalho: 'Local',
-                    candidato_interno: 'Possui Candidato Interno?', candidato_interno_nome: 'Nome do Candidato',
-                    urgencia: 'Urgência', urgencia_data: 'Data Limite', nome_colaborador: 'Colaborador',
-                    cargo_colaborador: 'Cargo', data_demissao: 'Data da Demissão', tipo_rescisao: 'Tipo de Rescisão',
-                    aviso_previo: 'Aviso Prévio', reposicao_vaga: 'Reposição da Vaga',
-                    motivo_desligamento: 'Motivos', motivo_breve: 'Relato do Motivo',
-                    observacoes_adicionais: 'Observações', nome_funcionario: 'Funcionário',
-                    data_admissao: 'Data de Admissão', cargo_atual: 'Cargo Atual', salario_atual: 'Salário Atual',
-                    cargo_pretendido: 'Cargo Pretendido', salario_pretendido: 'Salário Pretendido',
-                    justificativa: 'Justificativa', data_he: 'Data das Horas Extras',
-                    horario_adicional: 'Horário Adicional', qtd_funcionarios: 'Qtd. de Funcionários',
-                    setor_he: 'Setor', titulo: 'Título', instituicao: 'Instituição',
-                    modalidade: 'Modalidade', local: 'Local', datas: 'Datas', carga_horaria: 'Carga Horária',
-                    participacao_tipo: 'Tipo de Participação', nomes_participantes: 'Participantes',
-                    custo_inscricao: 'Custo Inscrição', custo_transporte: 'Custo Transporte',
-                    custo_hospedagem: 'Custo Hospedagem', custo_outras: 'Outras Despesas',
-                    solicitante_nome: 'Solicitante', setor: 'Setor', equipamento: 'Equipamento',
-                    descricao_problema: 'Problema', situacao_maquina: 'Situação'
-                };
+                    ${step.notes ? `
+                        <div style="margin-top: 10px; padding: 12px; background: var(--color-background); border-radius: 8px; border-left: 4px solid ${colors[step.status]}; font-style: italic; font-size: 0.85rem; color: var(--color-text-primary); box-shadow: var(--shadow);">
+                            "${step.notes}"
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
 
-                let formFieldsHTML = `
-                    <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem;">
-                        <h4 style="margin: 0 0 1rem 0; font-size: 0.85rem; text-transform: uppercase; color: var(--color-text-secondary);">Dados Enviados no Pedido</h4>
-                `;
-                
-                for (const key in request.data) {
-                    if (Object.hasOwnProperty.call(request.data, key) && request.data[key]) {
-                        const label = translations[key] || key.replace(/_/g, ' ');
-                        formFieldsHTML += `
-                            <div style="margin-bottom: 0.75rem;">
-                                <label style="font-size:0.75rem; color: var(--color-text-secondary); display:block;">${label}</label>
-                                <span style="font-weight: 500; font-size: 0.9rem;">${request.data[key]}</span>
-                            </div>
-                        `;
-                    }
-                }
-                formFieldsHTML += `</div>`;
+        timelineHTML += `</div>`;
 
-                modalBody.innerHTML = `
-                    <div style="padding: 1rem;">
-                        ${feedbackHTML}
-                        ${formFieldsHTML}
+        // 3. Dados do Formulário Original (no final para consulta)
+        const translations = {
+            funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
+            tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
+            descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante'
+        };
+
+        let formDataHTML = `
+            <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
+                <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary);">Dados Originais da Solicitação</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        `;
+
+        for (const key in request.data) {
+            if (request.data[key] && key !== 'history') {
+                const label = translations[key] || key.replace(/_/g, ' ');
+                formDataHTML += `
+                    <div style="margin-bottom: 5px;">
+                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase;">${label}</label>
+                        <span style="font-weight: 600; font-size: 0.85rem;">${request.data[key]}</span>
                     </div>
                 `;
-                
-                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
-
-            } catch (error) {
-                console.error(error);
-                modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
-                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
             }
         }
+        formDataHTML += `</div></div>`;
+
+        modalBody.innerHTML = `
+            <div style="padding: 0.5rem;">
+                ${headerHTML}
+                <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
+                </h4>
+                ${timelineHTML}
+                ${formDataHTML}
+            </div>
+        `;
+
+        modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>`;
+
+    } catch (error) {
+        console.error(error);
+        modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar Timeline: ${error.message}</div>`;
+        modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+    }
+}
 
         function openRequestModal() {
             const modal = document.getElementById('request-modal');
@@ -6952,80 +6962,52 @@ async function syncUserPermissions(userId) {
             document.getElementById('maintenance-planning-modal').classList.remove('visible');
         }
 
-        async function submitMaintenancePlan(requestId) {
+async function submitMaintenancePlan(requestId) {
             const date = document.getElementById('maintenance-date').value;
             const time = document.getElementById('maintenance-time').value;
             const notes = document.getElementById('maintenance-notes').value.trim();
             const btn = document.getElementById('btn-confirm-maintenance-plan');
 
-            if (!date || !time) {
-                showToast('A data e a hora previstas são obrigatórias.', 'warning');
-                return;
-            }
+            if (!date || !time) { showToast('A data e a hora previstas são obrigatórias.', 'warning'); return; }
 
             const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
-
             btn.disabled = true;
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) throw new Error("Sessão inválida.");
-
                 const response = await fetch(N8N_PLAN_MAINTENANCE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
                     body: JSON.stringify({
                         request_id: requestId,
                         maintenance_scheduled_at: scheduledAt,
-                        approval_notes: notes
+                        approval_notes: notes,
+                        changed_by: currentUserProfile.id // ENVIANDO QUEM PLANEJOU
                     })
                 });
-
-                if (!response.ok) throw new Error('Falha ao planejar manutenção.');
-                
-                showToast('Manutenção planejada com sucesso!', 'success');
+                if (!response.ok) throw new Error('Falha ao planejar.');
+                showToast('Manutenção planejada!', 'success');
                 closeMaintenancePlanningModal();
-                
-                // CORREÇÃO DA CONDIÇÃO DE CORRIDA: Aguarda 1 segundo para o n8n finalizar o banco
-                setTimeout(() => {
-                    loadRequestManagementPage();
-                }, 1000);
-
-            } catch (error) {
-                showToast(error.message, 'danger');
-            } finally {
-                btn.disabled = false;
-            }
+                setTimeout(() => loadRequestManagementPage(), 1000);
+            } catch (error) { showToast(error.message, 'danger'); } finally { btn.disabled = false; }
         }
 
         function executeMaintenanceRequestHandler(requestId) {
-            showConfirmation(
-                "Confirmar Execução?",
-                "Esta ação marcará a requisição de manutenção como concluída. Deseja continuar?",
-                async () => {
-                    try {
-                        const { data: { session } } = await supabaseClient.auth.getSession();
-                        if (!session) throw new Error("Sessão inválida.");
-                        
-                        const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
-                            body: JSON.stringify({ request_id: requestId })
-                        });
-                        
-                        if (!response.ok) throw new Error('Falha ao concluir manutenção.');
-                        
-                        showToast('Manutenção marcada como executada!', 'success');
-                        
-                        // CORREÇÃO DA CONDIÇÃO DE CORRIDA: Aguarda 1 segundo para o n8n finalizar o banco
-                        setTimeout(() => {
-                            loadRequestManagementPage();
-                        }, 1000);
-
-                    } catch(e) {
-                        showToast(e.message, 'danger');
-                    }
-                }
-            );
+            showConfirmation("Confirmar Execução?", "Deseja marcar como concluída?", async () => {
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
+                        body: JSON.stringify({ 
+                            request_id: requestId,
+                            changed_by: currentUserProfile.id // ENVIANDO QUEM EXECUTOU
+                        })
+                    });
+                    if (!response.ok) throw new Error('Falha ao concluir.');
+                    showToast('Manutenção executada!', 'success');
+                    setTimeout(() => loadRequestManagementPage(), 1000);
+                } catch(e) { showToast(e.message, 'danger'); }
+            });
         }
 
         async function loadRequestManagementPage() {
