@@ -6911,6 +6911,7 @@ async function syncUserPermissions(userId) {
             const url = action === 'approve' ? N8N_APPROVE_REQUEST_URL : N8N_REJECT_REQUEST_URL;
             
             btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; font-size:18px;">sync</span> Processando...';
 
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
@@ -6918,26 +6919,31 @@ async function syncUserPermissions(userId) {
 
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
                     body: JSON.stringify({ 
                         request_id: requestId,
-                        approval_notes: notes // Enviando a nova informação
+                        approval_notes: notes,
+                        changed_by: currentUserProfile.id
                     })
                 });
 
-                if (!response.ok) throw new Error(`Falha ao ${action === 'approve' ? 'aprovar' : 'reprovar'} a requisição.`);
+                if (!response.ok) throw new Error(`Falha ao processar.`);
 
-                showToast(`Requisição ${action === 'approve' ? 'aprovada' : 'reprovada'} com sucesso!`, 'success');
+                showToast(`Ação registrada! Atualizando lista...`, 'success');
                 closeApprovalModal();
-                loadRequestManagementPage();
+
+                // Aguarda 1.5 segundos para o n8n terminar a gravação no banco
+                setTimeout(() => {
+                    loadRequestManagementPage();
+                    loadTravelRequestManagementPage();
+                    showToast("Lista atualizada com sucesso!", "info");
+                }, 1500);
+
             } catch (error) {
                 console.error("Erro na ação da requisição:", error);
-                showToast(error.message, "danger");
-            } finally {
+                showToast("Erro ao processar ação.", "danger");
                 btn.disabled = false;
+                btn.textContent = 'Confirmar';
             }
         }
 		
@@ -7013,7 +7019,9 @@ async function submitMaintenancePlan(requestId) {
         async function loadRequestManagementPage() {
             const tableBody = document.getElementById('request-management-table-body');
             if(!tableBody) return;
-            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
+            
+            // Limpa a tabela antes de injetar novos dados para evitar "ghosting"
+            tableBody.innerHTML = '';
 
             const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
             if (error) { tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`; return; }
@@ -7033,38 +7041,33 @@ async function submitMaintenancePlan(requestId) {
                 return;
             }
 
-            const requestTypeLabels = {
-                'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção',
-                'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar',
-                'maintenance': 'Manutenção'
-            };
-            
-            const statusLabels = {
-                pending: 'Pendente', approved: 'Aprovado', rejected: 'Recusado',
-                planned: 'Planejado', executed: 'Executado', cancelled_by_requester: 'Cancelada'
+            // Mapeamento profissional de etiquetas e status
+            const labels = {
+                new_hire: 'Contratação de Pessoal', termination: 'Desligamento', promotion: 'Promoção Interna',
+                overtime: 'Horas Extras', training: 'Treinamento', disciplinary_action: 'Medida Disciplinar',
+                maintenance: 'Manutenção', pending: 'Pendente', approved: 'Aprovada', rejected: 'Recusada',
+                planned: 'Planejada', executed: 'Executada', cancelled_by_requester: 'Cancelada'
             };
 
             tableBody.innerHTML = filteredData.map(req => {
-                const typeLabel = requestTypeLabels[req.type] || req.type.replace(/_/g, ' ');
+                const typeLabel = labels[req.type] || req.type;
+                const statusLabel = labels[req.status] || req.status;
                 const date = new Date(req.created_at).toLocaleDateString('pt-BR');
-                const statusLabel = statusLabels[req.status] || req.status;
                 const statusClass = `status-${req.status}`;
                 
-                // Botão principal de Detalhes
-                let actionButtonsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+                let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
 
-                // Lógica de botões extras
                 if (req.status === 'pending') {
                     if (req.type === 'maintenance') {
-                        actionButtonsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
+                        actionsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
                     } else {
-                        actionButtonsHTML += `
-                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">check_circle</span></button>
-                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">cancel</span></button>
+                        actionsHTML += `
+                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success); font-size:24px;">check_circle</span></button>
+                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger); font-size:24px;">cancel</span></button>
                         `;
                     }
                 } else if (req.status === 'planned' && req.type === 'maintenance') {
-                    actionButtonsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executado</button>`;
+                    actionsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button>`;
                 }
 
                 return `
@@ -7073,11 +7076,7 @@ async function submitMaintenancePlan(requestId) {
                         <td><strong>${typeLabel}</strong></td>
                         <td>${date}</td>
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                ${actionButtonsHTML}
-                            </div>
-                        </td>
+                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
                     </tr>
                 `;
             }).join('');
