@@ -2030,8 +2030,16 @@ const appHTML = `<div id="app-container">
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_admin_dash"><span class="perm-checkmark"></span><span class="material-icons perm-icon">query_stats</span><span class="perm-text">Ver Admin Dashboard</span></label>
                                     <label class="perm-checkbox" style="background: var(--color-danger-bg); border-color: var(--color-danger); grid-column: 1 / -1;"><input type="checkbox" id="perm-manage_users"><span class="perm-checkmark"></span><span class="material-icons perm-icon" style="color:var(--color-danger);">admin_panel_settings</span><span class="perm-text" style="color:var(--color-danger);">Admin Geral (Acesso Total)</span></label>
                                 </div>
-
-             
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
+                        <button class="btn btn-danger" onclick="saveUser()">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
         
         document.addEventListener('DOMContentLoaded', checkUserSession);
         
