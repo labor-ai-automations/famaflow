@@ -1893,7 +1893,145 @@ const appHTML = `<div id="app-container">
                 <div id="my-processes-page" class="page-content"><div class="page-header"><div><h1>Meus Processos</h1><p>Tarefas de fluxo contínuo sob sua responsabilidade.</p></div></div><div id="my-processes-list" class="grid grid-cols-2"><div class="empty-state">Carregando seus processos...</div></div></div>
                 <button class="fab" id="fab-new-message" title="Nova Mensagem"><span class="material-icons">add</span></button>
             </main>
-        </div>\`;`;
+
+            <!-- MODAL DE USUÁRIO (COM 4 FAMÍLIAS DE PERMISSÃO) -->
+            <div id="user-modal" class="modal-overlay">
+                <div class="modal-content" style="max-width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header">
+                        <h2 id="user-modal-title">Novo Usuário</h2>
+                        <span class="material-icons" style="cursor:pointer;" onclick="closeUserModal()">close</span>
+                    </div>
+                    
+                    <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 1.5rem;">
+                        <form id="user-form">
+                            <input type="hidden" id="user-id">
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="full_name">Nome Completo</label>
+                                    <input type="text" id="full_name" class="input-field" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="user_email">Email</label>
+                                    <input type="email" id="user_email" class="input-field" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="user_photo">Foto do Crachá (PNG/JPG)</label>
+                                <input type="file" id="user_photo" class="input-field" accept="image/*">
+                            </div>
+
+                            <div id="password-group" class="form-group">
+                                <label for="user_password">Senha</label>
+                                <input type="password" id="user_password" class="input-field">
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="department">Departamento</label>
+                                    <select id="department" class="input-field" onchange="toggleDepartmentOther()">
+                                        <option value="">Selecione...</option>
+                                        <option value="Administrativo">Administrativo</option>
+                                        <option value="Controladoria">Controladoria</option>
+                                        <option value="Recursos Humanos">Recursos Humanos</option>
+                                        <option value="Comercial">Comercial</option>
+                                        <option value="Produção">Produção</option>
+                                        <option value="Fundição">Fundição</option>
+                                        <option value="Grampos">Grampos</option>
+                                        <option value="TI">TI</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                    <input type="text" id="department-other" class="input-field" placeholder="Especifique o departamento..." style="display: none; margin-top: 0.5rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="role">Cargo</label>
+                                    <select id="role" class="input-field" onchange="toggleRoleOther()">
+                                        <option value="">Selecione...</option>
+                                        <option value="Admin">Admin</option>
+                                        <option value="Gerente">Gerente</option>
+                                        <option value="Supervisor">Supervisor</option>
+                                        <option value="Líder">Líder</option>
+                                        <option value="Auxiliar">Auxiliar</option>
+                                        <option value="Colaborador">Colaborador</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                    <input type="text" id="role-other" class="input-field" placeholder="Especifique o cargo..." style="display: none; margin-top: 0.5rem;">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="manager_id">Gerente Direto</label>
+                                <select id="manager_id" class="input-field">
+                                    <option value="">Nenhum</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--color-border);">
+                                <!-- FAMÍLIA 1: VISUALIZAÇÃO DE TELAS -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-info);">visibility</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">1. Visualização de Telas</label>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode acessar na barra lateral esquerda.</p>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Mensagens</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_requests"><span class="perm-checkmark"></span><span class="material-icons perm-icon">description</span><span class="perm-text">Requisições</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">checklist</span><span class="perm-text">Minhas Rotinas</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Rankings</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_team"><span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Equipe</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
+                                    <label class="perm-checkbox" style="grid-column: 1 / -1;"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard Geral</span></label>
+                                </div>
+
+                                <!-- FAMÍLIA 2: GERENCIAMENTO DE REQUISIÇÕES -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-success);">rule_folder</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">2. Gerenciamento de Requisições</label>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode aprovar ou administrar de terceiros.</p>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
+                                </div>
+
+                                <!-- FAMÍLIA 3: SOLICITAÇÃO DE REQUISIÇÕES -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">add_circle_outline</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">3. Permissão de Solicitação de Requisições</label>
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Quais tipos de requisição este usuário pode abrir para si mesmo ou setor?</p>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
+                                </div>
+
+                                <!-- FAMÍLIA 4: GLOBAIS / ESPECIAIS -->
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--color-brand-primary);">security</span>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">4. Permissões Especiais Globais</label>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-manage_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">hub</span><span class="perm-text">Gerenciar Processos da Empresa</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_admin_dash"><span class="perm-checkmark"></span><span class="material-icons perm-icon">query_stats</span><span class="perm-text">Ver Admin Dashboard</span></label>
+                                    <label class="perm-checkbox" style="background: var(--color-danger-bg); border-color: var(--color-danger); grid-column: 1 / -1;"><input type="checkbox" id="perm-manage_users"><span class="perm-checkmark"></span><span class="material-icons perm-icon" style="color:var(--color-danger);">admin_panel_settings</span><span class="perm-text" style="color:var(--color-danger);">Admin Geral (Acesso Total)</span></label>
+                                </div>
+
+             
         
         document.addEventListener('DOMContentLoaded', checkUserSession);
         
