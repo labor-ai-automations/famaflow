@@ -2380,44 +2380,57 @@ async function showApp() {
 
     displayUserBriefing(); 
 
+    // 1. Busca as permissões granulares do usuário no banco
     const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
     currentUserProfile.permissions = permissionsError ? [] : permissions.map(p => p.permission_key);
 
-    const isRH = currentUserProfile.department === 'Recursos Humanos' || currentUserProfile.department === 'Departamento Pessoal';
-    const isAdmin = currentUserProfile.role === 'Admin';
-    const hasMasterAccess = isAdmin || isRH;
+    // SAFEGUARD DE MIGRAÇÃO: Evita que o dono do sistema fique trancado para fora.
+    if (currentUserProfile.role === 'Admin' && !currentUserProfile.permissions.includes('manage_users')) {
+        currentUserProfile.permissions.push('manage_users');
+    }
 
-    // 1. Filtra a Sidebar Principal
+    // 2. Define lógicas AGNÓSTICAS baseadas nas capacidades (RBAC v2)
+    const canManageUsers = currentUserProfile.permissions.includes('manage_users');
+    const canManageHR = currentUserProfile.permissions.includes('manage_hr') || canManageUsers;
+    const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || canManageUsers;
+    const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || canManageUsers;
+    
+    // Permissão estendida: se tiver qualquer gestão, vê painéis globais (Dashboard, Equipe, Rankings)
+    const hasExtendedView = canManageUsers || canManageHR || canManageTravel || canManageRoutines;
+
+    // 3. Filtra a Sidebar Principal estritamente baseada nas capacidades
     document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
         const page = link.getAttribute('data-page');
-        const basicPages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page', 'dashboard-page', 'messages-page', 'channels-page', 'team-page', 'organograma-page', 'rankings-page', 'mural-page'];
         
-        if (hasMasterAccess) {
+        // Páginas essenciais que TODOS os colaboradores têm acesso
+        const basePages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page'];
+        
+        if (basePages.includes(page)) {
             link.parentElement.style.display = 'block';
         } else {
-            // Gerentes/Supervisores comuns vêem apenas estes 4 essenciais
-            const supervisorPages = ['requests-page', 'kb-page', 'profile-page', 'my-routines-page'];
-            link.parentElement.style.display = supervisorPages.includes(page) ? 'block' : 'none';
+            // Páginas como Dashboard, Mensagens, Equipe, etc.
+            link.parentElement.style.display = hasExtendedView ? 'block' : 'none';
         }
     });
 
-    // 2. Monta e Controla a Seção de ADMINISTRAÇÃO
+    // 4. Monta e Controla a Seção de ADMINISTRAÇÃO agnóstica
     const adminSection = document.getElementById('admin-section');
     const adminMenuUl = document.getElementById('admin-menu-list');
     
     if (adminSection && adminMenuUl) {
         let adminMenuHTML = '';
-        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_users')) {
+        
+        if (canManageUsers) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
         }
-        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_hr')) {
+        if (canManageHR) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
         }
-        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_travel')) {
+        if (canManageTravel) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
         }
-        if (hasMasterAccess || currentUserProfile.permissions.includes('manage_routines')) {
+        if (canManageRoutines) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
         }
 
@@ -2444,7 +2457,7 @@ async function showApp() {
     profileShortcut.innerHTML = `${avatarHTML}<div><div class="user-name">${currentUserProfile.full_name}</div><div class="user-role">${currentUserProfile.role || 'Colaborador'}</div></div>`;
     profileShortcut.onclick = () => showPage('profile-page');
 
-    if (hasMasterAccess) {
+    if (hasExtendedView) {
         showPage('dashboard-page');
     } else {
         showPage('requests-page');
@@ -2480,11 +2493,7 @@ function showPage(pageId, targetUserId = null) {
             fabMessage.classList.add('hidden');
             fabPost.classList.add('hidden');
 
-            const hasMasterAccess = currentUserProfile && (
-                currentUserProfile.role === 'Admin' || 
-                currentUserProfile.department === 'Recursos Humanos' || 
-                currentUserProfile.department === 'Departamento Pessoal'
-            );
+            const hasMasterAccess = currentUserProfile && currentUserProfile.permissions && currentUserProfile.permissions.includes('manage_users');
             
             if (pageId === 'mural-page' && hasMasterAccess) {
                 fabPost.classList.remove('hidden');
@@ -2547,10 +2556,9 @@ async function loadKBPage() {
             const tbody = document.getElementById('kb-table-body');
             
             // Gerencia visibilidade do botão de Adicionar Conteúdo
-            const canAddKB = currentUserProfile && (
-                currentUserProfile.role === 'Admin' || 
-                currentUserProfile.department === 'Recursos Humanos' ||
-                currentUserProfile.permissions.includes('manage_users') // ou outra permissão que você deseje
+            const canAddKB = currentUserProfile && currentUserProfile.permissions && (
+                currentUserProfile.permissions.includes('manage_users') || 
+                currentUserProfile.permissions.includes('manage_hr')
             );
             const addBtn = document.querySelector('#kb-page .btn-danger');
             if (addBtn) addBtn.style.display = canAddKB ? 'flex' : 'none';
