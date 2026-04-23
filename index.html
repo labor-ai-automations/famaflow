@@ -1749,12 +1749,12 @@ body.fullscreen-flow .flowchart-monitor-bar {
 // Mapeamento de permissões RBAC (Categorizado e Espelhado)
         const PERMISSION_MAPPING = {
             // 1. Visualização de Telas
-            'view_messages': 'Ver Mensagens',
-            'view_organograma': 'Ver Organograma',
-            'view_rankings': 'Ver Rankings',
-            'view_team': 'Ver Equipe',
-            'view_mural': 'Ver Mural Cultural',
-            'view_dashboard': 'Ver Dashboard',
+            'view_messages': 'Mensagens',
+            'view_organograma': 'Organograma',
+            'view_rankings': 'Rankings e Performance',
+            'view_team': 'Equipe',
+            'view_mural': 'Mural Cultural',
+            'view_dashboard': 'Dashboard',
 
             // 2. Gerenciamento de Requisições
             'mgt_new_hire': 'Gerenciar Contratação de Pessoal',
@@ -2182,19 +2182,19 @@ const appHTML = `<div id="app-container">
                             
 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--color-border);">
                                 
-                                <!-- FAMÍLIA 1: VISUALIZAR TELAS -->
+                                <!-- FAMÍLIA 1: VISUALIZAÇÃO DE TELAS -->
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-info);">visibility</span>
-                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">1. Permissões de Visualização</label>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">1. Visualização de Telas</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode ver na barra lateral esquerda.</p>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode acessar na barra lateral esquerda.</p>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Ver Mensagens</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Ver Organograma</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Ver Rankings</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_team"><span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Ver Equipe</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Ver Mural</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Ver Dashboard</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Mensagens</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Rankings e Performance</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_team"><span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Equipe</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard Geral</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 2: GERENCIAMENTO DE REQUISIÇÕES -->
