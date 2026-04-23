@@ -7571,13 +7571,13 @@ async function fetchAndRenderTasks(date) {
             const { data: tasks, error } = await supabaseClient.rpc('get_user_tasks_for_calendar', { p_date: date });
 
             if (error) {
-                console.error('Erro ao buscar tarefas unificadas:', error);
+                console.error('Erro ao buscar tarefas:', error);
                 tasksContainer.innerHTML = `<div class="empty-state" style="color: var(--color-danger)">Falha ao carregar tarefas.</div>`;
                 return;
             }
 
             if (!tasks || tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa agendada para este dia.</div>`;
+                tasksContainer.innerHTML = `<div class="empty-state">Nenhuma tarefa para exibir nesta data.</div>`;
                 return;
             }
 
@@ -7609,6 +7609,7 @@ async function fetchAndRenderTasks(date) {
                     const isCompleted = task.status === 'completed';
                     const isOverdue = task.is_overdue; 
                     const isFuturePreview = task.source_type === 'scheduled_preview';
+                    const isPunctual = task.source_type === 'punctual';
                     const isToday = date === todayStr;
                     
                     const onClickAction = isRecurrent 
@@ -7616,46 +7617,37 @@ async function fetchAndRenderTasks(date) {
                         : isFuturePreview ? `startProcessInstance('${task.routine_id}')` : `completeTask(this, '${task.task_id}', null, '${task.original_date}')`;
 
                     const overdueTag = isOverdue && !isCompleted ? `<span style="font-size:0.65rem; font-weight:800; background: var(--color-danger); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">⚠️ ATRASADA</span>` : '';
-                    
-                    // NOVA LÓGICA DE STATUS BADGE
                     const statusBadge = isCompleted 
                         ? `<span class="task-status-badge status-badge-completed"><span class="material-icons" style="font-size:12px;">check_circle</span> Concluída</span>`
                         : (isFuturePreview && isToday ? '' : `<span class="task-status-badge status-badge-pending"><span class="material-icons" style="font-size:12px;">pending</span> Pendente</span>`);
 
-                    const displayInstanceName = isFuturePreview && isToday 
-                        ? "Ação Obrigatória: Este fluxo depende do seu início. Comece o processo para que os próximos responsáveis consigam trabalhar."
-                        : task.instance_name;
+                    // Lógica de nomes de execução
+                    let execLabel = isPunctual ? "Tarefa Pontual" : task.instance_name;
+                    let instanceColor = isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)';
+                    let warningIcon = isPunctual ? 'push_pin' : (isFuturePreview && isToday ? 'assignment_late' : 'person');
 
-                    const instanceColor = isFuturePreview && isToday ? 'var(--color-brand-primary)' : (isFuturePreview ? 'var(--color-text-secondary)' : 'var(--color-info)');
-                    const warningIcon = isFuturePreview && isToday ? 'assignment_late' : 'person';
+                    if (isFuturePreview && isToday) {
+                        execLabel = "Ação Obrigatória: Este fluxo depende do seu início.";
+                        instanceColor = 'var(--color-brand-primary)'; 
+                    }
 
                     let overdueWarningHTML = '';
                     if (isOverdue && !isCompleted) {
                         overdueWarningHTML = `
                             <div style="margin-top: 8px; padding: 10px; background: rgba(216, 25, 32, 0.1); border: 1.5px solid var(--color-brand-primary); border-radius: 8px; color: var(--color-brand-primary); font-size: 0.75rem; line-height: 1.4; max-width: 600px; display: flex; align-items: flex-start; gap: 8px;">
                                 <span class="material-icons" style="font-size: 20px; flex-shrink: 0;">report_problem</span>
-                                <div>
-                                    <strong style="display: block; margin-bottom: 2px; text-transform: uppercase;">⚠️ ALERTA DE ATRASO E IMPACTO OPERACIONAL</strong>
-                                    Esta tarefa deveria ter sido concluída em ${new Date(task.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}. Seu atraso bloqueia o time e reduz seu Score.
-                                </div>
-                            </div>
-                        `;
+                                <div><strong style="display: block; margin-bottom: 2px; text-transform: uppercase;">⚠️ ALERTA DE ATRASO</strong> Esta tarefa deveria ter sido feita em ${new Date(task.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}.</div>
+                            </div>`;
                     }
 
                     const docsHTML = (!isCompleted && task.required_docs && task.required_docs.length > 0) ? `
                         <div class="execution-doc-checklist">
                             <div style="font-size: 0.7rem; font-weight: 800; color: var(--color-text-secondary); margin-bottom: 2px; text-transform: uppercase;">Ação Documental Obrigatória:</div>
                             ${task.required_docs.map(doc => `
-                                <label class="doc-check-item">
-                                    <input type="checkbox" class="doc-internal-check">
-                                    <span class="material-icons" style="color: ${doc === 'excel' ? '#1D6F42' : '#2B579A'}; font-size:16px;">
-                                        ${doc === 'excel' ? 'table_view' : 'description'}
-                                    </span>
-                                    Atualizar ${doc.toUpperCase()}
-                                </label>
-                            `).join('')}
-                        </div>
-                    ` : '';
+                                <label class="doc-check-item"><input type="checkbox" class="doc-internal-check">
+                                <span class="material-icons" style="color: ${doc === 'excel' ? '#1D6F42' : '#2B579A'}; font-size:16px;">${doc === 'excel' ? 'table_view' : 'description'}</span>
+                                Atualizar ${doc.toUpperCase()}</label>`).join('')}
+                        </div>` : '';
 
                     return `
                         <div class="task-item ${isCompleted ? 'completed' : ''}" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--color-border); padding: 1rem 0; ${isOverdue && !isCompleted ? 'background-color: var(--color-danger-bg); border-radius: 8px; padding-left: 12px; border-left: 4px solid var(--color-danger);' : ''} ${isFuturePreview && !isToday ? 'opacity: 0.7;' : ''}">
@@ -7668,46 +7660,33 @@ async function fetchAndRenderTasks(date) {
                                     <div style="display:flex; flex-direction:column;">
                                         <div style="display:flex; align-items:center; flex-wrap: wrap;">
                                             <strong style="font-size: 1rem; ${isCompleted ? 'text-decoration: line-through; color: var(--color-text-secondary);' : ''}">${task.task_title}</strong>
-                                            ${statusBadge}
-                                            ${overdueTag}
+                                            ${statusBadge}${overdueTag}
                                         </div>
                                         ${isOverdue && !isCompleted ? `<div style="font-size: 0.75rem; color: var(--color-danger); font-weight: 600;">Data Original: ${new Date(task.original_date + 'T12:00:00').toLocaleDateString('pt-BR')}</div>` : ''}
                                     </div>
                                 </div>
-                                <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 30px; margin-top: 4px;">${task.task_description || 'Sem instruções adicionais.'}</div>
+                                <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 30px; margin-top: 4px;">${task.task_description || ''}</div>
                                 <div style="margin-left: 30px;">
                                     ${docsHTML}
                                     <div style="font-size: 0.75rem; font-weight: 700; color: ${instanceColor}; margin-top: 4px; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; max-width: 600px;">
                                         <span class="material-icons" style="font-size: 18px; flex-shrink: 0;">${warningIcon}</span> 
-                                        <span>${isFuturePreview ? '' : 'Execução: '}${displayInstanceName}</span>
+                                        <span>${isFuturePreview && !isToday ? '' : (isPunctual ? '' : 'Execução: ')}${execLabel}</span>
                                     </div>
                                     ${overdueWarningHTML}
                                 </div>
                             </div>
                             <div style="margin-right: 1.5rem;">
-                                ${isRecurrent ? `
-                                    <button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;" ${isCompleted ? 'disabled' : ''}>
-                                         <span class="material-icons" style="font-size: 18px;">${isCompleted ? 'done_all' : 'check_circle'}</span> ${isCompleted ? 'Concluído' : 'Concluir'}
-                                    </button>
-                                ` : (isFuturePreview ? (isToday ? `
-                                    <button class="btn btn-danger" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;">
-                                         <span class="material-icons" style="font-size: 18px;">rocket_launch</span> Iniciar Processo
-                                    </button>` : `
-                                    <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); background: var(--color-background); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--color-border);">Aguardando Data</span>
-                                `) : '')}
+                                ${isRecurrent ? `<button class="btn btn-success" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;" ${isCompleted ? 'disabled' : ''}>
+                                    <span class="material-icons" style="font-size: 18px;">${isCompleted ? 'done_all' : 'check_circle'}</span> ${isCompleted ? 'Concluído' : 'Concluir'}</button>` 
+                                : (isFuturePreview ? (isToday ? `<button class="btn btn-danger" onclick="${onClickAction}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px;">
+                                    <span class="material-icons" style="font-size: 18px;">rocket_launch</span> Iniciar Processo</button>` : `<span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); background: var(--color-background); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--color-border);">Aguardando Data</span>`) : '')}
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
 
-                return `
-                    <div style="margin-bottom: 2.5rem; background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: var(--shadow); ${isPreview ? 'border-style: dashed; border-width: 2px;' : ''}">
+                return `<div style="margin-bottom: 2.5rem; background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: var(--shadow); ${isPreview ? 'border-style: dashed; border-width: 2px;' : ''}">
                         <h4 style="margin: 0 0 1rem 0; color: var(--color-text-primary); font-size: 1.1rem; display: flex; align-items: center; border-bottom: 2px solid var(--color-background); padding-bottom: 0.75rem;">
-                            ${group.title} ${groupTag}
-                        </h4>
-                        ${tasksHTML}
-                    </div>
-                `;
+                            ${group.title} ${groupTag}</h4>${tasksHTML}</div>`;
             }).join('');
         }
 
