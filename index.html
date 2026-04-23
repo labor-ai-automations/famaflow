@@ -1240,7 +1240,47 @@ body.fullscreen-flow .flowchart-monitor-bar {
 @keyframes fadeInDown {
     from { transform: translate(-50%, -20px); opacity: 0; }
     to { transform: translate(-50%, 0); opacity: 1; }
-}		
+}
+
+/* --- CENTRAL DE RELATÓRIOS EXECUTIVOS --- */
+.report-form-wrapper {
+    max-width: 900px; margin: 0 auto; padding: 2rem;
+    background: var(--color-surface); border-radius: 12px;
+}
+.report-header-ui {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;
+    padding-bottom: 1rem; border-bottom: 2px solid var(--color-background);
+}
+.report-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;
+}
+.report-selector-box {
+    background: var(--color-background); padding: 1.25rem;
+    border-radius: 10px; border: 1px solid var(--color-border);
+}
+.report-selector-box label {
+    font-weight: 700; font-size: 0.85rem; color: var(--color-text-secondary);
+    text-transform: uppercase; margin-bottom: 1rem; display: block;
+}
+.report-check-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+}
+.btn-generate-report {
+    width: 100%; padding: 1.25rem; font-size: 1.1rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--color-brand-primary), #ff4444);
+    color: white; border: none; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 1rem;
+    box-shadow: 0 4px 15px rgba(216, 25, 32, 0.3); transition: all 0.2s;
+}
+.btn-generate-report:hover { transform: translateY(-2px); filter: brightness(1.1); }
+.btn-generate-report:disabled { filter: grayscale(1); cursor: not-allowed; }
+
+.mgt-tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--color-border); }
+.mgt-tab-btn {
+    padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer;
+    font-weight: 600; color: var(--color-text-secondary); border-bottom: 3px solid transparent;
+}
+.mgt-tab-btn.active { color: var(--color-brand-primary); border-bottom-color: var(--color-brand-primary); }		
 		
 /* Estilo Pulsante do Botão Salvar */
 #btn-save-workflow {
@@ -1886,7 +1926,84 @@ const appHTML = `<div id="app-container">
                 <div id="admin-dashboard-page" class="page-content"><div class="page-header"><h1>Dashboard Administrativo</h1></div><div class="card">Métricas da plataforma aparecerão aqui.</div></div>
                 <div id="users-page" class="page-content"><div class="page-header"><div class="page-header-title"><h1>Gerenciamento de Usuários</h1></div><div class="page-header-actions"><button id="refresh-users-btn" class="refresh-btn" title="Atualizar usuários"><span class="material-icons">refresh</span></button><button id="btn-new-user" class="btn btn-danger"><span class="material-icons">add</span> Novo Usuário</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Usuário & Email</th><th>Departamento & Cargo</th><th>Score</th><th>Ações</th></tr></thead><tbody id="user-table-body"></tbody></table></div></div>
                 <div id="profile-page" class="page-content"><div id="user-profile-content"></div><div id="user-history-content"></div></div>
-                <div id="request-management-page" class="page-content"><div class="page-header"><div><h1>Gerenciamento de Requisições</h1><p>Visualize e gerencie todas as solicitações da plataforma.</p></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 20%;">Solicitante</th><th style="width: 25%;">Tipo</th><th style="width: 20%;">Data</th><th style="width: 15%;">Status</th><th style="width: 20%;">Ações</th></tr></thead><tbody id="request-management-table-body"><tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr></tbody></table></div></div>
+                <div id="request-management-page" class="page-content">
+                    <div class="page-header">
+                        <div>
+                            <h1>Gerenciamento de Requisições</h1>
+                            <p>Aprovação de pendências e extração de relatórios analíticos.</p>
+                        </div>
+                    </div>
+
+                    <div class="mgt-tabs">
+                        <button class="mgt-tab-btn active" id="btn-mgt-list" onclick="toggleMgtView('list')">Pendências de Aprovação</button>
+                        <button class="mgt-tab-btn" id="btn-mgt-report" onclick="toggleMgtView('report')">Relatórios PDF (BI)</button>
+                    </div>
+
+                    <!-- VISÃO 1: LISTA DE GESTÃO -->
+                    <div id="mgt-view-list">
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Solicitante</th>
+                                        <th style="width: 25%;">Tipo</th>
+                                        <th style="width: 20%;">Data</th>
+                                        <th style="width: 15%;">Status</th>
+                                        <th style="width: 20%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="request-management-table-body">
+                                    <tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- VISÃO 2: GERADOR DE RELATÓRIOS -->
+                    <div id="mgt-view-report" style="display: none;">
+                        <div class="report-form-wrapper">
+                            <div class="report-header-ui">
+                                <span class="material-icons" style="font-size: 32px; color: var(--color-brand-primary);">analytics</span>
+                                <div>
+                                    <h3 style="margin:0;">Gerador de Relatórios Executivos</h3>
+                                    <p style="margin:0; font-size: 0.85rem; color: var(--color-text-secondary);">Filtre os dados para gerar o documento PDF oficial.</p>
+                                </div>
+                            </div>
+
+                            <div class="report-grid">
+                                <div class="report-selector-box">
+                                    <label>Período de Análise</label>
+                                    <div style="display:flex; gap: 10px;">
+                                        <input type="date" id="rep-start-date" class="input-field">
+                                        <input type="date" id="rep-end-date" class="input-field">
+                                    </div>
+                                </div>
+                                <div class="report-selector-box">
+                                    <label>Tipos de Requisição</label>
+                                    <div id="rep-allowed-types" class="report-check-grid">
+                                        <!-- Injetado via JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="report-selector-box" style="margin-bottom: 2rem;">
+                                <label>Status das Solicitações</label>
+                                <div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);">
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label>
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label>
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="approved" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Aprovadas</label>
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label>
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="rejected"><span class="checkbox-box"><span class="material-icons">check</span></span> Recusadas</label>
+                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="cancelled_by_requester"><span class="checkbox-box"><span class="material-icons">check</span></span> Canceladas</label>
+                                </div>
+                            </div>
+
+                            <button class="btn-generate-report" id="btn-execute-report" onclick="runExecutiveReport()">
+                                <span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div id="travel-request-management-page" class="page-content"><div class="page-header"><div><h1>Gerenciamento de Requisições de Viagem</h1><p>Analise e gerencie todas as solicitações de viagem.</p></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 20%;">Solicitante</th><th style="width: 25%;">Título</th><th style="width: 20%;">Destino</th><th style="width: 15%;">Período</th><th style="width: 10%;">Status</th><th style="width: 10%;">Ações</th></tr></thead><tbody id="travel-request-management-table-body"><tr><td colspan="6" class="empty-state">Carregando requisições...</td></tr></tbody></table></div></div>
                 <div id="my-routines-page" class="page-content"></div>
                 <div id="manage-processes-page" class="page-content"><div class="page-header" style="margin-bottom: 1rem;"><div><h1>Gerenciar Processos e Tarefas</h1><p>Crie fluxos recorrentes ou delegue tarefas pontuais para a equipe.</p></div></div><div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border);"><button class="tab-link active" id="tab-btn-recurrent" onclick="switchProcessTab('recurrent')" style="padding: 0.75rem 1.5rem; font-weight: 600;"><span class="material-icons" style="vertical-align: middle; margin-right: 5px;">account_tree</span> Processos Recorrentes</button><button class="tab-link" id="tab-btn-punctual" onclick="switchProcessTab('punctual')" style="padding: 0.75rem 1.5rem; font-weight: 600;"><span class="material-icons" style="vertical-align: middle; margin-right: 5px;">assignment</span> Tarefas Pontuais</button></div><div id="tab-content-recurrent"><div class="grid" style="grid-template-columns: 300px 1fr; gap: 1.5rem; align-items: flex-start;"><div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border);"><div class="routines-column-header" style="background: var(--color-background); padding: 1rem;"><h3 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Processos Ativos</h3><button class="btn btn-danger btn-icon" onclick="openEditProcessModal(null)" title="Novo Processo" style="width: 32px; height: 32px;"><span class="material-icons" style="font-size: 18px;">add</span></button></div><div class="routines-list" id="process-list-sidebar"><div class="empty-state">Carregando...</div></div></div><div class="card" id="process-visualizer-container" style="min-height: 500px; position: relative; padding: 2rem;"><div class="empty-state">Selecione um processo para editar o fluxo.</div></div></div></div><div id="tab-content-punctual" style="display: none;"><div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;"><button class="btn btn-danger" onclick="openNewRoutineModal()"><span class="material-icons">add</span> Nova Tarefa Pontual</button></div><div class="manage-routines-layout"><div class="card routines-column-card"><div class="routines-column-header"><h3>Tarefas Criadas</h3></div><div class="routines-list" id="routines-list-col1"><div class="empty-state">Carregando...</div></div></div><div class="card routines-column-card"><div class="routines-column-header"><h3>Itens da Tarefa</h3><div id="add-task-button-container"></div></div><div class="routines-list" id="tasks-list-col2"><div class="empty-state">Selecione uma tarefa pontual</div></div></div><div class="card routines-column-card"><div class="routines-column-header"><h3>Usuários Atribuídos</h3><div id="assign-user-button-container"></div></div><div class="routines-list" id="assignments-list-col3"><div class="empty-state">Selecione uma tarefa pontual</div></div></div></div></div></div>
@@ -6910,11 +7027,97 @@ async function submitMaintenancePlan(requestId) {
             });
         }
 
+function toggleMgtView(view) {
+            document.getElementById('mgt-view-list').style.display = view === 'list' ? 'block' : 'none';
+            document.getElementById('mgt-view-report').style.display = view === 'report' ? 'block' : 'none';
+            document.getElementById('btn-mgt-list').classList.toggle('active', view === 'list');
+            document.getElementById('btn-mgt-report').classList.toggle('active', view === 'report');
+            
+            if (view === 'report') renderReportTypeOptions();
+        }
+
+        function renderReportTypeOptions() {
+            const container = document.getElementById('rep-allowed-types');
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
+            
+            const typesMap = [
+                { id: 'maintenance', label: 'Manutenção', perm: 'mgt_maintenance' },
+                { id: 'travel', label: 'Viagens', perm: 'mgt_travel' },
+                { id: 'new_hire', label: 'Contratação', perm: 'mgt_new_hire' },
+                { id: 'termination', label: 'Desligamento', perm: 'mgt_termination' },
+                { id: 'promotion', label: 'Promoção', perm: 'mgt_promotion' },
+                { id: 'overtime', label: 'Horas Extras', perm: 'mgt_overtime' },
+                { id: 'training', label: 'Treinamento', perm: 'mgt_training' },
+                { id: 'disciplinary_action', label: 'Medida Disciplinar', perm: 'mgt_disciplinary_action' }
+            ];
+
+            container.innerHTML = typesMap
+                .filter(t => isAdmin || p.includes(t.perm))
+                .map(t => `
+                    <label class="custom-checkbox">
+                        <input type="checkbox" name="rep-type" value="${t.id}" checked>
+                        <span class="checkbox-box"><span class="material-icons">check</span></span> ${t.label}
+                    </label>
+                `).join('');
+            
+            if (container.innerHTML === '') {
+                container.innerHTML = '<p style="color:var(--color-danger); font-size:0.75rem;">Acesso negado para extração.</p>';
+                document.getElementById('btn-execute-report').disabled = true;
+            }
+        }
+
+        async function runExecutiveReport() {
+            const btn = document.getElementById('btn-execute-report');
+            const start = document.getElementById('rep-start-date').value;
+            const end = document.getElementById('rep-end-date').value;
+            const types = Array.from(document.querySelectorAll('input[name="rep-type"]:checked')).map(el => el.value);
+            const status = Array.from(document.querySelectorAll('input[name="rep-status"]:checked')).map(el => el.value);
+
+            if (!start || !end) { showToast("Selecione as datas.", "warning"); return; }
+            if (types.length === 0) { showToast("Selecione ao menos um tipo.", "warning"); return; }
+            if (status.length === 0) { showToast("Selecione ao menos um status.", "warning"); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> PROCESSANDO...';
+            showToast("Gerando PDF. Por favor, aguarde.", "info");
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/famaflow-gerar-relatorio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({
+                        start_date: start,
+                        end_date: end,
+                        types: types,
+                        status: status,
+                        usuario_gerador: currentUserProfile.full_name
+                    })
+                });
+
+                if (!response.ok) throw new Error();
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Relatorio_FamaFlow_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                showToast("Relatório baixado!", "success");
+            } catch (e) {
+                showToast("Erro na geração do relatório.", "danger");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO';
+            }
+        }
+
         async function loadRequestManagementPage() {
             const tableBody = document.getElementById('request-management-table-body');
             if(!tableBody) return;
-            
-            // Limpa a tabela antes de injetar novos dados para evitar "ghosting"
             tableBody.innerHTML = '';
 
             const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
@@ -6931,13 +7134,12 @@ async function submitMaintenancePlan(requestId) {
             });
 
             if (!filteredData || filteredData.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições para sua aprovação.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para aprovação.</td></tr>`;
                 return;
             }
 
-            // Mapeamento profissional de etiquetas e status
             const labels = {
-                new_hire: 'Contratação de Pessoal', termination: 'Desligamento', promotion: 'Promoção Interna',
+                new_hire: 'Contratação', termination: 'Desligamento', promotion: 'Promoção',
                 overtime: 'Horas Extras', training: 'Treinamento', disciplinary_action: 'Medida Disciplinar',
                 maintenance: 'Manutenção', pending: 'Pendente', approved: 'Aprovada', rejected: 'Recusada',
                 planned: 'Planejada', executed: 'Executada', cancelled_by_requester: 'Cancelada'
