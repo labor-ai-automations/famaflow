@@ -1746,33 +1746,38 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_EXECUTE_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/execute-maintenance-request';
 
 
-        // Mapeamento de permissões RBAC (Categorizado)
+        // Mapeamento de permissões RBAC (Categorizado e Espelhado)
         const PERMISSION_MAPPING = {
             // 1. Visualização de Telas
-            'view_messages': 'Acessar Mensagens',
+            'view_messages': 'Ver Mensagens',
             'view_organograma': 'Ver Organograma',
-            'view_rankings': 'Ver Rankings e Performance',
+            'view_rankings': 'Ver Rankings',
             'view_team': 'Ver Equipe',
             'view_mural': 'Ver Mural Cultural',
-            'view_dashboard': 'Ver Dashboard Geral',
+            'view_dashboard': 'Ver Dashboard',
 
-            // 2. Gerenciamento e Aprovação
-            'manage_hr': 'Gerenciar/Aprovar RH',
-            'manage_maint': 'Gerenciar/Aprovar Manutenção',
-            'manage_travel': 'Gerenciar/Aprovar Viagens',
+            // 2. Gerenciamento e Aprovação (O ESPELHO)
+            'mgt_new_hire': 'Gerenciar Contratação',
+            'mgt_termination': 'Gerenciar Desligamento',
+            'mgt_promotion': 'Gerenciar Promoção',
+            'mgt_overtime': 'Gerenciar Horas Extras',
+            'mgt_training': 'Gerenciar Treinamento',
+            'mgt_disciplinary_action': 'Gerenciar Medida Disciplinar',
+            'mgt_maintenance': 'Gerenciar Manutenção',
+            'mgt_travel': 'Gerenciar Viagens',
 
-            // 3. Solicitações (O que pode pedir)
-            'req_new_hire': 'Solicitar Contratação',
-            'req_termination': 'Solicitar Desligamento',
-            'req_promotion': 'Solicitar Promoção',
-            'req_overtime': 'Solicitar Horas Extras',
-            'req_training': 'Solicitar Treinamento',
-            'req_disciplinary': 'Aplicar Medida Disciplinar',
-            'req_maintenance': 'Solicitar Manutenção',
-            'req_travel': 'Solicitar Viagem',
+            // 3. Solicitações (O que o usuário pode abrir)
+            'req_new_hire': 'Pedir Contratação',
+            'req_termination': 'Pedir Desligamento',
+            'req_promotion': 'Pedir Promoção',
+            'req_overtime': 'Pedir Horas Extras',
+            'req_training': 'Pedir Treinamento',
+            'req_disciplinary_action': 'Aplicar Medida Disciplinar',
+            'req_maintenance': 'Pedir Manutenção',
+            'req_travel': 'Pedir Viagens',
 
-            // 4. Permissões Especiais Globais
-            'manage_routines': 'Gerenciar Processos (Criar/Editar)',
+            // 4. Especiais
+            'manage_routines': 'Gerenciar Processos',
             'view_admin_dash': 'Ver Admin Dashboard',
             'manage_users': 'Admin Geral (Acesso Total)'
         };
@@ -2197,11 +2202,16 @@ const appHTML = `<div id="app-container">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-success);">rule_folder</span>
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">2. Gerenciamento de Requisições</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode aprovar ou administrar de outras pessoas.</p>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode aprovar ou administrar de terceiros.</p>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-manage_hr"><span class="perm-checkmark"></span><span class="material-icons perm-icon">assignment</span><span class="perm-text">Aprovar RH</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-manage_maint"><span class="perm-checkmark"></span><span class="material-icons perm-icon">build</span><span class="perm-text">Aprovar Manutenção</span></label>
-                                    <label class="perm-checkbox" style="grid-column: 1 / -1;"><input type="checkbox" id="perm-manage_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Aprovar Viagens</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Gere. Contratação</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Gere. Desligamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Gere. Promoção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Gere. Horas Extras</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Gere. Treinamento</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Gere. Disciplinar</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Gere. Manutenção</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Gere. Viagens</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 3: SOLICITAÇÃO -->
@@ -2431,22 +2441,18 @@ async function showApp() {
     const canViewMural = currentUserProfile.permissions.includes('view_mural') || isAdmin;
     const canViewDash = currentUserProfile.permissions.includes('view_dashboard') || isAdmin;
 
-    // Família Administração
-    const canManageHR = currentUserProfile.permissions.includes('manage_hr') || isAdmin;
-    const canManageMaint = currentUserProfile.permissions.includes('manage_maint') || isAdmin;
-    const canManageTravel = currentUserProfile.permissions.includes('manage_travel') || isAdmin;
+    // Família Administração (Aprovação e Gestão)
+    const hasAnyMgtPerm = currentUserProfile.permissions.some(perm => perm.startsWith('mgt_')) || isAdmin;
+    const canMgtTravel = currentUserProfile.permissions.includes('mgt_travel') || isAdmin;
     const canManageRoutines = currentUserProfile.permissions.includes('manage_routines') || isAdmin;
     const canViewAdminDash = currentUserProfile.permissions.includes('view_admin_dash') || isAdmin;
 
     // 3. Filtra a Sidebar Principal estritamente baseada nas capacidades
     document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link').forEach(link => {
         const page = link.getAttribute('data-page');
-        
-        // Páginas que TODOS veem por padrão do sistema
         if (['requests-page', 'kb-page', 'profile-page', 'my-routines-page'].includes(page)) {
             link.parentElement.style.display = 'block';
         } 
-        // Páginas controladas
         else if (page === 'messages-page') { link.parentElement.style.display = canViewMessages ? 'block' : 'none'; }
         else if (page === 'organograma-page') { link.parentElement.style.display = canViewOrg ? 'block' : 'none'; }
         else if (page === 'rankings-page') { link.parentElement.style.display = canViewPerf ? 'block' : 'none'; }
@@ -2462,23 +2468,18 @@ async function showApp() {
     
     if (adminSection && adminMenuUl) {
         let adminMenuHTML = '';
+        if (canViewAdminDash) adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
+        if (isAdmin) adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
         
-        if (canViewAdminDash) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
-        }
-        if (isAdmin) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
-        }
-        // Se pode aprovar RH OU Manutenção, vê a tela de Gerenciar Requisições
-        if (canManageHR || canManageMaint) {
+        // Se tem qualquer permissão 'mgt_' (exceto viagem que tem tela própria), vê a tela de Gerenciar Requisições
+        const hasOtherMgt = currentUserProfile.permissions.some(perm => perm.startsWith('mgt_') && perm !== 'mgt_travel');
+        if (hasOtherMgt || isAdmin) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
         }
-        if (canManageTravel) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
-        }
-        if (canManageRoutines) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
-        }
+        if (canMgtTravel) adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
+        if (canManageRoutines) adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
+
+        adminMenuUl.innerHTML = adminMenuHTML;
 
         adminMenuUl.innerHTML = adminMenuHTML;
 
@@ -7082,20 +7083,27 @@ async function syncUserPermissions(userId) {
 
         async function loadRequestManagementPage() {
             const tableBody = document.getElementById('request-management-table-body');
+            if(!tableBody) return;
             tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
 
             const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
-            
-            if (error) {
-                console.error("Erro ao buscar requisições para gerenciamento:", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar.</td></tr>`;
-                return;
-            }
-            
-            const filteredData = data.filter(req => req.type !== 'travel');
+            if (error) { tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`; return; }
+
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
+
+            // FILTRO CIRÚRGICO: O usuário só vê na lista o que ele tem 'mgt_' marcado
+            const filteredData = data.filter(req => {
+                if (isAdmin) return req.type !== 'travel'; // Admin vê tudo exceto viagem (que tem tela própria)
+                if (req.type === 'travel') return false; 
+                
+                // Mapeia o tipo da requisição para a chave de permissão correspondente
+                const mgtKey = `mgt_${req.type}`;
+                return p.includes(mgtKey);
+            });
 
             if (!filteredData || filteredData.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para sua aprovação.</td></tr>`;
                 return;
             }
 
@@ -7153,17 +7161,16 @@ async function syncUserPermissions(userId) {
         
         async function loadTravelRequestManagementPage() {
             const tableBody = document.getElementById('travel-request-management-table-body');
+            if(!tableBody) return;
             tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Carregando requisições de viagem...</td></tr>`;
 
             const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
+            if (error) { tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Erro ao carregar.</td></tr>`; return; }
 
-            if (error) {
-                console.error("Erro ao buscar requisições de viagem:", error);
-                tableBody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--color-danger)">Falha ao carregar.</td></tr>`;
-                return;
-            }
+            const p = currentUserProfile.permissions || [];
+            const canManageTravel = p.includes('mgt_travel') || p.includes('manage_users');
 
-            const travelRequests = data.filter(req => req.type === 'travel');
+            const travelRequests = data.filter(req => req.type === 'travel' && canManageTravel);
 
             if (travelRequests.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Nenhuma requisição de viagem encontrada.</td></tr>`;
