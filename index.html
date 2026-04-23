@@ -1749,20 +1749,25 @@ body.fullscreen-flow .flowchart-monitor-bar {
         // Mapeamento de permissões RBAC
         const PERMISSION_MAPPING = {
             // 1. Gestão (Quem aprova/cria)
-            'manage_travel': 'Gerenciar Viagens (Controladoria)',
-            'manage_hr': 'Gerenciar Requisições (RH)',
+            'manage_travel': 'Aprovar Viagens',
+            'manage_hr': 'Aprovar RH',
             'manage_maint': 'Gerenciar Manutenção',
             'manage_routines': 'Gerenciar Rotinas e Processos',
             'manage_users': 'Administrador Geral',
             
             // 2. Solicitação (O que a pessoa pode pedir)
-            'req_submit_hr': 'Solicitar RH (Contratação, Férias, etc)',
-            'req_submit_maint': 'Solicitar Manutenção de Máquinas',
-            'req_submit_travel': 'Solicitar Viagens',
+            'req_new_hire': 'Pedir Contratação',
+            'req_termination': 'Pedir Desligamento',
+            'req_promotion': 'Pedir Promoção',
+            'req_overtime': 'Pedir Horas Extras',
+            'req_training': 'Pedir Treinamento',
+            'req_disciplinary': 'Aplicar Medida Disciplinar',
+            'req_maintenance': 'Pedir Manutenção',
+            'req_travel': 'Pedir Viagens',
             
             // 3. Visualização (Telas extras)
             'view_organograma': 'Ver Organograma',
-            'view_rankings': 'Ver Rankings e Performance',
+            'view_rankings': 'Ver Rankings',
             'view_team': 'Ver Equipe',
             'view_mural': 'Ver Mural Cultural',
             'view_dashboard': 'Ver Dashboard Geral'
@@ -2204,20 +2209,40 @@ const appHTML = `<div id="app-container">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">add_circle_outline</span>
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Permissões de Solicitação</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Quais tipos de requisição este usuário pode abrir?</p>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Selecione os cards que devem aparecer para este usuário.</p>
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
                                     <label class="perm-checkbox">
-                                        <input type="checkbox" id="perm-req_submit_hr">
-                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">badge</span><span class="perm-text">Pedir RH (Contratar/Demitir)</span>
+                                        <input type="checkbox" id="perm-req_new_hire">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação</span>
                                     </label>
                                     <label class="perm-checkbox">
-                                        <input type="checkbox" id="perm-req_submit_maint">
-                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Pedir Manutenção</span>
+                                        <input type="checkbox" id="perm-req_termination">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span>
                                     </label>
-                                    <label class="perm-checkbox" style="grid-column: 1 / -1;">
-                                        <input type="checkbox" id="perm-req_submit_travel">
-                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">airplane_ticket</span><span class="perm-text">Pedir Viagens</span>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_promotion">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_overtime">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_training">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_disciplinary">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_maintenance">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span>
+                                    </label>
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-req_travel">
+                                        <span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span>
                                     </label>
                                 </div>
 
@@ -4803,38 +4828,39 @@ async function openRequestDetailsModal(requestId) {
             
             document.getElementById('request-modal-title').textContent = 'Nova Requisição';
 
-            // Verifica as chaves do usuário (Admin vê tudo)
-            const isAdmin = currentUserProfile.permissions.includes('manage_users');
-            const canReqHR = currentUserProfile.permissions.includes('req_submit_hr') || isAdmin;
-            const canReqMaint = currentUserProfile.permissions.includes('req_submit_maint') || isAdmin;
-            const canReqTravel = currentUserProfile.permissions.includes('req_submit_travel') || isAdmin;
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
 
             let cardsHTML = '';
 
-            // Grupo RH
-            if (canReqHR) {
-                cardsHTML += `
-                    <div class="type-card" data-type="new_hire"><span class="material-icons">person_add</span><h3>Contratação de Pessoal</h3></div>
-                    <div class="type-card" data-type="termination"><span class="material-icons">person_remove</span><h3>Solicitar Desligamento</h3></div>
-                    <div class="type-card" data-type="promotion"><span class="material-icons">trending_up</span><h3>Promoção Interna</h3></div>
-                    <div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Solicitar Horas Extras</h3></div>
-                    <div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Solicitar Treinamento</h3></div>
-                    <div class="type-card" data-type="disciplinary_action"><span class="material-icons">gavel</span><h3>Medida Disciplinar</h3></div>
-                `;
+            // Injeta apenas os cards permitidos
+            if (isAdmin || p.includes('req_new_hire')) {
+                cardsHTML += `<div class="type-card" data-type="new_hire"><span class="material-icons">person_add</span><h3>Contratação de Pessoal</h3></div>`;
             }
-            
-            // Grupo Manutenção
-            if (canReqMaint) {
+            if (isAdmin || p.includes('req_termination')) {
+                cardsHTML += `<div class="type-card" data-type="termination"><span class="material-icons">person_remove</span><h3>Solicitar Desligamento</h3></div>`;
+            }
+            if (isAdmin || p.includes('req_promotion')) {
+                cardsHTML += `<div class="type-card" data-type="promotion"><span class="material-icons">trending_up</span><h3>Promoção Interna</h3></div>`;
+            }
+            if (isAdmin || p.includes('req_overtime')) {
+                cardsHTML += `<div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Solicitar Horas Extras</h3></div>`;
+            }
+            if (isAdmin || p.includes('req_training')) {
+                cardsHTML += `<div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Solicitar Treinamento</h3></div>`;
+            }
+            if (isAdmin || p.includes('req_disciplinary')) {
+                cardsHTML += `<div class="type-card" data-type="disciplinary_action"><span class="material-icons">gavel</span><h3>Medida Disciplinar</h3></div>`;
+            }
+            if (isAdmin || p.includes('req_maintenance')) {
                 cardsHTML += `<div class="type-card" data-type="maintenance"><span class="material-icons">settings_suggest</span><h3>Solicitação de Manutenção</h3></div>`;
             }
-
-            // Grupo Viagem
-            if (canReqTravel) {
+            if (isAdmin || p.includes('req_travel')) {
                 cardsHTML += `<div class="type-card" data-type="travel"><span class="material-icons">flight_takeoff</span><h3>Requisição de Viagem</h3></div>`;
             }
 
             if (cardsHTML === '') {
-                cardsHTML = `<div class="empty-state" style="grid-column: 1 / -1;">Você não possui permissão para abrir requisições no momento.</div>`;
+                cardsHTML = `<div class="empty-state" style="grid-column: 1 / -1;">Você não possui permissão para abrir requisições.</div>`;
             }
 
             modalBody.innerHTML = `
