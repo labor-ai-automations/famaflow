@@ -1302,25 +1302,44 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 .mgt-tab-btn.active { color: var(--color-brand-primary); border-bottom-color: var(--color-brand-primary); }
 
-/* --- FAMA FLOW BUILDER UI --- */
-.builder-grid { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; }
-.builder-sidebar { background: var(--color-background); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); }
+/* --- FAMA FLOW BUILDER UI (REFINADO) --- */
+.builder-grid { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; align-items: start; }
+.builder-sidebar { background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: var(--shadow); }
 .blueprint-card { 
-    padding: 1rem; background: var(--color-surface); border-radius: 8px; 
+    padding: 1rem; background: var(--color-background); border-radius: 10px; 
     border: 1px solid var(--color-border); margin-bottom: 0.75rem; cursor: pointer;
     transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem;
 }
-.blueprint-card:hover, .blueprint-card.active { border-color: var(--color-brand-primary); background: var(--color-danger-bg); }
-.blueprint-card .material-icons { color: var(--color-text-secondary); }
+.blueprint-card:hover { border-color: var(--color-brand-primary); transform: translateX(5px); }
+.blueprint-card.active { border-color: var(--color-brand-primary); background: var(--color-danger-bg); }
 .blueprint-card.active .material-icons { color: var(--color-brand-primary); }
 
-.builder-workspace { background: var(--color-surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--color-border); }
-.field-item, .step-item {
-    padding: 1.25rem; background: var(--color-background); border: 1.5px dashed var(--color-border);
-    border-radius: 10px; margin-bottom: 1rem; position: relative;
+.builder-header-card {
+    background: var(--color-surface); padding: 2rem; border-radius: 12px;
+    border: 1px solid var(--color-border); margin-bottom: 2rem; border-left: 6px solid var(--color-brand-primary);
 }
-.field-item:hover, .step-item:hover { border-color: var(--color-info); }
-.btn-remove-item { position: absolute; top: 10px; right: 10px; color: var(--color-danger); cursor: pointer; }
+.builder-title-input {
+    font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);
+    width: 100%; border: none; background: transparent; outline: none; margin-bottom: 0.5rem; font-family: 'Inter', sans-serif;
+}
+.builder-desc-input {
+    font-size: 1rem; color: var(--color-text-secondary);
+    width: 100%; border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif;
+}
+
+.builder-section { background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); height: 100%; }
+.info-hint {
+    background: var(--color-info-bg); color: var(--color-info); padding: 0.75rem 1rem;
+    border-radius: 8px; font-size: 0.8rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.4;
+}
+.info-hint .material-icons { font-size: 18px; }
+
+.field-item, .step-item {
+    padding: 1.25rem; background: var(--color-background); border: 1px solid var(--color-border);
+    border-radius: 10px; margin-bottom: 1rem; position: relative; transition: all 0.2s;
+}
+.field-item:hover, .step-item:hover { border-color: var(--color-brand-primary); }
+.btn-remove-item { position: absolute; top: -10px; right: -10px; color: var(--color-danger); cursor: pointer; background: var(--color-surface); border-radius: 50%; box-shadow: var(--shadow); padding: 2px; }
 
 /* Dynamic Form Rendering */
 .dynamic-form-container { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -2173,55 +2192,74 @@ const appHTML = `<div id="app-container">
                     <div class="page-header">
                         <div>
                             <h1>Fama Flow Builder</h1>
-                            <p>Crie e gerencie moldes de requisições e seus fluxos de aprovação.</p>
+                            <p>Engenharia de Processos: Crie formulários e fluxos de aprovação em tempo real.</p>
                         </div>
-                        <button class="btn btn-danger" onclick="createNewBlueprint()"><span class="material-icons">add</span> Novo Molde</button>
+                        <button class="btn btn-danger" onclick="createNewBlueprint()"><span class="material-icons">add_box</span> Novo Molde</button>
                     </div>
 
                     <div class="builder-grid">
                         <!-- LISTA DE MOLDES -->
                         <div class="builder-sidebar">
-                            <h3 style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 1rem; color: var(--color-text-secondary);">Moldes Publicados</h3>
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 1.5rem;">
+                                <span class="material-icons" style="color:var(--color-text-secondary);">folder_open</span>
+                                <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); margin:0;">Meus Blueprints</h3>
+                            </div>
                             <div id="blueprint-list">
                                 <div class="empty-state">Carregando...</div>
                             </div>
                         </div>
 
                         <!-- ÁREA DE EDIÇÃO -->
-                        <div class="builder-workspace" id="builder-workspace" style="display: none;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
-                                <div>
-                                    <input type="text" id="bp-name" class="input-field" placeholder="Nome da Requisição" style="font-size: 1.5rem; font-weight: 800; border: none; padding: 0;">
-                                    <input type="text" id="bp-desc" class="input-field" placeholder="Descrição curta do objetivo..." style="border: none; padding: 0; color: var(--color-text-secondary);">
+                        <div id="builder-workspace" style="display: none;">
+                            <!-- HEADER DO MOLDE -->
+                            <div class="builder-header-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--color-brand-primary); text-transform: uppercase; letter-spacing: 0.1em;">Identificação do Processo</span>
+                                    <div style="display: flex; gap: 0.75rem;">
+                                        <button class="btn btn-secondary" onclick="closeBuilder()">Descartar</button>
+                                        <button class="btn btn-danger" onclick="saveBlueprint()"><span class="material-icons">cloud_upload</span> Publicar Molde</button>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button class="btn btn-secondary" onclick="closeBuilder()">Cancelar</button>
-                                    <button class="btn btn-danger" onclick="saveBlueprint()"><span class="material-icons">save</span> Publicar Molde</button>
-                                </div>
+                                <input type="text" id="bp-name" class="builder-title-input" placeholder="Ex: Requisição de Compra de EPI" oninput="editingBlueprint.name = this.value">
+                                <input type="text" id="bp-desc" class="builder-desc-input" placeholder="Descreva brevemente o objetivo desta requisição para o colaborador..." oninput="editingBlueprint.description = this.value">
                             </div>
 
                             <div class="grid grid-cols-2">
-                                <!-- COLUNA: FORMULÁRIO -->
-                                <div>
-                                    <div class="section-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                                        <strong>Campos do Formulário</strong>
-                                        <button class="btn btn-icon" onclick="addFormField()"><span class="material-icons">add_circle</span></button>
+                                <!-- CONSTRUÇÃO DO FORMULÁRIO -->
+                                <div class="builder-section">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                        <h3 style="font-size: 1rem; display:flex; align-items:center; gap:0.5rem;"><span class="material-icons">dynamic_form</span> Formulário</h3>
+                                        <button class="btn btn-icon" onclick="addFormField()" title="Adicionar Pergunta"><span class="material-icons">add_circle</span></button>
+                                    </div>
+                                    <div class="info-hint">
+                                        <span class="material-icons">info</span>
+                                        <span>Defina as perguntas que o solicitante deve responder. Estas respostas serão salvas na base de dados do processo.</span>
                                     </div>
                                     <div id="bp-fields-container"></div>
                                 </div>
 
-                                <!-- COLUNA: WORKFLOW -->
-                                <div>
-                                    <div class="section-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                                        <strong>Fluxo de Aprovação (Pings)</strong>
-                                        <button class="btn btn-icon" onclick="addWorkflowStep()"><span class="material-icons">playlist_add</span></button>
+                                <!-- CONSTRUÇÃO DO WORKFLOW -->
+                                <div class="builder-section">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                        <h3 style="font-size: 1rem; display:flex; align-items:center; gap:0.5rem;"><span class="material-icons">account_tree</span> Fluxo de Pings</h3>
+                                        <button class="btn btn-icon" onclick="addWorkflowStep()" title="Adicionar Etapa de Aprovação"><span class="material-icons">playlist_add</span></button>
+                                    </div>
+                                    <div class="info-hint">
+                                        <span class="material-icons">account_tree</span>
+                                        <span>Crie a cadeia de comando. A requisição passará por cada etapa (Ping) até ser aprovada definitivamente pela Diretoria.</span>
                                     </div>
                                     <div id="bp-workflow-container"></div>
                                 </div>
                             </div>
                         </div>
-                        <div id="builder-empty-state" class="card" style="display: flex; align-items:center; justify-content:center; text-align:center; height: 400px;">
-                            <p style="color: var(--color-text-secondary);">Selecione um molde à esquerda para editar ou crie um novo.</p>
+
+                        <!-- EMPTY STATE -->
+                        <div id="builder-empty-state" class="card" style="display: flex; flex-direction: column; align-items:center; justify-content:center; text-align:center; height: 500px; border-style: dashed;">
+                            <div style="background:var(--color-background); width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom: 1.5rem;">
+                                <span class="material-icons" style="font-size:40px; color:var(--color-border);">architecture</span>
+                            </div>
+                            <h2 style="margin:0; color:var(--color-text-secondary);">Workflow Engine</h2>
+                            <p style="color: var(--color-text-secondary); max-width: 300px;">Selecione um molde existente para editar os parâmetros ou inicie um novo do zero.</p>
                         </div>
                     </div>
                 </div>
@@ -7522,9 +7560,20 @@ function toggleMgtView(view) {
         function renderBuilderWorkspace() {
             document.getElementById('builder-empty-state').style.display = 'none';
             document.getElementById('builder-workspace').style.display = 'block';
-            document.getElementById('bp-name').value = editingBlueprint.name;
-            document.getElementById('bp-desc').value = editingBlueprint.description;
+            
+            // Atribuição de valores aos novos inputs modernos
+            const nameInput = document.getElementById('bp-name');
+            const descInput = document.getElementById('bp-desc');
+            
+            nameInput.value = editingBlueprint.name || '';
+            descInput.value = editingBlueprint.description || '';
+            
             renderBuilderItems();
+            
+            // Foco automático no título se for novo molde
+            if(!editingBlueprint.id) {
+                setTimeout(() => nameInput.focus(), 300);
+            }
         }
 
         function addFormField() {
