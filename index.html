@@ -1069,16 +1069,13 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
     right: -15px; 
 }
 
-/* Lixeira de Nó Estilo n8n */
-.node-delete {
+/* Botões de Ação do Nó (Topo) */
+.node-delete, .node-edit {
     position: absolute;
     top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
     width: 24px;
     height: 24px;
     background-color: var(--color-surface);
-    color: var(--color-danger);
     border: 1px solid var(--color-border);
     border-radius: 6px;
     display: flex;
@@ -1090,12 +1087,35 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
     transition: all 0.2s;
     z-index: 120;
 }
-.flow-node:hover .node-delete { 
+
+/* Lixeira à Esquerda */
+.node-delete {
+    left: calc(50% - 15px);
+    transform: translateX(-50%);
+    color: var(--color-danger);
+}
+
+/* Editar à Direita */
+.node-edit {
+    left: calc(50% + 15px);
+    transform: translateX(-50%);
+    color: var(--color-info);
+}
+
+.flow-node:hover .node-delete, 
+.flow-node:hover .node-edit { 
     opacity: 1; 
     top: -15px; 
 }
+
 .node-delete:hover { 
     background-color: var(--color-danger); 
+    color: white; 
+    transform: translateX(-50%) scale(1.1); 
+}
+
+.node-edit:hover { 
+    background-color: var(--color-info); 
     color: white; 
     transform: translateX(-50%) scale(1.1); 
 }
@@ -3147,7 +3167,6 @@ async function loadFlowSteps(processId, forceStep = null) {
                 const isActive = step.is_active || false;
                 const isCompleted = step.is_completed || false;
                 
-                // Geração de Badges com nomes completos (PLANILHA / DOCUMENTO)
                 const docIcons = (step.required_docs || []).map(doc => 
                     `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório" style="padding: 2px 6px;">
                         <span class="material-icons" style="font-size: 10px;">${doc === 'excel' ? 'table_view' : 'description'}</span>
@@ -3172,10 +3191,9 @@ async function loadFlowSteps(processId, forceStep = null) {
                                 <small style="font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1;">👤 ${step.assignee?.full_name || 'N/A'}</small>
                                 <button class="btn-icon" onclick="showStepHistory('${step.id}')" style="padding: 2px;"><span class="material-icons" style="font-size:16px;">history</span></button>
                             </div>
-                            ${step.assignee?.role ? `<div style="font-size: 0.65rem; color: var(--color-text-secondary); padding-left: 18px;">${step.assignee.role}</div>` : ''}
-                            ${step.assignee?.department ? `<div style="font-size: 0.65rem; color: var(--color-brand-primary); font-weight: 500; padding-left: 18px;">${step.assignee.department}</div>` : ''}
                         </div>
                         <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa"><span class="material-icons">delete</span></div>
+                        <div class="node-edit" onclick="openEditStepModal('${step.id}')" title="Editar etapa"><span class="material-icons">edit</span></div>
                         <div class="node-quick-add" onclick="openAddStepModal('${processId}', ${step.step_order + 1})" title="Inserir etapa aqui"><span class="material-icons">add</span></div>
                     </div>
                 `;
@@ -3183,10 +3201,6 @@ async function loadFlowSteps(processId, forceStep = null) {
 
             localStepsData.forEach(step => makeNodeDraggable(step.id));
             updateFlowConnections();
-
-            document.querySelectorAll('.flow-node').forEach(node => {
-                node.ondblclick = () => openEditStepModal(node.dataset.id);
-            });
         }
 		
         function autoArrangeNodes() {
@@ -3285,7 +3299,6 @@ function renderLocalWorkflow() {
                 const pos = step.ui_metadata || { x: 100 + (index * 280), y: 150 };
                 const isCompleted = step.is_completed || false;
                 
-                // Geração de Badges com nomes completos (PLANILHA / DOCUMENTO) para rascunho
                 const docIcons = (step.required_docs || []).map(doc => 
                     `<span class="doc-badge badge-${doc}" title="${doc.toUpperCase()} Obrigatório" style="padding: 2px 6px;">
                         <span class="material-icons" style="font-size: 10px;">${doc === 'excel' ? 'table_view' : 'description'}</span>
@@ -3300,7 +3313,7 @@ function renderLocalWorkflow() {
                                 <div class="node-label">Etapa ${step.step_order}</div>
                                 ${docIcons}
                             </div>
-                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 66x; border-radius: 4px; font-weight: bold;">FEITO</span>' : ''}
+                            ${isCompleted ? '<span style="font-size: 0.6rem; background: var(--color-success); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">FEITO</span>' : ''}
                         </div>
                         <h4>${step.task_title}</h4>
                         <p>${step.task_description || ''}</p>
@@ -3310,6 +3323,7 @@ function renderLocalWorkflow() {
                             </div>
                         </div>
                         <div class="node-delete" onclick="confirmDeleteStep('${step.id}')" title="Excluir etapa"><span class="material-icons">delete</span></div>
+                        <div class="node-edit" onclick="openEditStepModal('${step.id}')" title="Editar etapa"><span class="material-icons">edit</span></div>
                         <div class="node-quick-add" onclick="openAddStepModal('${step.process_id}', ${step.step_order + 1})" title="Inserir etapa aqui"><span class="material-icons">add</span></div>
                     </div>
                 `;
@@ -3317,10 +3331,6 @@ function renderLocalWorkflow() {
 
             localStepsData.forEach(step => makeNodeDraggableLocal(step.id));
             updateFlowConnections();
-            
-            document.querySelectorAll('.flow-node').forEach(node => {
-                node.ondblclick = () => openEditStepModal(node.dataset.id);
-            });
         }
 
 function makeNodeDraggable(stepId) {
