@@ -1638,7 +1638,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
         </div>
     </div>
 
-    <!-- MODAL BASE DE CONHECIMENTO COM CONTROLE DE ACESSO -->
+<!-- MODAL BASE DE CONHECIMENTO COM CONTROLE DE ACESSO -->
     <div id="kb-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
@@ -1652,37 +1652,37 @@ body.fullscreen-flow .flowchart-monitor-bar {
                     <div class="grid grid-cols-2">
                         <div class="form-group"><label>Categoria</label>
                             <select id="kb-category" class="input-field">
-                                <option value="Geral">Geral</option>
                                 <option value="Procedimento">Procedimento</option>
                                 <option value="Manual">Manual</option>
-                                <option value="Recursos Humanos">Recursos Humanos</option>
+                                <option value="Temas de Feedback">Temas de Feedback</option>
+                                <option value="Geral">Geral</option>
                             </select>
                         </div>
-                        <div class="form-group"><label>Tipo de Conteúdo</label>
+                        <div class="form-group"><label>Tipo</label>
                             <select id="kb-type" class="input-field" onchange="toggleKBFields()">
-                                <option value="file">Arquivo (PDF/Imagem)</option>
+                                <option value="file">Arquivo (PDF/Img)</option>
                                 <option value="text">Texto Informativo</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- SELETOR DE PÚBLICO ALVO -->
+                    <!-- CONTROLE DE ESCOPO -->
                     <div style="background: var(--color-background); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 1.5rem;">
-                        <label style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); display: block; margin-bottom: 0.75rem;">Visibilidade e Acesso</label>
+                        <label style="font-weight: 700; font-size: 0.75rem; color: var(--color-brand-primary); text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Controle de Acesso</label>
                         <div class="grid grid-cols-2">
                             <div class="form-group">
-                                <label>Escopo de Visualização</label>
+                                <label>Quem pode ver?</label>
                                 <select id="kb-scope" class="input-field" onchange="toggleScopeTargetFields()">
-                                    <option value="public">Público (Todos)</option>
+                                    <option value="public">Empresa Inteira</option>
                                     <option value="department">Por Departamento</option>
                                     <option value="role">Por Cargo</option>
-                                    <option value="individual">Individual / Confidencial</option>
+                                    <option value="individual">Pessoa Específica</option>
                                     <option value="manager_plus">Colaborador + Gestor</option>
                                 </select>
                             </div>
                             <div class="form-group" id="kb-target-area" style="display: none;">
                                 <label id="kb-target-label">Selecione o Alvo</label>
-                                <div id="kb-target-selector" class="input-field" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openKBScopeSelector()">
+                                <div id="kb-target-selector-box" class="input-field" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openKBScopeSelector()">
                                     <span id="kb-target-name">Selecionar...</span>
                                     <span class="material-icons" style="font-size:18px;">search</span>
                                 </div>
@@ -1691,7 +1691,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                         </div>
                     </div>
 
-                    <div id="kb-file-group" class="form-group"><label>Selecionar Arquivo</label><input type="file" id="kb-file" class="input-field"></div>
+                    <div id="kb-file-group" class="form-group"><label>Arquivo</label><input type="file" id="kb-file" class="input-field"></div>
                     <div id="kb-text-group" class="form-group" style="display:none;"><label>Conteúdo</label><textarea id="kb-content-body" class="input-field" rows="5"></textarea></div>
                 </form>
             </div>
@@ -1855,6 +1855,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'req_travel': 'Solicitar Viagem',
 
             // 4. Especiais
+            'mgt_kb': 'Gerenciar Base de Conhecimento (Curadoria)',
             'manage_routines': 'Gerenciar Processos',
             'view_admin_dash': 'Ver Admin Dashboard',
             'manage_users': 'Admin Geral (Acesso Total)'
@@ -1957,7 +1958,58 @@ const appHTML = `<div id="app-container">
                 <div id="channels-page" class="page-content"><div class="page-header"><h1>Canais</h1></div><div class="empty-state">Funcionalidade em desenvolvimento.</div></div>
                 <div id="rankings-page" class="page-content"><div class="page-header"><h1>Performance e Rankings</h1><p>Acompanhe o desempenho e celebre as conquistas da equipe</p></div><div class="grid grid-cols-2"><div class="card"><h3 class="card-title" style="margin-bottom: 2rem;"><span class="material-icons" style="color: var(--color-success);">trending_up</span> Top 5 - Respondedores Mais Rápidos</h3><div id="fastest-responders-list"><div class="empty-state">Carregando ranking...</div></div></div><div class="card"><h3 class="card-title" style="margin-bottom: 2rem;"><span class="material-icons" style="color: var(--color-danger);">report_problem</span> Top 5 - Maior Volume de Pendências</h3><div id="most-pending-list"><div class="empty-state">Carregando ranking...</div></div></div></div></div>
                 <div id="mural-page" class="page-content"><div class="page-header"><h1>Mural Cultural</h1><p>Acompanhe os eventos e novidades da Fama.</p></div><div id="mural-content">Carregando...</div><button class="fab hidden" id="fab-new-post" title="Nova Postagem"><span class="material-icons">add</span></button></div>
-                <div id="kb-page" class="page-content"><div class="page-header"><div><h1>Base de Conhecimento</h1><p>Manuais, normas e procedimentos internos.</p></div><div class="page-header-actions"><button class="btn btn-danger" onclick="currentEditingKBId = null; document.querySelector('#kb-modal h3').textContent = 'Novo Conteúdo'; document.getElementById('kb-form').reset(); toggleKBFields(); document.getElementById('kb-modal').classList.add('visible')"><span class="material-icons">add</span> Adicionar Conteúdo</button></div></div><div style="background-color: var(--color-info-bg); border-left: 4px solid var(--color-info); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 1rem;"><span class="material-icons" style="color: var(--color-info);">info</span><p style="margin: 0; font-size: 0.9rem; color: var(--color-text-primary);"><strong>Observação:</strong> Para atualizar o arquivo de um documento existente, por favor, <strong>exclua o registro atual e crie um novo</strong> com o arquivo atualizado. Atualmente, a edição direta é permitida apenas para o título e conteúdos em formato de texto.</p></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 40%;">Título</th><th style="width: 20%;">Categoria</th><th style="width: 20%;">Tipo</th><th style="width: 20%;">Ação</th></tr></thead><tbody id="kb-table-body"></tbody></table></div></div>
+                <div id="kb-page" class="page-content">
+                    <div class="page-header">
+                        <div>
+                            <h1>Base de Conhecimento</h1>
+                            <p>Manuais, diretrizes e procedimentos da Fama.</p>
+                        </div>
+                    </div>
+
+                    <!-- SISTEMA DE ABAS KB -->
+                    <div class="mgt-tabs" id="kb-tabs-nav" style="display:none; margin-bottom: 1.5rem;">
+                        <button class="mgt-tab-btn active" id="btn-kb-library" onclick="switchKBTab('library')">Biblioteca de Acesso</button>
+                        <button class="mgt-tab-btn" id="btn-kb-manage" onclick="switchKBTab('manage')">Gerenciar Acervo</button>
+                    </div>
+
+                    <!-- VISÃO 1: BIBLIOTECA (CONSUMO) -->
+                    <div id="kb-view-library">
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50%;">Documento / Procedimento</th>
+                                        <th style="width: 25%;">Categoria</th>
+                                        <th style="width: 25%;">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kb-table-body-library"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- VISÃO 2: GERENCIAMENTO (CURADORIA) -->
+                    <div id="kb-view-manage" style="display: none;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+                            <button class="btn btn-danger" onclick="openNewKBModal()">
+                                <span class="material-icons">add</span> Adicionar Conteúdo
+                            </button>
+                        </div>
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Título / Escopo</th>
+                                        <th style="width: 20%;">Categoria</th>
+                                        <th style="width: 20%;">Público-Alvo</th>
+                                        <th style="width: 20%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kb-table-body-manage"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 <div id="admin-dashboard-page" class="page-content"><div class="page-header"><h1>Dashboard Administrativo</h1></div><div class="card">Métricas da plataforma aparecerão aqui.</div></div>
                 <div id="users-page" class="page-content"><div class="page-header"><div class="page-header-title"><h1>Gerenciamento de Usuários</h1></div><div class="page-header-actions"><button id="refresh-users-btn" class="refresh-btn" title="Atualizar usuários"><span class="material-icons">refresh</span></button><button id="btn-new-user" class="btn btn-danger"><span class="material-icons">add</span> Novo Usuário</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Usuário & Email</th><th>Departamento & Cargo</th><th>Score</th><th>Ações</th></tr></thead><tbody id="user-table-body"></tbody></table></div></div>
                 <div id="profile-page" class="page-content"><div id="user-profile-content"></div><div id="user-history-content"></div></div>
@@ -2549,24 +2601,63 @@ function showPage(pageId, targetUserId = null) {
             document.getElementById('kb-text-group').style.display = type === 'text' ? 'block' : 'none';
         }
 
-async function loadKBPage() {
-            const tbody = document.getElementById('kb-table-body');
-            if (!tbody) return;
-
-            const isAdmin = currentUserProfile?.permissions?.some(p => ['manage_users', 'manage_hr'].includes(p));
-            const addBtn = document.querySelector('#kb-page .btn-danger');
-            if (addBtn) addBtn.style.display = isAdmin ? 'flex' : 'none';
-
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Carregando documentos...</td></tr>';
+async function switchKBTab(tab) {
+            document.getElementById('kb-view-library').style.display = tab === 'library' ? 'block' : 'none';
+            document.getElementById('kb-view-manage').style.display = tab === 'manage' ? 'block' : 'none';
+            document.getElementById('btn-kb-library').classList.toggle('active', tab === 'library');
+            document.getElementById('btn-kb-manage').classList.toggle('active', tab === 'manage');
             
-            // CHAMADA DA NOVA RPC SEGURA
+            tab === 'library' ? loadKBLibrary() : loadKBManage();
+        }
+
+        async function loadKBPage() {
+            const p = currentUserProfile.permissions || [];
+            const isManager = p.some(perm => ['manage_users', 'manage_hr', 'mgt_kb'].includes(perm));
+            
+            if (isManager) {
+                document.getElementById('kb-tabs-nav').style.display = 'flex';
+            } else {
+                document.getElementById('kb-tabs-nav').style.display = 'none';
+            }
+            switchKBTab('library');
+        }
+
+        async function loadKBLibrary() {
+            const tbody = document.getElementById('kb-table-body-library');
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Carregando Biblioteca...</td></tr>';
+            
             const { data, error } = await supabaseClient.rpc('get_kb_items_secure');
             
-            if (error || !data || !data.length) { 
-                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum documento disponível para seu acesso.</td></tr>'; 
-                return; 
+            if (error || !data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nenhum documento disponível para você.</td></tr>';
+                return;
             }
+
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td><strong>${item.title}</strong></td>
+                    <td><span class="tag-fino" style="background:var(--color-info-bg); color:var(--color-info);">${item.category}</span></td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${item.google_drive_file_id 
+                                ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary">Ver Arquivo</a>`
+                                : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')">Ler Documento</button>`}
+                        </div>
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function loadKBManage() {
+            const tbody = document.getElementById('kb-table-body-manage');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Carregando Gerenciamento...</td></tr>';
             
+            const { data, error } = await supabaseClient.rpc('get_kb_manageable_items');
+            
+            if (error || !data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Você não possui documentos para gerenciar.</td></tr>';
+                return;
+            }
+
             tbody.innerHTML = data.map(item => `
                 <tr>
                     <td>
@@ -2577,21 +2668,56 @@ async function loadKBPage() {
                             </small>
                         </div>
                     </td>
-                    <td><span class="tag-fino" style="background:var(--color-info-bg); color:var(--color-info);">${item.category}</span></td>
-                    <td>${item.content_type === 'text' ? '📝 Texto' : '📄 Arquivo'}</td>
+                    <td>${item.category}</td>
+                    <td>${item.target_value || 'Empresa Inteira'}</td>
                     <td>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            ${item.google_drive_file_id 
-                                ? `<a href="https://drive.google.com/file/d/${item.google_drive_file_id}/view" target="_blank" class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ver</a>`
-                                : `<button class="btn btn-secondary" onclick="viewKBText('${item.id}')" style="padding:0.35rem 0.7rem; font-size:0.85rem;">Ler</button>`}
-                            
-                            ${isAdmin ? `
-                                <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons" style="font-size:18px;">edit</span></button>
-                                <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="font-size:18px; color:var(--color-danger);">delete</span></button>
-                            ` : ''}
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn btn-icon" title="Editar" onclick="openKBEditModal('${item.id}')"><span class="material-icons">edit</span></button>
+                            <button class="btn btn-icon" title="Excluir" onclick="deleteKBItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')"><span class="material-icons" style="color:var(--color-danger);">delete</span></button>
                         </div>
                     </td>
                 </tr>`).join('');
+        }
+
+        function openNewKBModal() {
+            currentEditingKBId = null;
+            document.getElementById('kb-form').reset();
+            document.getElementById('kb-modal-title').textContent = 'Novo Conteúdo';
+            document.getElementById('kb-target-area').style.display = 'none';
+            document.getElementById('kb-target-value').value = '';
+            document.getElementById('kb-target-name').textContent = 'Selecionar...';
+            toggleKBFields();
+            document.getElementById('kb-modal').classList.add('visible');
+        }
+
+        function toggleScopeTargetFields() {
+            const scope = document.getElementById('kb-scope').value;
+            const area = document.getElementById('kb-target-area');
+            const label = document.getElementById('kb-target-label');
+            
+            area.style.display = scope === 'public' ? 'none' : 'block';
+            document.getElementById('kb-target-value').value = '';
+            document.getElementById('kb-target-name').textContent = 'Selecionar...';
+
+            if (scope === 'department') label.textContent = "Qual Departamento?";
+            else if (scope === 'role') label.textContent = "Qual Cargo?";
+            else label.textContent = "Qual Colaborador?";
+        }
+
+        function openKBScopeSelector() {
+            const scope = document.getElementById('kb-scope').value;
+            if (['individual', 'manager_plus'].includes(scope)) {
+                openAssigneeSelector('kb');
+            } else {
+                const options = scope === 'department' 
+                    ? [...new Set(allUsers.map(u => u.department).filter(Boolean))].sort()
+                    : [...new Set(allUsers.map(u => u.role).filter(Boolean))].sort();
+                
+                promptSelection(scope === 'department' ? "Selecionar Setor" : "Selecionar Cargo", options, (val) => {
+                    document.getElementById('kb-target-value').value = val;
+                    document.getElementById('kb-target-name').textContent = val;
+                });
+            }
         }
 
 async function submitKBContent() {
@@ -5879,16 +6005,25 @@ async function submitRequest(event) {
         }
 
 function toggleRecipientSelection(user) {
+            // Caso 1: Seleção de Alvo Único (Usado no Fluxograma e agora na Base de Conhecimento)
             if (currentSelectionTarget) {
-                const nameDisplay = document.getElementById(currentSelectionTarget + '-assignee-name');
-                const idInput     = document.getElementById(currentSelectionTarget + '-assignee-id');
+                const nameDisplay = document.getElementById(currentSelectionTarget + '-target-name') || document.getElementById(currentSelectionTarget + '-assignee-name');
+                const idInput     = document.getElementById(currentSelectionTarget + '-target-value') || document.getElementById(currentSelectionTarget + '-assignee-id');
+                
                 if (nameDisplay) nameDisplay.textContent = user.full_name;
                 if (idInput)     idInput.value           = user.id;
-                showToast('Responsável: ' + user.full_name, 'success');
+                
+                showToast('Selecionado: ' + user.full_name, 'success');
+                
+                // Fecha apenas o modal de seleção (que pode ser recipient-modal ou request-modal)
                 document.getElementById('recipient-modal').classList.remove('visible');
+                document.getElementById('request-modal').classList.remove('visible');
+                
                 currentSelectionTarget = null;
                 return;
             }
+
+            // Caso 2: Seleção Múltipla (Usado em Novas Mensagens)
             const targetArray = (_selectorConfig && _selectorConfig.targetArray) ? _selectorConfig.targetArray : selectedRecipients;
             const exists = targetArray.find(r => r.id === user.id);
             if (exists) {
@@ -8823,10 +8958,11 @@ async function openKBEditModal(id) {
             document.getElementById('kb-type').value = data.content_type;
             document.getElementById('kb-content-body').value = data.content_body || '';
             
+            // Carregar Escopo e Alvo
             document.getElementById('kb-scope').value = data.scope || 'public';
             document.getElementById('kb-target-value').value = data.target_value || '';
             
-            if (data.scope === 'individual' || data.scope === 'manager_plus') {
+            if (['individual', 'manager_plus'].includes(data.scope)) {
                 const user = allUsers.find(u => u.id === data.target_value);
                 document.getElementById('kb-target-name').textContent = user ? user.full_name : 'Usuário Selecionado';
             } else {
@@ -8836,9 +8972,7 @@ async function openKBEditModal(id) {
             toggleKBFields();
             toggleScopeTargetFields();
             
-            const modalTitle = document.querySelector('#kb-modal h3');
-            if (modalTitle) modalTitle.textContent = 'Editar Conteúdo';
-            
+            document.querySelector('#kb-modal h3').textContent = 'Editar Conteúdo';
             document.getElementById('kb-modal').classList.add('visible');
         }
 
@@ -8849,46 +8983,57 @@ async function openKBEditModal(id) {
             
             targetArea.style.display = scope === 'public' ? 'none' : 'block';
 
-            if (scope === 'department') targetLabel.textContent = "Departamento Alvo";
-            if (scope === 'role') targetLabel.textContent = "Cargo Alvo";
-            if (scope === 'individual' || scope === 'manager_plus') targetLabel.textContent = "Colaborador Alvo";
+            if (scope === 'department') targetLabel.textContent = "Qual Departamento?";
+            else if (scope === 'role') targetLabel.textContent = "Qual Cargo?";
+            else if (scope === 'individual' || scope === 'manager_plus') targetLabel.textContent = "Qual Colaborador?";
         }
 
         function openKBScopeSelector() {
             const scope = document.getElementById('kb-scope').value;
-            if (scope === 'department') {
-                const depts = [...new Set(allUsers.map(u => u.department).filter(Boolean))].sort();
-                promptSelection("Selecionar Departamento", depts, (val) => {
-                    document.getElementById('kb-target-value').value = val;
-                    document.getElementById('kb-target-name').textContent = val;
-                });
-            } else if (scope === 'role') {
-                const roles = [...new Set(allUsers.map(u => u.role).filter(Boolean))].sort();
-                promptSelection("Selecionar Cargo", roles, (val) => {
-                    document.getElementById('kb-target-value').value = val;
-                    document.getElementById('kb-target-name').textContent = val;
-                });
-            } else {
+            if (['individual', 'manager_plus'].includes(scope)) {
                 openAssigneeSelector('kb'); 
+            } else {
+                const options = scope === 'department' 
+                    ? [...new Set(allUsers.map(u => u.department).filter(Boolean))].sort()
+                    : [...new Set(allUsers.map(u => u.role).filter(Boolean))].sort();
+                
+                promptSelection(scope === 'department' ? "Selecionar Setor" : "Selecionar Cargo", options, (val) => {
+                    document.getElementById('kb-target-value').value = val;
+                    document.getElementById('kb-target-name').textContent = val;
+                });
             }
         }
 
         function promptSelection(title, options, callback) {
             const modal = document.getElementById('request-modal');
+            // Eleva o modal de seleção para a camada máxima (acima do modal de conteúdo)
+            modal.style.zIndex = '100005'; 
+            
             document.getElementById('request-modal-title').textContent = title;
             document.getElementById('request-modal-body').innerHTML = `
-                <div class="routines-list">
-                    ${options.map(opt => `<div class="routines-list-item" onclick="confirmPromptSelection('${opt.replace(/'/g, "\\'")}')">${opt}</div>`).join('')}
+                <div class="routines-list" style="max-height: 400px; overflow-y: auto;">
+                    ${options.map(opt => `
+                        <div class="routines-list-item" 
+                             style="border-bottom: 1px solid var(--color-border); padding: 1rem;" 
+                             onclick="confirmPromptSelection('${opt.replace(/'/g, "\\'")}')">
+                             <strong>${opt}</strong>
+                        </div>`).join('')}
                 </div>`;
-            document.getElementById('request-modal-footer').innerHTML = `<button class="btn btn-secondary" onclick="document.getElementById('request-modal').classList.remove('visible'); document.getElementById('kb-modal').classList.add('visible');">Voltar</button>`;
+            
+            document.getElementById('request-modal-footer').innerHTML = `
+                <button class="btn btn-secondary" onclick="document.getElementById('request-modal').classList.remove('visible')">Cancelar Seleção</button>
+            `;
+            
             window._promptCallback = callback;
             modal.classList.add('visible');
         }
 
         window.confirmPromptSelection = (val) => {
-            window._promptCallback(val);
+            if (window._promptCallback) {
+                window._promptCallback(val);
+            }
             document.getElementById('request-modal').classList.remove('visible');
-            document.getElementById('kb-modal').classList.add('visible');
+            // Mantém o modal de conteúdo visível por baixo
         }
 
         async function deleteKBItem(id, title) {
@@ -8962,7 +9107,7 @@ async function openKBEditModal(id) {
                     showToast("Sucesso!", "success");
                     document.getElementById('kb-modal').classList.remove('visible');
                     currentEditingKBId = null;
-                    setTimeout(() => loadKBPage(), 500);
+                    loadKBPage();
                 } else { throw new Error(); }
             } catch (e) {
                 showToast("Erro ao publicar.", "danger");
