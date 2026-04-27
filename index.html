@@ -5099,24 +5099,56 @@ function closeRequestModal() {
             currentEditingRequest = null;
         }
 
-        async function renderDynamicForm(blueprintId) {
+async function renderDynamicForm(blueprintId) {
             const modalBody = document.getElementById('request-modal-body');
             const modalFooter = document.getElementById('request-modal-footer');
             const bp = currentBlueprints.find(b => b.id === blueprintId);
-            modalBody.innerHTML = `<div class="empty-state">Carregando formulário...</div>`;
+
+            modalBody.innerHTML = `<div class="empty-state"><span class="material-icons refresh-spin">sync</span><br>Montando formulário inteligente...</div>`;
 
             const { data: fields } = await supabaseClient.from('request_blueprint_fields').select('*').eq('blueprint_id', blueprintId).order('field_order');
-            let formHTML = `<div class="dynamic-form-container"><p style="color:var(--color-text-secondary); margin-bottom:1rem;">${bp.description || ''}</p><form id="dynamic-submit-form">`;
+
+            let formHTML = `<div class="dynamic-form-container">
+                <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border);">
+                    <h2 style="margin:0; font-size: 1.25rem;">${bp.name}</h2>
+                    <p style="color:var(--color-text-secondary); font-size: 0.9rem; margin: 4px 0 0 0;">${bp.description || 'Preencha os dados abaixo para iniciar o fluxo.'}</p>
+                </div>
+                <form id="dynamic-submit-form">`;
+            
             fields.forEach(f => {
-                formHTML += `<div class="form-group"><label class="dynamic-field-label">${f.label}${f.is_required ? '*' : ''}</label>`;
-                if(f.field_type === 'textarea') formHTML += `<textarea name="${f.id}" class="input-field" rows="3" ${f.is_required ? 'required' : ''}></textarea>`;
-                else if(f.field_type === 'date') formHTML += `<input type="date" name="${f.id}" class="input-field" ${f.is_required ? 'required' : ''}>`;
-                else formHTML += `<input type="text" name="${f.id}" class="input-field" ${f.is_required ? 'required' : ''}>`;
+                const requiredAttr = f.is_required ? 'required' : '';
+                const asterisk = f.is_required ? '<span style="color:var(--color-brand-primary);">*</span>' : '';
+                
+                formHTML += `<div class="form-group">
+                    <label class="dynamic-field-label">${f.label} ${asterisk}</label>`;
+                
+                if (f.field_type === 'textarea') {
+                    formHTML += `<textarea name="${f.id}" class="input-field" rows="3" ${requiredAttr} placeholder="Digite sua resposta detalhada..."></textarea>`;
+                } else if (f.field_type === 'date') {
+                    formHTML += `<input type="date" name="${f.id}" class="input-field" ${requiredAttr}>`;
+                } else if (f.field_type === 'number') {
+                    formHTML += `<input type="number" name="${f.id}" class="input-field" ${requiredAttr} placeholder="0">`;
+                } else if (f.field_type === 'currency') {
+                    formHTML += `<div style="position:relative;">
+                        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span>
+                        <input type="number" step="0.01" name="${f.id}" class="input-field" style="padding-left: 35px;" ${requiredAttr} placeholder="0,00">
+                    </div>`;
+                } else if (f.field_type === 'checkbox') {
+                    formHTML += `<label class="custom-checkbox">
+                        <input type="checkbox" name="${f.id}">
+                        <span class="checkbox-box"><span class="material-icons">check</span></span>
+                        <span style="font-size:0.9rem;">Confirmo esta informação</span>
+                    </label>`;
+                } else {
+                    formHTML += `<input type="text" name="${f.id}" class="input-field" ${requiredAttr} placeholder="Digite aqui...">`;
+                }
+                
                 formHTML += `</div>`;
             });
             formHTML += `</form></div>`;
+
             modalBody.innerHTML = `<button class="btn btn-icon" onclick="openRequestModal()" style="margin-bottom:1rem;"><span class="material-icons">arrow_back</span></button>` + formHTML;
-            modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button><button class="btn btn-danger" onclick="submitDynamicRequest('${blueprintId}')">Enviar Solicitação</button>`;
+            modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button><button class="btn btn-danger" onclick="submitDynamicRequest('${blueprintId}')">Confirmar e Enviar</button>`;
         }
 
         async function submitDynamicRequest(blueprintId) {
@@ -7586,31 +7618,48 @@ function toggleMgtView(view) {
             renderBuilderItems();
         }
 
-        function renderBuilderItems() {
+function renderBuilderItems() {
             const fieldsCont = document.getElementById('bp-fields-container');
             fieldsCont.innerHTML = editingBlueprint.fields.map((f, i) => `
                 <div class="field-item">
-                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.fields.splice(${i},1); renderBuilderItems();">delete</span>
-                    <input type="text" class="input-field" placeholder="Nome do Campo" value="${f.label}" oninput="editingBlueprint.fields[${i}].label = this.value">
-                    <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.fields[${i}].type = this.value">
-                        <option value="text" ${f.type==='text'?'selected':''}>Texto Curto</option>
-                        <option value="textarea" ${f.type==='textarea'?'selected':''}>Parágrafo</option>
-                        <option value="date" ${f.type==='date'?'selected':''}>Data</option>
-                    </select>
+                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.fields.splice(${i},1); renderBuilderItems();">cancel</span>
+                    
+                    <div class="grid grid-cols-2" style="gap: 10px; margin-bottom: 8px;">
+                        <input type="text" class="input-field" placeholder="Nome da Pergunta (ex: Qual o Valor?)" value="${f.label}" oninput="editingBlueprint.fields[${i}].label = this.value">
+                        <select class="input-field" onchange="editingBlueprint.fields[${i}].type = this.value; renderBuilderItems();">
+                            <option value="text" ${f.type==='text'?'selected':''}>Texto Curto</option>
+                            <option value="textarea" ${f.type==='textarea'?'selected':''}>Parágrafo</option>
+                            <option value="number" ${f.type==='number'?'selected':''}>Número Inteiro</option>
+                            <option value="currency" ${f.type==='currency'?'selected':''}>Moeda (R$)</option>
+                            <option value="date" ${f.type==='date'?'selected':''}>Data</option>
+                            <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Check (Sim/Não)</option>
+                        </select>
+                    </div>
+
+                    <label class="custom-checkbox">
+                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked">
+                        <span class="checkbox-box"><span class="material-icons">check</span></span>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary);">CAMPO OBRIGATÓRIO</span>
+                    </label>
                 </div>
             `).join('');
 
             const workflowCont = document.getElementById('bp-workflow-container');
             workflowCont.innerHTML = editingBlueprint.workflow.map((w, i) => `
                 <div class="step-item">
-                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.workflow.splice(${i},1); renderBuilderItems();">delete</span>
-                    <div style="font-weight:700; color:var(--color-brand-primary); margin-bottom:5px;">Etapa ${i+1}</div>
-                    <input type="text" class="input-field" placeholder="Nome da Etapa" value="${w.name}" oninput="editingBlueprint.workflow[${i}].name = this.value">
+                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.workflow.splice(${i},1); renderBuilderItems();">cancel</span>
+                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Ping de Aprovação #${i+1}</div>
+                    <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Crivo do Diretor)" value="${w.name}" oninput="editingBlueprint.workflow[${i}].name = this.value">
                     <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.workflow[${i}].type = this.value; renderBuilderItems();">
-                        <option value="manager" ${w.type==='manager'?'selected':''}>Gerente Direto</option>
-                        <option value="specific_user" ${w.type==='specific_user'?'selected':''}>Usuário Específico</option>
+                        <option value="manager" ${w.type==='manager'?'selected':''}>Gerente Direto do Solicitante</option>
+                        <option value="specific_user" ${w.type==='specific_user'?'selected':''}>Pessoa Específica da Empresa</option>
                     </select>
-                    ${w.type === 'specific_user' ? `<div class="input-field" style="margin-top:5px; cursor:pointer;" onclick="openAssigneeSelectorForBuilder(${i})">${w.approver_name || 'Selecionar Usuário...'}</div>` : ''}
+                    ${w.type === 'specific_user' ? `
+                        <div id="bp-step-user-${i}" class="input-field" style="margin-top:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openAssigneeSelectorForBuilder(${i})">
+                            <span id="bp-step-username-${i}">${w.approver_name || 'Escolher Pessoa...'}</span>
+                            <span class="material-icons" style="font-size:18px;">person_search</span>
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
         }
@@ -7630,10 +7679,34 @@ function toggleMgtView(view) {
 
         function closeBuilder() { document.getElementById('builder-workspace').style.display = 'none'; document.getElementById('builder-empty-state').style.display = 'flex'; }
 
-        async function loadBlueprintList() {
+async function loadBlueprintList() {
             const container = document.getElementById('blueprint-list');
-            const { data } = await supabaseClient.from('request_blueprints').select('*').order('created_at', {ascending: false});
-            container.innerHTML = data.map(bp => `<div class="blueprint-card" onclick="editExistingBlueprint('${bp.id}')"><span class="material-icons">${bp.icon}</span><div><div style="font-weight:700;">${bp.name}</div><div style="font-size:0.7rem;">${bp.category}</div></div></div>`).join('');
+            try {
+                const { data, error } = await supabaseClient.from('request_blueprints').select('*').order('created_at', {ascending: false});
+                
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding: 2rem 1rem; border: 1.5px dashed var(--color-border); border-radius: 12px; background: var(--color-background);">
+                            <span class="material-icons" style="font-size: 32px; color: var(--color-border); margin-bottom: 0.5rem;">post_add</span>
+                            <p style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3;">Nenhum molde criado.<br>Clique em "Novo Molde" acima.</p>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = data.map(bp => `
+                    <div class="blueprint-card" onclick="editExistingBlueprint('${bp.id}')">
+                        <span class="material-icons">${bp.icon || 'description'}</span>
+                        <div style="overflow:hidden;">
+                            <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis;">${bp.name}</div>
+                            <div style="font-size:0.7rem; color:var(--color-text-secondary); text-transform: uppercase;">${bp.category}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state">Erro ao carregar moldes.</div>';
+            }
         }
 
         async function editExistingBlueprint(id) {
