@@ -1302,7 +1302,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 .mgt-tab-btn.active { color: var(--color-brand-primary); border-bottom-color: var(--color-brand-primary); }
 
-/* --- FAMA FLOW BUILDER UI (REFINADO) --- */
+/* --- FAMA FLOW BUILDER UI (AVANÇADO) --- */
 .builder-grid { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; align-items: start; }
 .builder-sidebar { background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: var(--shadow); }
 .blueprint-card { 
@@ -1314,20 +1314,30 @@ body.fullscreen-flow .flowchart-monitor-bar {
 .blueprint-card.active { border-color: var(--color-brand-primary); background: var(--color-danger-bg); }
 .blueprint-card.active .material-icons { color: var(--color-brand-primary); }
 
+.builder-workspace { background: var(--color-surface); padding: 0; border-radius: 12px; border: 1px solid var(--color-border); overflow: hidden; display: flex; flex-direction: column; }
+
 .builder-header-card {
-    background: var(--color-surface); padding: 2rem; border-radius: 12px;
-    border: 1px solid var(--color-border); margin-bottom: 2rem; border-left: 6px solid var(--color-brand-primary);
+    background: var(--color-surface); padding: 1.5rem; border-radius: 12px;
+    border: 1px solid var(--color-border); margin: 1.5rem; border-left: 6px solid var(--color-brand-primary);
 }
 .builder-title-input {
-    font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);
+    font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary);
     width: 100%; border: none; background: transparent; outline: none; margin-bottom: 0.5rem; font-family: 'Inter', sans-serif;
 }
 .builder-desc-input {
-    font-size: 1rem; color: var(--color-text-secondary);
+    font-size: 0.9rem; color: var(--color-text-secondary);
     width: 100%; border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif;
 }
 
-.builder-section { background: var(--color-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-border); height: 100%; }
+.builder-tabs-nav { display: flex; background: var(--color-background); border-bottom: 1px solid var(--color-border); }
+.builder-tab-link { padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--color-text-secondary); border-right: 1px solid var(--color-border); text-transform: uppercase; }
+.builder-tab-link.active { background: var(--color-surface); color: var(--color-brand-primary); }
+
+.builder-main-content { display: grid; grid-template-columns: 1fr 1fr; height: 600px; }
+.builder-editor-side { padding: 1.5rem; overflow-y: auto; border-right: 1px solid var(--color-border); }
+.builder-preview-side { padding: 1.5rem; overflow-y: auto; background: #fdfdfd; }
+
+.builder-section { height: 100%; }
 .info-hint {
     background: var(--color-info-bg); color: var(--color-info); padding: 0.75rem 1rem;
     border-radius: 8px; font-size: 0.8rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.4;
@@ -1340,6 +1350,11 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 .field-item:hover, .step-item:hover { border-color: var(--color-brand-primary); }
 .btn-remove-item { position: absolute; top: -10px; right: -10px; color: var(--color-danger); cursor: pointer; background: var(--color-surface); border-radius: 50%; box-shadow: var(--shadow); padding: 2px; }
+
+.field-options-input { margin-top: 8px; padding: 8px; font-size: 0.8rem; border: 1px dashed var(--color-info); border-radius: 6px; background: var(--color-info-bg); }
+
+.preview-badge { background: var(--color-info-bg); color: var(--color-info); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; margin-bottom: 1rem; display: inline-block; }
+.preview-form-box { background: var(--color-surface); padding: 2rem; border-radius: 8px; border: 1px solid var(--color-border); box-shadow: var(--shadow); }
 
 /* Dynamic Form Rendering */
 .dynamic-form-container { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -2209,46 +2224,63 @@ const appHTML = `<div id="app-container">
                             </div>
                         </div>
 
-                        <!-- ÁREA DE EDIÇÃO -->
-                        <div id="builder-workspace" style="display: none;">
+                        <!-- ÁREA DE EDIÇÃO AVANÇADA -->
+                        <div id="builder-workspace" style="display: none;" class="builder-workspace">
                             <!-- HEADER DO MOLDE -->
                             <div class="builder-header-card">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <span style="font-size: 0.75rem; font-weight: 800; color: var(--color-brand-primary); text-transform: uppercase; letter-spacing: 0.1em;">Identificação do Processo</span>
                                     <div style="display: flex; gap: 0.75rem;">
-                                        <button class="btn btn-secondary" onclick="closeBuilder()">Descartar</button>
+                                        <button class="btn btn-secondary" onclick="closeBuilder()">Sair</button>
                                         <button class="btn btn-danger" onclick="saveBlueprint()"><span class="material-icons">cloud_upload</span> Publicar Molde</button>
                                     </div>
                                 </div>
-                                <input type="text" id="bp-name" class="builder-title-input" placeholder="Ex: Requisição de Compra de EPI" oninput="editingBlueprint.name = this.value">
-                                <input type="text" id="bp-desc" class="builder-desc-input" placeholder="Descreva brevemente o objetivo desta requisição para o colaborador..." oninput="editingBlueprint.description = this.value">
+                                <input type="text" id="bp-name" class="builder-title-input" placeholder="Nome da Requisição" oninput="editingBlueprint.name = this.value; updateLivePreview();">
+                                <input type="text" id="bp-desc" class="builder-desc-input" placeholder="Instruções para o colaborador..." oninput="editingBlueprint.description = this.value; updateLivePreview();">
                             </div>
 
-                            <div class="grid grid-cols-2">
-                                <!-- CONSTRUÇÃO DO FORMULÁRIO -->
-                                <div class="builder-section">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                                        <h3 style="font-size: 1rem; display:flex; align-items:center; gap:0.5rem;"><span class="material-icons">dynamic_form</span> Formulário</h3>
-                                        <button class="btn btn-icon" onclick="addFormField()" title="Adicionar Pergunta"><span class="material-icons">add_circle</span></button>
+                            <!-- NAVEGAÇÃO INTERNA -->
+                            <div class="builder-tabs-nav">
+                                <button class="builder-tab-link active" onclick="switchBuilderTab('form')">1. Desenho do Formulário</button>
+                                <button class="builder-tab-link" onclick="switchBuilderTab('workflow')">2. Cadeia de Pings</button>
+                            </div>
+
+                            <div class="builder-main-content">
+                                <!-- LADO ESQUERDO: EDITOR -->
+                                <div class="builder-editor-side">
+                                    <!-- EDITOR DE FORMULÁRIO -->
+                                    <div id="builder-section-form">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                            <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase;">Campos da Requisição</h3>
+                                            <button class="btn btn-icon" onclick="addFormField()" title="Adicionar Pergunta"><span class="material-icons">add_circle</span></button>
+                                        </div>
+                                        <div class="info-hint">
+                                            <span class="material-icons">info</span>
+                                            <span>Defina as perguntas que o solicitante deve responder. O formulário aparecerá no quadro ao lado.</span>
+                                        </div>
+                                        <div id="bp-fields-container"></div>
                                     </div>
-                                    <div class="info-hint">
-                                        <span class="material-icons">info</span>
-                                        <span>Defina as perguntas que o solicitante deve responder. Estas respostas serão salvas na base de dados do processo.</span>
+
+                                    <!-- EDITOR DE WORKFLOW -->
+                                    <div id="builder-section-workflow" style="display: none;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                            <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase;">Cadeia de Pings (Aprovação)</h3>
+                                            <button class="btn btn-icon" onclick="addWorkflowStep()" title="Adicionar Etapa de Aprovação"><span class="material-icons">playlist_add</span></button>
+                                        </div>
+                                        <div class="info-hint">
+                                            <span class="material-icons">account_tree</span>
+                                            <span>Defina quem deve dar o "visto" em cada etapa. O sistema notificará o responsável automaticamente.</span>
+                                        </div>
+                                        <div id="bp-workflow-container"></div>
                                     </div>
-                                    <div id="bp-fields-container"></div>
                                 </div>
 
-                                <!-- CONSTRUÇÃO DO WORKFLOW -->
-                                <div class="builder-section">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
-                                        <h3 style="font-size: 1rem; display:flex; align-items:center; gap:0.5rem;"><span class="material-icons">account_tree</span> Fluxo de Pings</h3>
-                                        <button class="btn btn-icon" onclick="addWorkflowStep()" title="Adicionar Etapa de Aprovação"><span class="material-icons">playlist_add</span></button>
+                                <!-- LADO DIREITO: PREVIEW EM TEMPO REAL -->
+                                <div class="builder-preview-side" id="builder-preview-area">
+                                    <div class="preview-badge">MODO VISUALIZADOR</div>
+                                    <div class="preview-form-box" id="live-preview-container">
+                                        <!-- O formulário será gerado aqui pelo JavaScript -->
                                     </div>
-                                    <div class="info-hint">
-                                        <span class="material-icons">account_tree</span>
-                                        <span>Crie a cadeia de comando. A requisição passará por cada etapa (Ping) até ser aprovada definitivamente pela Diretoria.</span>
-                                    </div>
-                                    <div id="bp-workflow-container"></div>
                                 </div>
                             </div>
                         </div>
@@ -6230,7 +6262,6 @@ async function submitRequest(event) {
         }
 
 function toggleRecipientSelection(user) {
-            // Caso 1: Seleção de Alvo Único (Usado no Fluxograma e agora na Base de Conhecimento)
             if (currentSelectionTarget) {
                 const nameDisplay = document.getElementById(currentSelectionTarget + '-target-name') || document.getElementById(currentSelectionTarget + '-assignee-name');
                 const idInput     = document.getElementById(currentSelectionTarget + '-target-value') || document.getElementById(currentSelectionTarget + '-assignee-id');
@@ -6240,15 +6271,11 @@ function toggleRecipientSelection(user) {
                 
                 showToast('Selecionado: ' + user.full_name, 'success');
                 
-                // Fecha apenas o modal de seleção (que pode ser recipient-modal ou request-modal)
                 document.getElementById('recipient-modal').classList.remove('visible');
-                document.getElementById('request-modal').classList.remove('visible');
-                
                 currentSelectionTarget = null;
                 return;
             }
 
-            // Caso 2: Seleção Múltipla (Usado em Novas Mensagens)
             const targetArray = (_selectorConfig && _selectorConfig.targetArray) ? _selectorConfig.targetArray : selectedRecipients;
             const exists = targetArray.find(r => r.id === user.id);
             if (exists) {
@@ -7622,22 +7649,30 @@ function renderBuilderItems() {
             const fieldsCont = document.getElementById('bp-fields-container');
             fieldsCont.innerHTML = editingBlueprint.fields.map((f, i) => `
                 <div class="field-item">
-                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.fields.splice(${i},1); renderBuilderItems();">cancel</span>
-                    
+                    <span class="material-icons btn-remove-item" onclick="editingBlueprint.fields.splice(${i},1); renderBuilderItems(); updateLivePreview();">cancel</span>
                     <div class="grid grid-cols-2" style="gap: 10px; margin-bottom: 8px;">
-                        <input type="text" class="input-field" placeholder="Nome da Pergunta (ex: Qual o Valor?)" value="${f.label}" oninput="editingBlueprint.fields[${i}].label = this.value">
-                        <select class="input-field" onchange="editingBlueprint.fields[${i}].type = this.value; renderBuilderItems();">
+                        <input type="text" class="input-field" placeholder="Nome da Pergunta" value="${f.label}" oninput="editingBlueprint.fields[${i}].label = this.value; updateLivePreview();">
+                        <select class="input-field" onchange="editingBlueprint.fields[${i}].type = this.value; renderBuilderItems(); updateLivePreview();">
                             <option value="text" ${f.type==='text'?'selected':''}>Texto Curto</option>
                             <option value="textarea" ${f.type==='textarea'?'selected':''}>Parágrafo</option>
-                            <option value="number" ${f.type==='number'?'selected':''}>Número Inteiro</option>
+                            <option value="number" ${f.type==='number'?'selected':''}>Número</option>
                             <option value="currency" ${f.type==='currency'?'selected':''}>Moeda (R$)</option>
                             <option value="date" ${f.type==='date'?'selected':''}>Data</option>
-                            <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Check (Sim/Não)</option>
+                            <option value="select" ${f.type==='select'?'selected':''}>Seleção (Dropdown)</option>
+                            <option value="radio" ${f.type==='radio'?'selected':''}>Opções (Bolinhas)</option>
+                            <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Confirmação (Check)</option>
                         </select>
                     </div>
 
-                    <label class="custom-checkbox">
-                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked">
+                    ${['select', 'radio'].includes(f.type) ? `
+                        <input type="text" class="input-field field-options-input" 
+                               placeholder="Opções separadas por vírgula (ex: RH, TI, Vendas)" 
+                               value="${f.options ? f.options.join(',') : ''}"
+                               oninput="editingBlueprint.fields[${i}].options = this.value.split(','); updateLivePreview();">
+                    ` : ''}
+
+                    <label class="custom-checkbox" style="margin-top: 10px;">
+                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked; updateLivePreview();">
                         <span class="checkbox-box"><span class="material-icons">check</span></span>
                         <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary);">CAMPO OBRIGATÓRIO</span>
                     </label>
@@ -7648,8 +7683,8 @@ function renderBuilderItems() {
             workflowCont.innerHTML = editingBlueprint.workflow.map((w, i) => `
                 <div class="step-item">
                     <span class="material-icons btn-remove-item" onclick="editingBlueprint.workflow.splice(${i},1); renderBuilderItems();">cancel</span>
-                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Ping de Aprovação #${i+1}</div>
-                    <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Crivo do Diretor)" value="${w.name}" oninput="editingBlueprint.workflow[${i}].name = this.value">
+                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Ping #${i+1}</div>
+                    <input type="text" class="input-field" placeholder="Ex: Crivo do Diretor" value="${w.name}" oninput="editingBlueprint.workflow[${i}].name = this.value">
                     <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.workflow[${i}].type = this.value; renderBuilderItems();">
                         <option value="manager" ${w.type==='manager'?'selected':''}>Gerente Direto do Solicitante</option>
                         <option value="specific_user" ${w.type==='specific_user'?'selected':''}>Pessoa Específica da Empresa</option>
@@ -7662,6 +7697,42 @@ function renderBuilderItems() {
                     ` : ''}
                 </div>
             `).join('');
+            
+            // Chama a atualização do quadro visual logo após renderizar os controles
+            updateLivePreview();
+        }
+
+        function updateLivePreview() {
+            const container = document.getElementById('live-preview-container');
+            if(!container) return;
+
+            let html = `<div><h2 style="margin-bottom:0.5rem; font-size: 1.5rem;">${document.getElementById('bp-name').value || 'Nova Requisição'}</h2>
+                        <p style="color:var(--color-text-secondary); font-size:0.9rem; margin-bottom:2rem;">${document.getElementById('bp-desc').value || 'Descreva o processo...'}</p>`;
+
+            editingBlueprint.fields.forEach(f => {
+                const asterisk = f.required ? '<span style="color:var(--color-brand-primary);">*</span>' : '';
+                html += `<div class="form-group"><label class="dynamic-field-label">${f.label || 'Nome da Pergunta'} ${asterisk}</label>`;
+                
+                if(f.type === 'select') {
+                    html += `<select class="input-field" disabled><option>-- Selecione --</option>${(f.options || []).map(opt => `<option>${opt.trim()}</option>`).join('')}</select>`;
+                } else if(f.type === 'radio') {
+                    html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">${(f.options || []).map(opt => `
+                        <label style="display:flex; align-items:center; gap:8px;"><input type="radio" disabled> ${opt.trim()}</label>
+                    `).join('')}</div>`;
+                } else if(f.type === 'checkbox') {
+                    html += `<label class="custom-checkbox" style="opacity: 0.7;"><input type="checkbox" disabled><span class="checkbox-box"><span class="material-icons">check</span></span> Confirmar afirmação</label>`;
+                } else if(f.type === 'currency') {
+                    html += `<div style="position:relative;"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span><input type="text" class="input-field" style="padding-left:40px;" placeholder="0,00" disabled></div>`;
+                } else if(f.type === 'textarea') {
+                    html += `<textarea class="input-field" rows="2" placeholder="Resposta detalhada..." disabled></textarea>`;
+                } else {
+                    html += `<input type="text" class="input-field" placeholder="Resposta curta..." disabled>`;
+                }
+                html += `</div>`;
+            });
+
+            html += `<button class="btn btn-danger" style="width:100%; margin-top:1rem;" disabled>Enviar (Modo Preview)</button></div>`;
+            container.innerHTML = html;
         }
 
         async function saveBlueprint() {
@@ -7681,16 +7752,16 @@ function renderBuilderItems() {
 
 async function loadBlueprintList() {
             const container = document.getElementById('blueprint-list');
+            container.innerHTML = '<div class="empty-state">Carregando...</div>';
             try {
                 const { data, error } = await supabaseClient.from('request_blueprints').select('*').order('created_at', {ascending: false});
-                
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
                     container.innerHTML = `
-                        <div style="text-align:center; padding: 2rem 1rem; border: 1.5px dashed var(--color-border); border-radius: 12px; background: var(--color-background);">
+                        <div style="text-align:center; padding: 2rem 1rem; border: 1px dashed var(--color-border); border-radius: 10px; background: var(--color-surface); margin-top: 1rem;">
                             <span class="material-icons" style="font-size: 32px; color: var(--color-border); margin-bottom: 0.5rem;">post_add</span>
-                            <p style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3;">Nenhum molde criado.<br>Clique em "Novo Molde" acima.</p>
+                            <p style="font-size: 0.8rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; margin:0;">Nenhum molde disponível.<br>Utilize o botão 'Novo Molde'.</p>
                         </div>`;
                     return;
                 }
@@ -7699,13 +7770,13 @@ async function loadBlueprintList() {
                     <div class="blueprint-card" onclick="editExistingBlueprint('${bp.id}')">
                         <span class="material-icons">${bp.icon || 'description'}</span>
                         <div style="overflow:hidden;">
-                            <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis;">${bp.name}</div>
-                            <div style="font-size:0.7rem; color:var(--color-text-secondary); text-transform: uppercase;">${bp.category}</div>
+                            <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis; font-size: 0.9rem;">${bp.name}</div>
+                            <div style="font-size:0.7rem; color:var(--color-text-secondary); text-transform: uppercase; margin-top: 2px;">${bp.category}</div>
                         </div>
                     </div>
                 `).join('');
             } catch (e) {
-                container.innerHTML = '<div class="empty-state">Erro ao carregar moldes.</div>';
+                container.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Falha ao buscar moldes.</div>';
             }
         }
 
@@ -9377,9 +9448,8 @@ async function openKBEditModal(id) {
             }
         }
 
-        function promptSelection(title, options, callback) {
+function promptSelection(title, options, callback) {
             const modal = document.getElementById('request-modal');
-            // Eleva o modal de seleção para a camada máxima (acima do modal de conteúdo)
             modal.style.zIndex = '100005'; 
             
             document.getElementById('request-modal-title').textContent = title;
@@ -9406,7 +9476,6 @@ async function openKBEditModal(id) {
                 window._promptCallback(val);
             }
             document.getElementById('request-modal').classList.remove('visible');
-            // Mantém o modal de conteúdo visível por baixo
         }
 
         async function deleteKBItem(id, title) {
