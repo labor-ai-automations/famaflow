@@ -2230,7 +2230,8 @@ const appHTML = `<div id="app-container">
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">4. Permissões Especiais Globais</label>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-manage_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">hub</span><span class="perm-text">Gerenciar Processos da Empresa</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-manage_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">hub</span><span class="perm-text">Gerenciar Processos</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Gerenciar Base Conhec.</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_admin_dash"><span class="perm-checkmark"></span><span class="material-icons perm-icon">query_stats</span><span class="perm-text">Ver Admin Dashboard</span></label>
                                     <label class="perm-checkbox" style="background: var(--color-danger-bg); border-color: var(--color-danger); grid-column: 1 / -1;"><input type="checkbox" id="perm-manage_users"><span class="perm-checkmark"></span><span class="material-icons perm-icon" style="color:var(--color-danger);">admin_panel_settings</span><span class="perm-text" style="color:var(--color-danger);">Admin Geral (Acesso Total)</span></label>
                                 </div>
@@ -2612,13 +2613,16 @@ async function switchKBTab(tab) {
 
         async function loadKBPage() {
             const p = currentUserProfile.permissions || [];
-            const isManager = p.some(perm => ['manage_users', 'manage_hr', 'mgt_kb'].includes(perm));
+            const userRole = currentUserProfile.role;
             
-            if (isManager) {
-                document.getElementById('kb-tabs-nav').style.display = 'flex';
-            } else {
-                document.getElementById('kb-tabs-nav').style.display = 'none';
+            // É gerente de KB se for Admin OU se tiver a permissão mgt_kb OU manage_hr
+            const isManager = userRole === 'Admin' || p.some(perm => ['manage_users', 'manage_hr', 'mgt_kb'].includes(perm));
+            
+            const tabNav = document.getElementById('kb-tabs-nav');
+            if (tabNav) {
+                tabNav.style.display = isManager ? 'flex' : 'none';
             }
+            
             switchKBTab('library');
         }
 
@@ -5953,11 +5957,12 @@ async function submitRequest(event) {
             const roleFilter = document.getElementById('filter-role').value;
             const textFilter = document.getElementById('filter-text').value.toLowerCase();
 
-            const isParticipantSelector = _selectorConfig && _selectorConfig.targetArray === selectedParticipants;
+            // Se estivermos selecionando um Responsável de Etapa ou Alvo de KB, mostramos TODO MUNDO (incluindo o próprio usuário)
+            const isBroadSelector = currentSelectionTarget !== null || (_selectorConfig && _selectorConfig.targetArray === selectedParticipants);
 
             const filtered = allUsers.filter(user => {
-                const isCurrentUser = user.id === currentUserProfile.id;
-                if(isCurrentUser && !isParticipantSelector) return false;
+                // Se não for BroadSelector, remove o próprio usuário da lista (comum em envio de mensagens)
+                if (!isBroadSelector && user.id === currentUserProfile.id) return false;
 
                 const matchDept = deptFilter === "" || user.department === deptFilter;
                 const matchRole = roleFilter === "" || user.role === roleFilter;
