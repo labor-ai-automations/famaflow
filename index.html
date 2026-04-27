@@ -7702,36 +7702,38 @@ function renderBuilderItems() {
             updateLivePreview();
         }
 
-        function updateLivePreview() {
+function updateLivePreview() {
             const container = document.getElementById('live-preview-container');
             if(!container) return;
 
-            let html = `<div><h2 style="margin-bottom:0.5rem; font-size: 1.5rem;">${document.getElementById('bp-name').value || 'Nova Requisição'}</h2>
-                        <p style="color:var(--color-text-secondary); font-size:0.9rem; margin-bottom:2rem;">${document.getElementById('bp-desc').value || 'Descreva o processo...'}</p>`;
+            let html = `<div style="pointer-events: auto;"><h2 style="margin-bottom:0.5rem; font-size: 1.5rem;">${document.getElementById('bp-name').value || 'Nova Requisição'}</h2>
+                        <p style="color:var(--color-text-secondary); font-size:0.9rem; margin-bottom:2rem;">${document.getElementById('bp-desc').value || 'Instruções para preenchimento.'}</p>
+                        <form onsubmit="event.preventDefault();">`;
 
             editingBlueprint.fields.forEach(f => {
                 const asterisk = f.required ? '<span style="color:var(--color-brand-primary);">*</span>' : '';
                 html += `<div class="form-group"><label class="dynamic-field-label">${f.label || 'Nome da Pergunta'} ${asterisk}</label>`;
                 
                 if(f.type === 'select') {
-                    html += `<select class="input-field" disabled><option>-- Selecione --</option>${(f.options || []).map(opt => `<option>${opt.trim()}</option>`).join('')}</select>`;
+                    // Removido o 'disabled' para permitir a visualização do Dropdown
+                    html += `<select class="input-field"><option>-- Selecione --</option>${(f.options || []).map(opt => `<option value="${opt.trim()}">${opt.trim()}</option>`).join('')}</select>`;
                 } else if(f.type === 'radio') {
                     html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">${(f.options || []).map(opt => `
-                        <label style="display:flex; align-items:center; gap:8px;"><input type="radio" disabled> ${opt.trim()}</label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="radio" name="prev_${f.label}"> ${opt.trim()}</label>
                     `).join('')}</div>`;
                 } else if(f.type === 'checkbox') {
-                    html += `<label class="custom-checkbox" style="opacity: 0.7;"><input type="checkbox" disabled><span class="checkbox-box"><span class="material-icons">check</span></span> Confirmar afirmação</label>`;
+                    html += `<label class="custom-checkbox"><input type="checkbox"><span class="checkbox-box"><span class="material-icons">check</span></span> Confirmar informação</label>`;
                 } else if(f.type === 'currency') {
-                    html += `<div style="position:relative;"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span><input type="text" class="input-field" style="padding-left:40px;" placeholder="0,00" disabled></div>`;
+                    html += `<div style="position:relative;"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span><input type="text" class="input-field" style="padding-left:40px;" placeholder="0,00" readonly></div>`;
                 } else if(f.type === 'textarea') {
-                    html += `<textarea class="input-field" rows="2" placeholder="Resposta detalhada..." disabled></textarea>`;
+                    html += `<textarea class="input-field" rows="2" placeholder="Resposta detalhada..." readonly></textarea>`;
                 } else {
-                    html += `<input type="text" class="input-field" placeholder="Resposta curta..." disabled>`;
+                    html += `<input type="text" class="input-field" placeholder="Resposta curta..." readonly>`;
                 }
                 html += `</div>`;
             });
 
-            html += `<button class="btn btn-danger" style="width:100%; margin-top:1rem;" disabled>Enviar (Modo Preview)</button></div>`;
+            html += `<button type="button" class="btn btn-danger" style="width:100%; margin-top:1rem; opacity:0.6; cursor:not-allowed;">Enviar (Modo Preview)</button></form></div>`;
             container.innerHTML = html;
         }
 
