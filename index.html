@@ -5271,10 +5271,8 @@ function renderRequestForm(type) {
                 case 'maintenance':
                     title = 'Solicitação de Serviços Manutenção - Briefing Obrigatório';
                     formHTML = `
-                        <div class="form-group"><label for="req-maint-solicitante">1. Solicitante*</label><input type="text" id="req-maint-solicitante" name="solicitante_nome" class="input-field" placeholder="Insira sua resposta" required></div>
-                        
                         <div class="form-group">
-                            <label>2. Setor*</label>
+                            <label>1. Setor*</label>
                             <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
                                 <label><input type="radio" name="setor" value="Mola plana" required> Mola plana</label>
                                 <label><input type="radio" name="setor" value="Mola helicoidal"> Mola helicoidal</label>
@@ -5286,12 +5284,20 @@ function renderRequestForm(type) {
                             </div>
                         </div>
 
-                        <div class="form-group"><label for="req-maint-equip">3. Código/Equipamento*</label><input type="text" id="req-maint-equip" name="equipamento" class="input-field" placeholder="Insira sua resposta" required></div>
+                        <div class="form-group">
+                            <label for="req-maint-equip">2. Código/Equipamento ou Descrição da Infraestrutura*</label>
+                            <p style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:-0.5rem; margin-bottom: 0.5rem;">Se for infraestrutura (ex: ventilador, lâmpada), descreva o item.</p>
+                            <input type="text" id="req-maint-equip" name="equipamento" class="input-field" placeholder="Insira sua resposta" required>
+                        </div>
                         
-                        <div class="form-group"><label for="req-maint-problem">4. Descrição objetiva do problema*</label><p style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:-0.5rem;">O que está acontecendo?</p><textarea id="req-maint-problem" name="descricao_problema" class="input-field" rows="4" placeholder="Insira sua resposta" required></textarea></div>
+                        <div class="form-group">
+                            <label for="req-maint-problem">3. Descrição objetiva do problema*</label>
+                            <p style="font-size:0.8rem; color:var(--color-text-secondary); margin-top:-0.5rem;">O que está acontecendo?</p>
+                            <textarea id="req-maint-problem" name="descricao_problema" class="input-field" rows="4" placeholder="Insira sua resposta" required></textarea>
+                        </div>
 
                         <div class="form-group">
-                            <label>5. Situação atual da máquina*</label>
+                            <label>4. Situação atual da máquina*</label>
                             <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
                                 <label><input type="radio" name="situacao_maquina" value="Maquina parada" required> Maquina parada</label>
                                 <label><input type="radio" name="situacao_maquina" value="Maquina rodando, mas com risco"> Maquina rodando, mas com risco</label>
