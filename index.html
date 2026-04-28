@@ -4975,7 +4975,7 @@ async function openRequestDetailsModal(requestId) {
             modal.classList.add('visible');
 
             try {
-                // Busca a Requisição (trazendo o nome do criador) e o Histórico em paralelo
+                // Busca a Requisição e o Histórico em paralelo
                 const [reqRes, historyRes] = await Promise.all([
                     supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name)').eq('id', requestId).single(),
                     supabaseClient.from('request_history').select('*, profiles(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
@@ -4983,7 +4983,19 @@ async function openRequestDetailsModal(requestId) {
 
                 if (reqRes.error) throw reqRes.error;
                 const request = reqRes.data;
-                const history = historyRes.data || [];
+                let history = historyRes.data || [];
+
+                // MERGE LEGACY HISTORY (Para as manutenções antigas funcionarem)
+                if (request.data && request.data.history && Array.isArray(request.data.history)) {
+                    const legacyHistory = request.data.history.map(h => ({
+                        status: h.action === 'execute' ? 'executed' : (h.action === 'plan' ? 'planned' : h.action),
+                        created_at: h.timestamp,
+                        profiles: { full_name: h.by || 'Sistema' },
+                        notes: h.notes || null,
+                        legacy_scheduled: h.scheduled_at || null
+                    }));
+                    history = [...legacyHistory, ...history].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                }
 
                 // 1. Cabeçalho Resumido
                 const isDynamic = request.blueprint_id != null;
@@ -5021,24 +5033,33 @@ async function openRequestDetailsModal(requestId) {
                     const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel', pending_approval: 'hourglass_top' };
                     const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920', pending_approval: '#F59E0B' };
 
-                    // O n8n salva a data prevista no campo 'notes' quando a ação é 'planned'
                     let scheduledDateHTML = '';
                     let cleanNotes = step.notes;
                     
-                    if (step.status === 'planned' && step.notes && step.notes.includes('Agendado para:')) {
-                        const parts = step.notes.split('|');
-                        const scheduledText = parts.find(p => p.includes('Agendado para:'));
-                        const obsText = parts.find(p => p.includes('Obs:'));
-                        
-                        if (scheduledText) {
+                    // Verifica agendamentos da versão nova ou legado
+                    if (step.status === 'planned') {
+                        if (step.legacy_scheduled || request.data.maintenance_scheduled_at) {
                             scheduledDateHTML = `
                                 <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size:16px;">event</span>
-                                    <strong>${scheduledText.trim()}</strong>
+                                    <strong>AGENDADO PARA:</strong> ${new Date(step.legacy_scheduled || request.data.maintenance_scheduled_at).toLocaleString('pt-BR')}
                                 </div>
                             `;
+                        } else if (step.notes && step.notes.includes('Agendado para:')) {
+                            const parts = step.notes.split('|');
+                            const scheduledText = parts.find(p => p.includes('Agendado para:'));
+                            const obsText = parts.find(p => p.includes('Obs:'));
+                            
+                            if (scheduledText) {
+                                scheduledDateHTML = `
+                                    <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
+                                        <span class="material-icons" style="font-size:16px;">event</span>
+                                        <strong>${scheduledText.trim()}</strong>
+                                    </div>
+                                `;
+                            }
+                            cleanNotes = obsText ? obsText.replace('Obs: ', '').trim() : '';
                         }
-                        cleanNotes = obsText ? obsText.replace('Obs: ', '').trim() : '';
                     }
 
                     timelineHTML += `
@@ -5069,7 +5090,8 @@ async function openRequestDetailsModal(requestId) {
                 const translations = {
                     funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
                     tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
-                    descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante'
+                    descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante',
+                    approval_notes: 'Observações Internas'
                 };
 
                 let formDataHTML = `
@@ -5079,7 +5101,7 @@ async function openRequestDetailsModal(requestId) {
                 `;
 
                 for (const key in request.data) {
-                    if (request.data[key] && key !== 'history') {
+                    if (request.data[key] && key !== 'history' && key !== 'maintenance_scheduled_at') {
                         const label = translations[key] || key.replace(/_/g, ' ');
                         formDataHTML += `
                             <div style="margin-bottom: 5px;">
