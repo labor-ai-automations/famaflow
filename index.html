@@ -4974,6 +4974,13 @@ async function openRequestDetailsModal(requestId) {
             modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
             modal.classList.add('visible');
 
+            // Mapeamento centralizado de status para tradução
+            const statusTranslations = {
+                'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
+                'planned': 'Planejada', 'executed': 'Executada',
+                'cancelled_by_requester': 'Cancelada'
+            };
+
             try {
                 // Busca a Requisição e o Histórico em paralelo
                 const [reqRes, historyRes] = await Promise.all([
@@ -4997,9 +5004,10 @@ async function openRequestDetailsModal(requestId) {
                     history = [...legacyHistory, ...history].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                 }
 
-                // 1. Cabeçalho Resumido
+                // 1. Cabeçalho Resumido (COM TRADUÇÃO)
                 const isDynamic = request.blueprint_id != null;
                 const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : (isDynamic ? 'Requisição Dinâmica' : 'Solicitação Geral');
+                const translatedStatus = statusTranslations[request.status] || request.status.toUpperCase();
                 
                 let headerHTML = `
                     <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
@@ -5007,7 +5015,7 @@ async function openRequestDetailsModal(requestId) {
                             <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${requestTypeName}</h3>
                             <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
                         </div>
-                        <span class="status-tag status-${request.status}">${request.status.toUpperCase()}</span>
+                        <span class="status-tag status-${request.status}">${translatedStatus}</span>
                     </div>
                 `;
 
