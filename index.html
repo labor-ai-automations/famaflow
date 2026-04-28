@@ -1321,9 +1321,18 @@ body.fullscreen-flow .flowchart-monitor-bar {
     border: 1px solid var(--color-border); margin: 1.5rem; border-left: 6px solid var(--color-brand-primary);
 }
 .builder-title-input {
-    font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary);
+    font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);
     width: 100%; border: none; background: transparent; outline: none; margin-bottom: 0.5rem; font-family: 'Inter', sans-serif;
 }
+
+/* Botão Excluir Molde */
+.btn-delete-blueprint {
+    color: var(--color-danger); background: var(--color-danger-bg); 
+    border: 1px solid rgba(216, 25, 32, 0.2); border-radius: 8px; 
+    padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: 700; 
+    display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s;
+}
+.btn-delete-blueprint:hover { background: var(--color-danger); color: white; }
 .builder-desc-input {
     font-size: 0.9rem; color: var(--color-text-secondary);
     width: 100%; border: none; background: transparent; outline: none; font-family: 'Inter', sans-serif;
@@ -2226,11 +2235,15 @@ const appHTML = `<div id="app-container">
 
                         <!-- ÁREA DE EDIÇÃO AVANÇADA -->
                         <div id="builder-workspace" style="display: none;" class="builder-workspace">
-                            <!-- HEADER DO MOLDE -->
-                            <div class="builder-header-card">
+<!-- HEADER DO MOLDE -->
+                            <div class="builder-header-card" style="margin: 1.5rem; margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <span style="font-size: 0.75rem; font-weight: 800; color: var(--color-brand-primary); text-transform: uppercase; letter-spacing: 0.1em;">Identificação do Processo</span>
-                                    <div style="display: flex; gap: 0.75rem;">
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <button id="btn-delete-bp" class="btn-delete-blueprint" style="display:none;" onclick="deleteBlueprint()">
+                                            <span class="material-icons" style="font-size: 16px;">delete_forever</span> Excluir
+                                        </button>
+                                        <div style="width: 1px; height: 20px; background: var(--color-border); margin: 0 0.5rem;"></div>
                                         <button class="btn btn-secondary" onclick="closeBuilder()">Sair</button>
                                         <button class="btn btn-danger" onclick="saveBlueprint()"><span class="material-icons">cloud_upload</span> Publicar Molde</button>
                                     </div>
@@ -7638,21 +7651,55 @@ function toggleMgtView(view) {
             }
         }
 
-        function renderBuilderWorkspace() {
+function renderBuilderWorkspace() {
             document.getElementById('builder-empty-state').style.display = 'none';
             document.getElementById('builder-workspace').style.display = 'block';
             
             const nameInput = document.getElementById('bp-name');
             const descInput = document.getElementById('bp-desc');
+            const deleteBtn = document.getElementById('btn-delete-bp');
             
             nameInput.value = editingBlueprint.name || '';
             descInput.value = editingBlueprint.description || '';
             
-            renderBuilderItems();
-            
-            if(!editingBlueprint.id) {
+            // Mostra o botão de excluir APENAS se for um Molde já salvo no banco (tem ID)
+            if (editingBlueprint.id) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
                 setTimeout(() => nameInput.focus(), 300);
             }
+            
+            renderBuilderItems();
+        }
+
+        async function deleteBlueprint() {
+            if (!editingBlueprint.id) return;
+
+            showConfirmation(
+                "Excluir Molde?", 
+                `Tem certeza que deseja excluir o molde "${editingBlueprint.name}"? Esta ação removerá o formulário e apagará os dados dinâmicos de todas as requisições que usaram este molde.`,
+                async () => {
+                    try {
+                        // Deleta diretamente via Supabase Client (muito mais rápido que n8n para operações simples)
+                        const { error } = await supabaseClient
+                            .from('request_blueprints')
+                            .delete()
+                            .eq('id', editingBlueprint.id);
+
+                        if (error) throw error;
+
+                        showToast("Molde excluído com sucesso!", "success");
+                        closeBuilder();
+                        await loadBlueprints(); // Atualiza a variável global
+                        loadBlueprintList();    // Atualiza a barra lateral
+                        
+                    } catch (err) {
+                        console.error("Erro ao excluir blueprint:", err);
+                        showToast("Erro ao excluir. O banco pode estar bloqueando a ação.", "danger");
+                    }
+                }
+            );
         }
 
         function addFormField() {
