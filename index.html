@@ -2668,7 +2668,7 @@ async function showApp() {
         }
 if (isAdmin) {
     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
-    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="builder-page"><span class="material-icons">architecture</span> Construtor de Fluxos</a></li>`;
+    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="builder-page"><span class="material-icons">architecture</span> Construtor de Requisições</a></li>`;
 }
         
         const hasAnyMgtHR = p.some(perm => perm.startsWith('mgt_') && perm !== 'mgt_travel' && perm !== 'mgt_maintenance');
