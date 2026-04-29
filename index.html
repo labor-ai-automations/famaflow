@@ -2723,15 +2723,16 @@ async function showApp() {
             isVisible = true; 
         } else {
             const pageToKeyMap = {
+                'dashboard-page': 'view_dashboard',
                 'messages-page': 'view_messages',
+                'maintenance-page': 'view_maintenance', // <-- LINHA ADICIONADA AQUI
                 'requests-page': 'view_requests',
                 'my-routines-page': 'view_routines',
-                'kb-page': 'view_kb',
+                'team-page': 'view_team',
                 'organograma-page': 'view_organograma',
                 'rankings-page': 'view_rankings',
-                'team-page': 'view_team',
                 'mural-page': 'view_mural',
-                'dashboard-page': 'view_dashboard'
+                'kb-page': 'view_kb'
             };
             isVisible = p.includes(pageToKeyMap[page]);
         }
