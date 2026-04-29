@@ -7532,8 +7532,29 @@ async function submitMaintenancePlan(requestId) {
             } catch (error) { showToast(error.message, 'danger'); } finally { btn.disabled = false; }
         }
 
-function executeMaintenanceRequestHandler(requestId) {
-            openMaintenanceExecutionModal(requestId);
+async function executeMaintenanceRequestHandler(requestId) {
+            try {
+                // PASSO 1: Busca os dados completos da requisição antes de abrir o modal.
+                const { data: request, error } = await supabaseClient
+                    .from('requests')
+                    .select('*')
+                    .eq('id', requestId)
+                    .single();
+
+                if (error || !request) {
+                    throw new Error("Não foi possível carregar os dados da requisição para execução.");
+                }
+
+                // PASSO 2: Popula a variável global de contexto.
+                currentEditingRequest = request;
+
+                // PASSO 3: Agora, com a variável populada, abre o modal de execução.
+                openMaintenanceExecutionModal(requestId);
+
+            } catch (error) {
+                console.error("Erro em executeMaintenanceRequestHandler:", error);
+                showToast(error.message, 'danger');
+            }
         }
 
 function openMaintenanceExecutionModal(requestId) {
