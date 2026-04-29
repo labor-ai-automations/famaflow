@@ -1909,39 +1909,43 @@ body.fullscreen-flow .flowchart-monitor-bar {
 
 
 // Mapeamento de permissões RBAC (Categorizado e Espelhado)
+// Mapeamento de permissões RBAC (Categorizado e Espelhado)
         const PERMISSION_MAPPING = {
             // 1. Visualização de Telas
-            'view_messages': 'Mensagens (Envio e Visualização)',
-            'view_requests': 'Requisições (Meus Pedidos)',
-            'view_routines': 'Minhas Rotinas (Calendário)',
-            'view_kb': 'Base de Conhecimento',
-            'view_organograma': 'Organograma',
-            'view_rankings': 'Rankings e Performance',
-            'view_team': 'Equipe',
-            'view_mural': 'Mural Cultural',
             'view_dashboard': 'Dashboard',
+            'view_messages': 'Mensagens (Envio e Visualização)',
+            'view_maintenance': 'Módulo de Manutenção',
+            'view_requests': 'Requisições Gerais (RH/Outros)',
+            'view_routines': 'Minhas Rotinas (Calendário)',
+            'view_team': 'Equipe',
+            'view_organograma': 'Organograma',
+            'view_rankings': 'Performance e Rankings',
+            'view_mural': 'Mural Cultural',
+            'view_kb': 'Base de Conhecimento',
 
             // 2. Gerenciamento de Requisições
+            'mgt_maintenance': 'Gerenciar Manutenção (Aprovar/Planejar)',
             'mgt_new_hire': 'Gerenciar Contratação de Pessoal',
             'mgt_termination': 'Gerenciar Desligamento',
             'mgt_promotion': 'Gerenciar Promoção Interna',
             'mgt_overtime': 'Gerenciar Horas Extras',
             'mgt_training': 'Gerenciar Treinamento',
             'mgt_disciplinary_action': 'Gerenciar Medida Disciplinar',
-            'mgt_maintenance': 'Gerenciar Manutenção',
             'mgt_travel': 'Gerenciar Viagem',
 
-            // 3. Permissão de Solicitação de Requisições
+            // 3. Permissão de Solicitação
+            'req_maintenance': 'Solicitar Manutenção',
             'req_new_hire': 'Solicitar Contratação de Pessoal',
             'req_termination': 'Solicitar Desligamento',
             'req_promotion': 'Solicitar Promoção Interna',
             'req_overtime': 'Solicitar Horas Extras',
             'req_training': 'Solicitar Treinamento',
             'req_disciplinary_action': 'Solicitar Medida Disciplinar',
-            'req_maintenance': 'Solicitar Manutenção',
             'req_travel': 'Solicitar Viagem',
 
-            // 4. Especiais
+            // 4. Especiais / Globais
+            'manage_technicians': 'Gerenciar Equipe Técnica de Manutenção',
+            'manage_preventive_schedules': 'Gerenciar Calendário de Manutenção Preventiva',
             'mgt_kb': 'Gerenciar Base de Conhecimento (Curadoria)',
             'manage_routines': 'Gerenciar Processos',
             'view_admin_dash': 'Ver Admin Dashboard',
@@ -2005,6 +2009,7 @@ const appHTML = `<div id="app-container">
                     <ul class="nav-menu">
                         <li><a href="#" class="nav-link" data-page="dashboard-page"><span class="material-icons">dashboard</span> Dashboard</a></li>
                         <li><a href="#" class="nav-link" data-page="messages-page"><span class="material-icons">chat</span> Mensagens</a></li>
+                        <li><a href="#" class="nav-link" data-page="maintenance-page"><span class="material-icons">build</span> Manutenção</a></li>
                         <li><a href="#" class="nav-link" data-page="requests-page"><span class="material-icons">description</span> Requisições</a></li>
                         <li><a href="#" class="nav-link" data-page="my-routines-page"><span class="material-icons">checklist</span> Minhas Rotinas</a></li>
                         <li><a href="#" class="nav-link" data-page="team-page"><span class="material-icons">people</span> Equipe</a></li>
@@ -2311,10 +2316,22 @@ const appHTML = `<div id="app-container">
                 <div id="my-routines-page" class="page-content"></div>
                 <div id="manage-processes-page" class="page-content"><div class="page-header" style="margin-bottom: 1rem;"><div><h1>Gerenciar Processos e Tarefas</h1><p>Crie fluxos recorrentes ou delegue tarefas pontuais para a equipe.</p></div></div><div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border);"><button class="tab-link active" id="tab-btn-recurrent" onclick="switchProcessTab('recurrent')" style="padding: 0.75rem 1.5rem; font-weight: 600;"><span class="material-icons" style="vertical-align: middle; margin-right: 5px;">account_tree</span> Processos Recorrentes</button><button class="tab-link" id="tab-btn-punctual" onclick="switchProcessTab('punctual')" style="padding: 0.75rem 1.5rem; font-weight: 600;"><span class="material-icons" style="vertical-align: middle; margin-right: 5px;">assignment</span> Tarefas Pontuais</button></div><div id="tab-content-recurrent"><div class="grid" style="grid-template-columns: 300px 1fr; gap: 1.5rem; align-items: flex-start;"><div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border);"><div class="routines-column-header" style="background: var(--color-background); padding: 1rem;"><h3 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Processos Ativos</h3><button class="btn btn-danger btn-icon" onclick="openEditProcessModal(null)" title="Novo Processo" style="width: 32px; height: 32px;"><span class="material-icons" style="font-size: 18px;">add</span></button></div><div class="routines-list" id="process-list-sidebar"><div class="empty-state">Carregando...</div></div></div><div class="card" id="process-visualizer-container" style="min-height: 500px; position: relative; padding: 2rem;"><div class="empty-state">Selecione um processo para editar o fluxo.</div></div></div></div><div id="tab-content-punctual" style="display: none;"><div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;"><button class="btn btn-danger" onclick="openNewRoutineModal()"><span class="material-icons">add</span> Nova Tarefa Pontual</button></div><div class="manage-routines-layout"><div class="card routines-column-card"><div class="routines-column-header"><h3>Tarefas Criadas</h3></div><div class="routines-list" id="routines-list-col1"><div class="empty-state">Carregando...</div></div></div><div class="card routines-column-card"><div class="routines-column-header"><h3>Itens da Tarefa</h3><div id="add-task-button-container"></div></div><div class="routines-list" id="tasks-list-col2"><div class="empty-state">Selecione uma tarefa pontual</div></div></div><div class="card routines-column-card"><div class="routines-column-header"><h3>Usuários Atribuídos</h3><div id="assign-user-button-container"></div></div><div class="routines-list" id="assignments-list-col3"><div class="empty-state">Selecione uma tarefa pontual</div></div></div></div></div></div>
                 <div id="my-processes-page" class="page-content"><div class="page-header"><div><h1>Meus Processos</h1><p>Tarefas de fluxo contínuo sob sua responsabilidade.</p></div></div><div id="my-processes-list" class="grid grid-cols-2"><div class="empty-state">Carregando seus processos...</div></div></div>
+                
+                <!-- NOVA PÁGINA DE MANUTENÇÃO -->
+                <div id="maintenance-page" class="page-content">
+                    <div class="page-header">
+                        <div>
+                            <h1>Módulo de Manutenção</h1>
+                            <p>Gestão de solicitações, técnicos e agendamentos.</p>
+                        </div>
+                    </div>
+                    <!-- Conteúdo será adicionado aqui -->
+                </div>
+                
                 <button class="fab" id="fab-new-message" title="Nova Mensagem"><span class="material-icons">add</span></button>
             </main>
 
-            <!-- MODAL DE USUÁRIO (COM 4 FAMÍLIAS DE PERMISSÃO) -->
+<!-- MODAL DE USUÁRIO (COM 4 FAMÍLIAS DE PERMISSÃO) -->
             <div id="user-modal" class="modal-overlay">
                 <div class="modal-content" style="max-width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
                     <div class="modal-header">
@@ -2388,60 +2405,73 @@ const appHTML = `<div id="app-container">
                             </div>
                             
                             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--color-border);">
+                                <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 1rem;">Controle de Acesso (RBAC)</h3>
+
                                 <!-- FAMÍLIA 1: VISUALIZAÇÃO DE TELAS -->
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-info);">visibility</span>
-                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">1. Visualização de Telas</label>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">1. Visualização de Módulos</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode acessar na barra lateral esquerda.</p>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-bottom: 1.5rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_messages"><span class="perm-checkmark"></span><span class="material-icons perm-icon">chat</span><span class="perm-text">Mensagens</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_requests"><span class="perm-checkmark"></span><span class="material-icons perm-icon">description</span><span class="perm-text">Requisições</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_requests"><span class="perm-checkmark"></span><span class="material-icons perm-icon">description</span><span class="perm-text">Requisições Gerais</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">checklist</span><span class="perm-text">Minhas Rotinas</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Rankings</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_team"><span class="perm-checkmark"></span><span class="material-icons perm-icon">people</span><span class="perm-text">Equipe</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Performance</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
-                                    <label class="perm-checkbox" style="grid-column: 1 / -1;"><input type="checkbox" id="perm-view_dashboard"><span class="perm-checkmark"></span><span class="material-icons perm-icon">dashboard</span><span class="perm-text">Dashboard Geral</span></label>
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
+                                </div>
+                                
+                                <!-- MÓDULO DE MANUTENÇÃO (NOVO) -->
+                                <div style="background: var(--color-background); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                        <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">build</span>
+                                        <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Módulo de Manutenção</label>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+                                        <label class="perm-checkbox"><input type="checkbox" id="perm-view_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">visibility</span><span class="perm-text">Visualizar Módulo</span></label>
+                                        <label class="perm-checkbox"><input type="checkbox" id="perm-req_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">add_circle</span><span class="perm-text">Abrir Solicitações</span></label>
+                                        <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">rule_folder</span><span class="perm-text">Gerenciar (Planejar)</span></label>
+                                        <label class="perm-checkbox"><input type="checkbox" id="perm-manage_technicians"><span class="perm-checkmark"></span><span class="material-icons perm-icon">engineering</span><span class="perm-text">Gerenciar Técnicos</span></label>
+                                        <label class="perm-checkbox" style="grid-column: 1 / -1;"><input type="checkbox" id="perm-manage_preventive_schedules"><span class="perm-checkmark"></span><span class="material-icons perm-icon">event_note</span><span class="perm-text">Gerenciar Calendário Preventivo</span></label>
+                                    </div>
                                 </div>
 
+
                                 <!-- FAMÍLIA 2: GERENCIAMENTO DE REQUISIÇÕES -->
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-success);">rule_folder</span>
-                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">2. Gerenciamento de Requisições</label>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">2. Gerenciamento de Requisições (Gerais)</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">O que o usuário pode aprovar ou administrar de terceiros.</p>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-bottom: 1.5rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 3: SOLICITAÇÃO DE REQUISIÇÕES -->
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-warning);">add_circle_outline</span>
-                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">3. Permissão de Solicitação de Requisições</label>
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">3. Permissão de Solicitação (Gerais)</label>
                                 </div>
-                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">Quais tipos de requisição este usuário pode abrir para si mesmo ou setor?</p>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação de Pessoal</span></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-bottom: 1.5rem;">
+                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_termination"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_remove</span><span class="perm-text">Desligamento</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_promotion"><span class="perm-checkmark"></span><span class="material-icons perm-icon">trending_up</span><span class="perm-text">Promoção Interna</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_overtime"><span class="perm-checkmark"></span><span class="material-icons perm-icon">schedule</span><span class="perm-text">Horas Extras</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_training"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Treinamento</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_disciplinary_action"><span class="perm-checkmark"></span><span class="material-icons perm-icon">gavel</span><span class="perm-text">Medida Disciplinar</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-req_maintenance"><span class="perm-checkmark"></span><span class="material-icons perm-icon">settings_suggest</span><span class="perm-text">Manutenção</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-req_travel"><span class="perm-checkmark"></span><span class="material-icons perm-icon">flight_takeoff</span><span class="perm-text">Viagem</span></label>
                                 </div>
 
                                 <!-- FAMÍLIA 4: GLOBAIS / ESPECIAIS -->
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-brand-primary);">security</span>
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">4. Permissões Especiais Globais</label>
                                 </div>
