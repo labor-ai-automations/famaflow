@@ -4988,6 +4988,7 @@ async function openRequestDetailsModal(requestId) {
 
                 if (reqRes.error) throw reqRes.error;
                 const request = reqRes.data;
+                currentEditingRequest = request; // <-- ADICIONE ESTA LINHA
                 let history = historyRes.data || [];
 
                 // --- INÍCIO DA LÓGICA DE CORREÇÃO E MERGE DE HISTÓRICO ---
