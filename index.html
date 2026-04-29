@@ -2324,8 +2324,46 @@ const appHTML = `<div id="app-container">
                             <h1>Módulo de Manutenção</h1>
                             <p>Gestão de solicitações, técnicos e agendamentos.</p>
                         </div>
+                        <div class="page-header-actions">
+                            <button id="btn-new-maintenance-request" class="btn btn-danger" style="display:none;">
+                                <span class="material-icons">add</span> Nova Solicitação
+                            </button>
+                        </div>
                     </div>
-                    <!-- Conteúdo será adicionado aqui -->
+
+                    <div class="mgt-tabs">
+                        <button class="mgt-tab-btn active" id="tab-btn-my-maintenance" onclick="switchMaintenanceTab('my_requests')">Minhas Solicitações</button>
+                        <button class="mgt-tab-btn" id="tab-btn-manage-maintenance" style="display:none;" onclick="switchMaintenanceTab('manage')">Gerenciar Pendências</button>
+                        <button class="mgt-tab-btn" id="tab-btn-technicians" style="display:none;" onclick="switchMaintenanceTab('technicians')">Equipe Técnica</button>
+                        <button class="mgt-tab-btn" id="tab-btn-preventive" style="display:none;" onclick="switchMaintenanceTab('preventive')">Calendário Preventivo</button>
+                    </div>
+
+                    <!-- Conteúdo das Abas -->
+                    <div id="maintenance-tab-my_requests" class="maintenance-tab-content">
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead><tr><th>Tipo</th><th>Equipamento/Infra</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+                                <tbody id="my-maintenance-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="maintenance-tab-manage" class="maintenance-tab-content" style="display:none;">
+                         <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead><tr><th>Solicitante</th><th>Equipamento/Infra</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+                                <tbody id="manage-maintenance-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                     <div id="maintenance-tab-technicians" class="maintenance-tab-content" style="display:none;">
+                        <div class="empty-state">Gerenciamento de Técnicos - Em breve.</div>
+                    </div>
+
+                     <div id="maintenance-tab-preventive" class="maintenance-tab-content" style="display:none;">
+                        <div class="empty-state">Calendário de Manutenção Preventiva - Em breve.</div>
+                    </div>
                 </div>
                 
                 <button class="fab" id="fab-new-message" title="Nova Mensagem"><span class="material-icons">add</span></button>
@@ -2821,6 +2859,7 @@ function showPage(pageId, targetUserId = null) {
             }
             if (pageId === 'kb-page') loadKBPage();
             if (pageId === 'users-page') loadUsersForAdmin(); 
+            if (pageId === 'maintenance-page') loadMaintenancePage();
         }
 		
 		// NOVA FUNÇÃO: Controle das Abas de Processos
@@ -5209,7 +5248,7 @@ async function openRequestDetailsModal(requestId) {
             if (isAdmin || p.includes('req_overtime')) legacyCards += `<div class="type-card" data-type="overtime"><span class="material-icons">schedule</span><h3>Horas Extras</h3></div>`;
             if (isAdmin || p.includes('req_training')) legacyCards += `<div class="type-card" data-type="training"><span class="material-icons">school</span><h3>Treinamento</h3></div>`;
             if (isAdmin || p.includes('req_disciplinary_action')) legacyCards += `<div class="type-card" data-type="disciplinary_action"><span class="material-icons">gavel</span><h3>M. Disciplinar</h3></div>`;
-            if (isAdmin || p.includes('req_maintenance')) legacyCards += `<div class="type-card" data-type="maintenance"><span class="material-icons">settings_suggest</span><h3>Manutenção</h3></div>`;
+            
             if (isAdmin || p.includes('req_travel')) legacyCards += `<div class="type-card" data-type="travel"><span class="material-icons">flight_takeoff</span><h3>Viagem</h3></div>`;
 
             // 2. CARDS DINÂMICOS (VINDOS DO BUILDER)
@@ -7579,6 +7618,102 @@ async function executeMaintenanceRequestHandler(requestId) {
                 showToast(error.message, 'danger');
             }
         }
+		
+		function switchMaintenanceTab(tabId) {
+            document.querySelectorAll('.maintenance-tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('#maintenance-page .mgt-tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`maintenance-tab-${tabId}`).style.display = 'block';
+            document.getElementById(`tab-btn-${tabId.startsWith('my') ? 'my-maintenance' : tabId}`).classList.add('active');
+        }
+
+        function renderMaintenanceTable(containerId, requests, isManagerView = false) {
+            const tableBody = document.getElementById(containerId);
+            if (!tableBody) return;
+
+            if (!requests || requests.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma solicitação encontrada.</td></tr>`;
+                return;
+            }
+
+            const statusLabels = {
+                'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
+                'planned': 'Planejada', 'executed': 'Executada',
+                'cancelled_by_requester': 'Cancelada'
+            };
+
+            tableBody.innerHTML = requests.map(req => {
+                const statusLabel = statusLabels[req.status] || req.status;
+                const statusClass = `status-${req.status}`;
+                const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+                
+                let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+                if (isManagerView) {
+                    if (req.status === 'pending') {
+                        actionsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
+                    } else if (req.status === 'planned') {
+                        actionsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button>`;
+                    }
+                }
+
+                return `
+                    <tr>
+                        <td><strong>Manutenção</strong></td>
+                        ${isManagerView ? `<td>${req.requester_name || 'N/A'}</td>` : ''}
+                        <td>${req.data.equipamento || 'N/A'}</td>
+                        <td>${date}</td>
+                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadMaintenancePage() {
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
+
+            // Controla visibilidade de botões e abas com base nas permissões
+            document.getElementById('btn-new-maintenance-request').style.display = (isAdmin || p.includes('req_maintenance')) ? 'inline-flex' : 'none';
+            document.getElementById('tab-btn-manage-maintenance').style.display = (isAdmin || p.includes('mgt_maintenance')) ? 'block' : 'none';
+            document.getElementById('tab-btn-technicians').style.display = (isAdmin || p.includes('manage_technicians')) ? 'block' : 'none';
+            document.getElementById('tab-btn-preventive').style.display = (isAdmin || p.includes('manage_preventive_schedules')) ? 'block' : 'none';
+
+            // Adiciona evento de clique ao botão de nova solicitação
+            document.getElementById('btn-new-maintenance-request').onclick = () => renderRequestForm('maintenance');
+
+            // Carrega os dados das tabelas
+            const myRequestsBody = document.getElementById('my-maintenance-table-body');
+            myRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando...</td></tr>`;
+            
+            const { data: myReqs, error: myReqsError } = await supabaseClient.rpc('get_my_requests');
+            if (myReqsError) {
+                myRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar solicitações.</td></tr>`;
+            } else {
+                const myMaintenanceReqs = myReqs.filter(r => r.type === 'maintenance');
+                renderMaintenanceTable('my-maintenance-table-body', myMaintenanceReqs, false);
+            }
+
+            if (isAdmin || p.includes('mgt_maintenance')) {
+                const manageRequestsBody = document.getElementById('manage-maintenance-table-body');
+                manageRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando...</td></tr>`;
+
+                const { data: allReqs, error: allReqsError } = await supabaseClient.rpc('get_all_requests_for_viewing');
+                if (allReqsError) {
+                    manageRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar pendências.</td></tr>`;
+                } else {
+                    const allMaintenanceReqs = allReqs.filter(r => r.type === 'maintenance');
+                    // Ajusta a função para renderizar a coluna "Solicitante"
+                    const tableHeader = manageRequestsBody.parentElement.querySelector('thead tr');
+                    if(tableHeader.cells.length === 5) {
+                        const th = document.createElement('th');
+                        th.textContent = 'Solicitante';
+                        tableHeader.insertBefore(th, tableHeader.cells[1]);
+                    }
+                    renderMaintenanceTable('manage-maintenance-table-body', allMaintenanceReqs, true);
+                }
+            }
+            switchMaintenanceTab('my_requests');
+        }
 
 function openMaintenanceExecutionModal(requestId) {
             if (!currentEditingRequest) {
@@ -7755,8 +7890,8 @@ function toggleMgtView(view) {
             const isAdmin = p.includes('manage_users');
 
             const filteredData = data.filter(req => {
-                if (isAdmin) return req.type !== 'travel';
-                if (req.type === 'travel') return false; 
+                if (req.type === 'maintenance' || req.type === 'travel') return false; // Exclui manutenção e viagem da lista geral
+                if (isAdmin) return true;
                 const mgtKey = `mgt_${req.type}`;
                 return p.includes(mgtKey);
             });
