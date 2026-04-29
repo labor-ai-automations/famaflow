@@ -7685,51 +7685,53 @@ function renderMaintenanceTable(containerId, requests, isManagerView = false) {
             }).join('');
         }
 
-        async function loadMaintenancePage() {
+async function loadMaintenancePage() {
             const p = currentUserProfile.permissions || [];
             const isAdmin = p.includes('manage_users');
 
-            // Controla visibilidade de botões e abas com base nas permissões
-            document.getElementById('btn-new-maintenance-request').style.display = (isAdmin || p.includes('req_maintenance')) ? 'inline-flex' : 'none';
+            // --- CORREÇÃO 1: Renomeia o botão e garante a ação de clique ---
+            const newRequestBtn = document.getElementById('btn-new-maintenance-request');
+            newRequestBtn.innerHTML = '<span class="material-icons">add</span> Pedir Manutenção';
+            newRequestBtn.style.display = (isAdmin || p.includes('req_maintenance')) ? 'inline-flex' : 'none';
+            newRequestBtn.onclick = () => renderRequestForm('maintenance');
+
+            // Controla visibilidade das abas com base nas permissões
             document.getElementById('tab-btn-manage-maintenance').style.display = (isAdmin || p.includes('mgt_maintenance')) ? 'block' : 'none';
             document.getElementById('tab-btn-technicians').style.display = (isAdmin || p.includes('manage_technicians')) ? 'block' : 'none';
             document.getElementById('tab-btn-preventive').style.display = (isAdmin || p.includes('manage_preventive_schedules')) ? 'block' : 'none';
-
-            // Adiciona evento de clique ao botão de nova solicitação
-            document.getElementById('btn-new-maintenance-request').onclick = () => renderRequestForm('maintenance');
 
             // Carrega os dados das tabelas
             const myRequestsBody = document.getElementById('my-maintenance-table-body');
             myRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando...</td></tr>`;
             
+            // --- CORREÇÃO 2: Remove o .order() da chamada RPC ---
             const { data: myReqs, error: myReqsError } = await supabaseClient.rpc('get_my_requests');
             if (myReqsError) {
+                console.error("Erro em get_my_requests:", myReqsError);
                 myRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar solicitações.</td></tr>`;
             } else {
-                const myMaintenanceReqs = myReqs.filter(r => r.type === 'maintenance');
+                const myMaintenanceReqs = (myReqs || []).filter(r => r.type === 'maintenance');
                 renderMaintenanceTable('my-maintenance-table-body', myMaintenanceReqs, false);
             }
 
             if (isAdmin || p.includes('mgt_maintenance')) {
                 const manageRequestsBody = document.getElementById('manage-maintenance-table-body');
-                manageRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando...</td></tr>`;
+                manageRequestsBody.innerHTML = `<tr><td colspan="6" class="empty-state">Carregando...</td></tr>`;
 
+                // --- CORREÇÃO 2: Remove o .order() da chamada RPC ---
                 const { data: allReqs, error: allReqsError } = await supabaseClient.rpc('get_all_requests_for_viewing');
                 if (allReqsError) {
-                    manageRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar pendências.</td></tr>`;
+                    console.error("Erro em get_all_requests_for_viewing:", allReqsError);
+                    manageRequestsBody.innerHTML = `<tr><td colspan="6" class="empty-state">Erro ao carregar pendências.</td></tr>`;
                 } else {
-                    const allMaintenanceReqs = allReqs.filter(r => r.type === 'maintenance');
-                    // Ajusta a função para renderizar a coluna "Solicitante"
-                    const tableHeader = manageRequestsBody.parentElement.querySelector('thead tr');
-                    if(tableHeader.cells.length === 5) {
-                        const th = document.createElement('th');
-                        th.textContent = 'Solicitante';
-                        tableHeader.insertBefore(th, tableHeader.cells[1]);
-                    }
+                    const allMaintenanceReqs = (allReqs || []).filter(r => r.type === 'maintenance');
                     renderMaintenanceTable('manage-maintenance-table-body', allMaintenanceReqs, true);
                 }
             }
-            switchMaintenanceTab('my_requests');
+            // A aba inicial é definida após o carregamento dos dados para evitar piscar
+            const activeTab = document.querySelector('#maintenance-page .mgt-tab-btn.active')?.id || 'tab-btn-my-maintenance';
+            const tabKey = activeTab.replace('tab-btn-', '').replace('my-maintenance', 'my_requests').replace('manage-maintenance', 'manage');
+            switchMaintenanceTab(tabKey);
         }
 
 function openMaintenanceExecutionModal(requestId) {
