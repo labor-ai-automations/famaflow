@@ -4988,35 +4988,32 @@ async function openRequestDetailsModal(requestId) {
 
                 if (reqRes.error) throw reqRes.error;
                 const request = reqRes.data;
-                currentEditingRequest = request; // <-- ADICIONE ESTA LINHA
+                currentEditingRequest = request;
                 let history = historyRes.data || [];
 
-                // --- INÍCIO DA LÓGICA DE CORREÇÃO E MERGE DE HISTÓRICO ---
-                // Verifica se existe um agendamento legado sem um registro de histórico 'planned' correspondente.
                 if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
                     history.push({
                         status: 'planned',
-                        created_at: request.maintenance_scheduled_at, // Usa a data do agendamento como referência
+                        created_at: null, // DATA DA AÇÃO É NULA PARA REGISTROS LEGADOS
                         profiles: { full_name: 'Gestor (Registro Antigo)' },
                         notes: request.approval_notes || null,
                         legacy_scheduled: request.maintenance_scheduled_at
                     });
                 }
-                // Verifica se o status final é 'executed' sem um registro de histórico correspondente.
                 if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
-                    // Tenta usar a data do agendamento + 1 hora como fallback, ou a data atual
                     const executedTime = request.maintenance_scheduled_at ? new Date(new Date(request.maintenance_scheduled_at).getTime() + 3600000) : new Date();
                     history.push({
                         status: 'executed',
-                        created_at: executedTime.toISOString(),
+                        created_at: null, // DATA DA AÇÃO É NULA PARA REGISTROS LEGADOS
                         profiles: { full_name: 'Gestor (Registro Antigo)' },
                         notes: null
                     });
                 }
-                // Reordena o histórico após o merge para garantir a cronologia correta.
-                history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-                // --- FIM DA LÓGICA DE CORREÇÃO ---
-
+                history.sort((a, b) => {
+                    const dateA = a.created_at ? new Date(a.created_at) : new Date(0); // Trata datas nulas
+                    const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+                    return dateA - dateB;
+                });
 
                 const isDynamic = request.blueprint_id != null;
                 const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : (isDynamic ? 'Requisição Dinâmica' : 'Solicitação Geral');
@@ -5054,29 +5051,25 @@ async function openRequestDetailsModal(requestId) {
                     let cleanNotes = step.notes;
                     
                     if (step.status === 'planned') {
-                        if (step.legacy_scheduled) { // Damos prioridade ao dado legado se ele existir
+                        const scheduledDate = step.legacy_scheduled ? new Date(step.legacy_scheduled) : (step.notes && step.notes.includes('Agendado para:')) ? new Date(step.notes.split('Agendado para: ')[1].split(' |')[0].split('/').reverse().join('-') + 'T' + step.notes.split(' ')[2] + ':00') : null;
+                        if (scheduledDate) {
                             scheduledDateHTML = `
                                 <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size:16px;">event</span>
-                                    <strong>AGENDADO PARA:</strong> ${new Date(step.legacy_scheduled).toLocaleString('pt-BR')}
+                                    <strong>AGENDADO PARA:</strong> ${scheduledDate.toLocaleString('pt-BR')}
                                 </div>
                             `;
-                        } else if (step.notes && step.notes.includes('Agendado para:')) {
-                            const parts = step.notes.split('|');
-                            const scheduledText = parts.find(p => p.includes('Agendado para:'));
-                            const obsText = parts.find(p => p.includes('Obs:'));
-                            
-                            if (scheduledText) {
-                                scheduledDateHTML = `
-                                    <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
-                                        <span class="material-icons" style="font-size:16px;">event</span>
-                                        <strong>${scheduledText.trim()}</strong>
-                                    </div>
-                                `;
-                            }
-                            cleanNotes = obsText ? obsText.replace('Obs:', '').trim() : '';
+                        }
+                        if (step.notes && step.notes.includes('Obs:')) {
+                            cleanNotes = step.notes.split('Obs: ')[1];
                         }
                     }
+
+                    // LÓGICA CORRIGIDA PARA EXIBIR A DATA DA AÇÃO
+                    const actionDateHTML = step.created_at
+                        ? `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>`
+                        : `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data da ação não registrada.</div>`;
+
 
                     timelineHTML += `
                         <div style="margin-bottom: 2rem; position: relative;">
@@ -5086,7 +5079,7 @@ async function openRequestDetailsModal(requestId) {
                                 Etapa ${stepCounter}: ${labels[step.status] || step.status}
                             </div>
                             <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Ação realizada por ${step.profiles?.full_name || 'Sistema/Gestor'}</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>
+                            ${actionDateHTML}
                             
                             ${scheduledDateHTML}
 
