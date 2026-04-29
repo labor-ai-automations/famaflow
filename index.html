@@ -7424,13 +7424,11 @@ async function syncUserPermissions(userId) {
             document.getElementById('notes-modal').classList.remove('visible');
         }
         
-        async function submitRequestActionWithNotes() {
+async function submitRequestActionWithNotes() {
             const btn = document.getElementById('btn-confirm-action-with-notes');
             const action = btn.getAttribute('data-action');
             const requestId = btn.getAttribute('data-request-id');
             const notes = document.getElementById('action-notes').value.trim();
-
-            console.log("Enviando Decisão:", { action, requestId, notes }); // Log de depuração
 
             if (!requestId) {
                 showToast("Erro: ID da requisição não capturado.", "danger");
@@ -7466,10 +7464,9 @@ async function syncUserPermissions(userId) {
 
                 showToast(`Sucesso! Atualizando painel...`, 'success');
                 
-                // Fecha o modal e limpa o botão
                 document.getElementById('notes-modal').classList.remove('visible');
+                closeRequestModal(); // <-- LINHA ADICIONADA AQUI
                 
-                // Refresh com delay para o banco processar
                 setTimeout(() => {
                     loadRequestManagementPage();
                     loadTravelRequestManagementPage();
@@ -7523,12 +7520,13 @@ async function submitMaintenancePlan(requestId) {
                         request_id: requestId,
                         maintenance_scheduled_at: scheduledAt,
                         approval_notes: notes,
-                        changed_by: currentUserProfile.id // ENVIANDO QUEM PLANEJOU
+                        changed_by: currentUserProfile.id
                     })
                 });
                 if (!response.ok) throw new Error('Falha ao planejar.');
                 showToast('Manutenção planejada!', 'success');
                 closeMaintenancePlanningModal();
+                closeRequestModal(); // <-- LINHA ADICIONADA AQUI
                 setTimeout(() => loadRequestManagementPage(), 1000);
             } catch (error) { showToast(error.message, 'danger'); } finally { btn.disabled = false; }
         }
@@ -7542,11 +7540,12 @@ function executeMaintenanceRequestHandler(requestId) {
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
                         body: JSON.stringify({ 
                             request_id: requestId,
-                            changed_by: currentUserProfile.id // ENVIANDO QUEM EXECUTOU
+                            changed_by: currentUserProfile.id
                         })
                     });
                     if (!response.ok) throw new Error('Falha ao concluir.');
                     showToast('Manutenção executada!', 'success');
+                    closeRequestModal(); // <-- LINHA ADICIONADA AQUI
                     setTimeout(() => loadRequestManagementPage(), 1000);
                 } catch(e) { showToast(e.message, 'danger'); }
             });
