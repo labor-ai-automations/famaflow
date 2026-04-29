@@ -7532,23 +7532,82 @@ async function submitMaintenancePlan(requestId) {
         }
 
 function executeMaintenanceRequestHandler(requestId) {
-            showConfirmation("Confirmar Execução?", "Deseja marcar como concluída?", async () => {
-                try {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
-                        body: JSON.stringify({ 
-                            request_id: requestId,
-                            changed_by: currentUserProfile.id
-                        })
-                    });
-                    if (!response.ok) throw new Error('Falha ao concluir.');
-                    showToast('Manutenção executada!', 'success');
-                    closeRequestModal(); // <-- LINHA ADICIONADA AQUI
-                    setTimeout(() => loadRequestManagementPage(), 1000);
-                } catch(e) { showToast(e.message, 'danger'); }
-            });
+            openMaintenanceExecutionModal(requestId);
+        }
+
+function openMaintenanceExecutionModal(requestId) {
+            if (!currentEditingRequest) {
+                showToast("Erro: Dados da requisição não encontrados.", "danger");
+                return;
+            }
+
+            const modal = document.getElementById('maintenance-execution-modal');
+            const summaryContainer = document.getElementById('execution-plan-summary');
+            
+            // Limpa o formulário
+            document.getElementById('execution-notes').value = '';
+            document.getElementById('execution-followed-plan-yes').checked = false;
+            document.getElementById('execution-followed-plan-no').checked = false;
+
+            // Preenche o resumo do planejamento
+            const scheduledAt = currentEditingRequest.maintenance_scheduled_at;
+            const planNotes = currentEditingRequest.approval_notes;
+            summaryContainer.innerHTML = `
+                <p style="margin:0 0 0.5rem 0;"><strong>Data Planejada:</strong> ${scheduledAt ? new Date(scheduledAt).toLocaleString('pt-BR') : 'Não definida'}</p>
+                <p style="margin:0;"><strong>Observações do Planejador:</strong> ${planNotes || 'Nenhuma.'}</p>
+            `;
+            
+            // Configura o botão de confirmação e exibe o modal
+            document.getElementById('btn-confirm-maintenance-execution').onclick = () => submitMaintenanceExecution(requestId);
+            modal.classList.add('visible');
+        }
+
+        function closeMaintenanceExecutionModal() {
+            document.getElementById('maintenance-execution-modal').classList.remove('visible');
+        }
+
+        async function submitMaintenanceExecution(requestId) {
+            const followedPlanRadio = document.querySelector('input[name="execution-followed-plan"]:checked');
+            if (!followedPlanRadio) {
+                showToast("Por favor, confirme se o plano foi seguido.", "warning");
+                return;
+            }
+            
+            const followedPlan = followedPlanRadio.value === 'true';
+            const executionNotes = document.getElementById('execution-notes').value.trim();
+
+            if (!followedPlan && !executionNotes) {
+                showToast("Se o plano não foi seguido, o detalhamento é obrigatório.", "warning");
+                return;
+            }
+
+            const btn = document.getElementById('btn-confirm-maintenance-execution');
+            btn.disabled = true;
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
+                    body: JSON.stringify({ 
+                        request_id: requestId,
+                        changed_by: currentUserProfile.id,
+                        followed_plan: followedPlan,
+                        execution_notes: executionNotes
+                    })
+                });
+                if (!response.ok) throw new Error('Falha ao concluir.');
+                
+                showToast('Manutenção executada e relatada!', 'success');
+                closeMaintenanceExecutionModal();
+                closeRequestModal();
+                setTimeout(() => loadRequestManagementPage(), 1500);
+
+            } catch(e) { 
+                showToast(e.message, 'danger'); 
+            } finally {
+                btn.disabled = false;
+            }
         }
 
 function toggleMgtView(view) {
@@ -9830,6 +9889,38 @@ function promptSelection(title, options, callback) {
         <div class="qp-footer">
             <button class="btn btn-secondary" onclick="closeQuickPanel()">Cancelar</button>
             <button class="btn btn-danger" id="btn-qp-save" onclick="createProcessStep()">Adicionar Etapa</button>
+        </div>
+    </div>
+
+<!-- MAINTENANCE EXECUTION MODAL -->
+    <div id="maintenance-execution-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3>Relatório de Execução da Manutenção</h3>
+                <span class="material-icons" style="cursor:pointer;" onclick="closeMaintenanceExecutionModal()">close</span>
+            </div>
+            <div class="modal-body">
+                <div id="execution-plan-summary" style="padding: 1rem; background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; text-transform: uppercase; color: var(--color-text-secondary);">Resumo do Planejamento</h4>
+                    <!-- Conteúdo dinâmico aqui -->
+                </div>
+                
+                <div class="form-group">
+                    <label>Foi seguido de acordo com o planejado?*</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="execution-followed-plan" id="execution-followed-plan-yes" value="true" required> Sim</label>
+                        <label><input type="radio" name="execution-followed-plan" id="execution-followed-plan-no" value="false"> Não</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="execution-notes">Detalhamento e Justificativas</label>
+                    <textarea id="execution-notes" class="input-field" rows="4" placeholder="Descreva o serviço realizado, peças trocadas, e qualquer desvio do plano..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMaintenanceExecutionModal()">Cancelar</button>
+                <button class="btn btn-success" id="btn-confirm-maintenance-execution">Confirmar Execução</button>
+            </div>
         </div>
     </div>
 
