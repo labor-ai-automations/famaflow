@@ -4990,20 +4990,16 @@ async function openRequestDetailsModal(requestId) {
                 const request = reqRes.data;
                 let history = historyRes.data || [];
 
-                // --- INÍCIO DA LÓGICA DE CORREÇÃO E MERGE DE HISTÓRICO ---
-                // Verifica se existe um agendamento legado sem um registro de histórico 'planned' correspondente.
                 if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
                     history.push({
                         status: 'planned',
-                        created_at: request.maintenance_scheduled_at, // Usa a data do agendamento como referência
+                        created_at: request.maintenance_scheduled_at,
                         profiles: { full_name: 'Sistema (Legado)' },
                         notes: request.approval_notes || null,
                         legacy_scheduled: request.maintenance_scheduled_at
                     });
                 }
-                // Verifica se o status final é 'executed' sem um registro de histórico correspondente.
                 if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
-                    // Tenta usar a data do agendamento + 1 hora como fallback, ou a data atual
                     const executedTime = request.maintenance_scheduled_at ? new Date(new Date(request.maintenance_scheduled_at).getTime() + 3600000) : new Date();
                     history.push({
                         status: 'executed',
@@ -5012,10 +5008,7 @@ async function openRequestDetailsModal(requestId) {
                         notes: null
                     });
                 }
-                // Reordena o histórico após o merge para garantir a cronologia correta.
                 history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-                // --- FIM DA LÓGICA DE CORREÇÃO ---
-
 
                 const isDynamic = request.blueprint_id != null;
                 const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : (isDynamic ? 'Requisição Dinâmica' : 'Solicitação Geral');
@@ -5053,7 +5046,7 @@ async function openRequestDetailsModal(requestId) {
                     let cleanNotes = step.notes;
                     
                     if (step.status === 'planned') {
-                        if (step.legacy_scheduled) { // Damos prioridade ao dado legado se ele existir
+                        if (step.legacy_scheduled) {
                             scheduledDateHTML = `
                                 <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size:16px;">event</span>
@@ -5138,7 +5131,27 @@ async function openRequestDetailsModal(requestId) {
                     </div>
                 `;
 
-                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>`;
+                // --- INÍCIO DA LÓGICA DE BOTÕES DINÂMICOS ---
+                let footerActionsHTML = '';
+                if (request.status === 'pending') {
+                    if (request.type === 'maintenance') {
+                        footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
+                    } else {
+                        footerActionsHTML += `
+                            <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                            <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                        `;
+                    }
+                } else if (request.status === 'planned' && request.type === 'maintenance') {
+                    footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar</button>`;
+                }
+                
+                modalFooter.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>
+                    ${footerActionsHTML}
+                `;
+                // --- FIM DA LÓGICA DE BOTÕES DINÂMICOS ---
+
 
             } catch (error) {
                 console.error(error);
