@@ -7622,11 +7622,28 @@ async function executeMaintenanceRequestHandler(requestId) {
 		function switchMaintenanceTab(tabId) {
             document.querySelectorAll('.maintenance-tab-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('#maintenance-page .mgt-tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(`maintenance-tab-${tabId}`).style.display = 'block';
-            document.getElementById(`tab-btn-${tabId.startsWith('my') ? 'my-maintenance' : tabId}`).classList.add('active');
+            
+            const contentToShow = document.getElementById(`maintenance-tab-${tabId}`);
+            if (contentToShow) {
+                contentToShow.style.display = 'block';
+            }
+
+            let buttonId;
+            if (tabId === 'my_requests') {
+                buttonId = 'tab-btn-my-maintenance';
+            } else if (tabId === 'manage') {
+                buttonId = 'tab-btn-manage-maintenance';
+            } else {
+                buttonId = `tab-btn-${tabId}`;
+            }
+
+            const buttonToActivate = document.getElementById(buttonId);
+            if (buttonToActivate) {
+                buttonToActivate.classList.add('active');
+            }
         }
 
-        function renderMaintenanceTable(containerId, requests, isManagerView = false) {
+function renderMaintenanceTable(containerId, requests, isManagerView = false) {
             const tableBody = document.getElementById(containerId);
             if (!tableBody) return;
 
@@ -7659,7 +7676,7 @@ async function executeMaintenanceRequestHandler(requestId) {
                     <tr>
                         <td><strong>Manutenção</strong></td>
                         ${isManagerView ? `<td>${req.requester_name || 'N/A'}</td>` : ''}
-                        <td>${req.data.equipamento || 'N/A'}</td>
+                        <td>${req.data?.equipamento || 'N/A'}</td>
                         <td>${date}</td>
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
                         <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
