@@ -4974,7 +4974,6 @@ async function openRequestDetailsModal(requestId) {
             modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
             modal.classList.add('visible');
 
-            // Mapeamento centralizado de status para tradução
             const statusTranslations = {
                 'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
                 'planned': 'Planejada', 'executed': 'Executada',
@@ -4982,7 +4981,6 @@ async function openRequestDetailsModal(requestId) {
             };
 
             try {
-                // Busca a Requisição e o Histórico em paralelo
                 const [reqRes, historyRes] = await Promise.all([
                     supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name)').eq('id', requestId).single(),
                     supabaseClient.from('request_history').select('*, profiles(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
@@ -4992,19 +4990,33 @@ async function openRequestDetailsModal(requestId) {
                 const request = reqRes.data;
                 let history = historyRes.data || [];
 
-                // MERGE LEGACY HISTORY (Para as manutenções antigas funcionarem)
-                if (request.data && request.data.history && Array.isArray(request.data.history)) {
-                    const legacyHistory = request.data.history.map(h => ({
-                        status: h.action === 'execute' ? 'executed' : (h.action === 'plan' ? 'planned' : h.action),
-                        created_at: h.timestamp,
-                        profiles: { full_name: h.by || 'Sistema' },
-                        notes: h.notes || null,
-                        legacy_scheduled: h.scheduled_at || null
-                    }));
-                    history = [...legacyHistory, ...history].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                // --- INÍCIO DA LÓGICA DE CORREÇÃO E MERGE DE HISTÓRICO ---
+                // Verifica se existe um agendamento legado sem um registro de histórico 'planned' correspondente.
+                if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
+                    history.push({
+                        status: 'planned',
+                        created_at: request.maintenance_scheduled_at, // Usa a data do agendamento como referência
+                        profiles: { full_name: 'Sistema (Legado)' },
+                        notes: request.approval_notes || null,
+                        legacy_scheduled: request.maintenance_scheduled_at
+                    });
                 }
+                // Verifica se o status final é 'executed' sem um registro de histórico correspondente.
+                if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
+                    // Tenta usar a data do agendamento + 1 hora como fallback, ou a data atual
+                    const executedTime = request.maintenance_scheduled_at ? new Date(new Date(request.maintenance_scheduled_at).getTime() + 3600000) : new Date();
+                    history.push({
+                        status: 'executed',
+                        created_at: executedTime.toISOString(),
+                        profiles: { full_name: 'Sistema (Legado)' },
+                        notes: null
+                    });
+                }
+                // Reordena o histórico após o merge para garantir a cronologia correta.
+                history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                // --- FIM DA LÓGICA DE CORREÇÃO ---
 
-                // 1. Cabeçalho Resumido (COM TRADUÇÃO)
+
                 const isDynamic = request.blueprint_id != null;
                 const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : (isDynamic ? 'Requisição Dinâmica' : 'Solicitação Geral');
                 const translatedStatus = statusTranslations[request.status] || request.status.toUpperCase();
@@ -5019,11 +5031,8 @@ async function openRequestDetailsModal(requestId) {
                     </div>
                 `;
 
-                // 2. Construção da Timeline Vertical
                 let timelineHTML = `
                     <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
-                        
-                        <!-- ETAPA 1: SEMPRE É A ABERTURA -->
                         <div style="margin-bottom: 2rem; position: relative;">
                             <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
                             <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
@@ -5034,7 +5043,6 @@ async function openRequestDetailsModal(requestId) {
                         </div>
                 `;
 
-                // MAPEAMENTO DINÂMICO DO HISTÓRICO (ETAPAS 2, 3...)
                 let stepCounter = 2;
                 history.forEach((step) => {
                     const labels = { planned: 'Planejamento e Agenda', executed: 'Conclusão da Tarefa', approved: 'Aprovação Gestora', rejected: 'Solicitação Recusada', pending_approval: 'Aguardando Avaliação' };
@@ -5044,13 +5052,12 @@ async function openRequestDetailsModal(requestId) {
                     let scheduledDateHTML = '';
                     let cleanNotes = step.notes;
                     
-                    // Verifica agendamentos da versão nova ou legado
                     if (step.status === 'planned') {
-                        if (step.legacy_scheduled || request.data.maintenance_scheduled_at) {
+                        if (step.legacy_scheduled) { // Damos prioridade ao dado legado se ele existir
                             scheduledDateHTML = `
                                 <div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size:16px;">event</span>
-                                    <strong>AGENDADO PARA:</strong> ${new Date(step.legacy_scheduled || request.data.maintenance_scheduled_at).toLocaleString('pt-BR')}
+                                    <strong>AGENDADO PARA:</strong> ${new Date(step.legacy_scheduled).toLocaleString('pt-BR')}
                                 </div>
                             `;
                         } else if (step.notes && step.notes.includes('Agendado para:')) {
@@ -5066,7 +5073,7 @@ async function openRequestDetailsModal(requestId) {
                                     </div>
                                 `;
                             }
-                            cleanNotes = obsText ? obsText.replace('Obs: ', '').trim() : '';
+                            cleanNotes = obsText ? obsText.replace('Obs:', '').trim() : '';
                         }
                     }
 
@@ -5094,7 +5101,6 @@ async function openRequestDetailsModal(requestId) {
 
                 timelineHTML += `</div>`;
 
-                // 3. Dados do Formulário Original (no final para consulta)
                 const translations = {
                     funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
                     tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
