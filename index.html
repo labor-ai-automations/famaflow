@@ -5352,6 +5352,7 @@ async function renderDynamicForm(blueprintId) {
         }
 
 function renderRequestForm(type) {
+            document.getElementById('request-modal').classList.add('visible'); // <-- CORREÇÃO APLICADA AQUI
             currentRequestType = type;
             const modalBody = document.getElementById('request-modal-body');
             const modalFooter = document.getElementById('request-modal-footer');
@@ -5680,10 +5681,10 @@ function renderRequestForm(type) {
             }
 
             modalTitle.textContent = title;
-            modalBody.innerHTML = backButtonHTML + `<form id="dynamic-request-form">${formHTML}</form>`;
+            modalBody.innerHTML = (type === 'maintenance' ? '' : backButtonHTML) + `<form id="dynamic-request-form">${formHTML}</form>`;
             
             modalFooter.innerHTML = `
-                <button class="btn btn-secondary" onclick="openRequestModal()">Cancelar</button>
+                <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
                 <button class="btn btn-danger" id="btn-submit-request">Enviar Requisição</button>
             `;
 
