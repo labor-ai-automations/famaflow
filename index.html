@@ -7629,6 +7629,10 @@ async function openMaintenancePlanningModal(requestId) {
 
             modal.classList.add('visible');
         }
+		
+		function closeMaintenancePlanningModal() {
+            document.getElementById('maintenance-planning-modal').classList.remove('visible');
+        }
 
 async function submitMaintenancePlan(requestId) {
             const date = document.getElementById('maintenance-date').value;
