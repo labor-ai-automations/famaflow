@@ -2691,114 +2691,118 @@ const appHTML = `<div id="app-container">
         }
 
 async function showApp() { 
-    const appContainer = document.getElementById('app-container'); 
-    if (!appContainer) return;
-    appContainer.classList.add('visible'); 
+            const appContainer = document.getElementById('app-container'); 
+            if (!appContainer) return;
+            appContainer.classList.add('visible'); 
 
-    displayUserBriefing(); 
+            displayUserBriefing(); 
 
-    // 1. Busca as permissões granulares do usuário no banco
-    const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
-    currentUserProfile.permissions = permissionsError ? [] : permissions.map(p => p.permission_key);
+            // 1. Busca as permissões granulares do usuário no banco
+            const { data: permissions, error: permissionsError } = await supabaseClient.rpc('get_user_permissions');
+            currentUserProfile.permissions = permissionsError ? [] : permissions.map(p => p.permission_key);
 
-    // SAFEGUARD DE MIGRAÇÃO: Admin não fica de fora do sistema
-    if (currentUserProfile.role === 'Admin' && !currentUserProfile.permissions.includes('manage_users')) {
-        currentUserProfile.permissions.push('manage_users');
-    }
+            // SAFEGUARD DE MIGRAÇÃO: Admin não fica de fora do sistema
+            if (currentUserProfile.role === 'Admin' && !currentUserProfile.permissions.includes('manage_users')) {
+                currentUserProfile.permissions.push('manage_users');
+            }
 
-    const p = currentUserProfile.permissions || [];
-    const isAdmin = p.includes('manage_users');
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
 
-    // 2. Filtra a Sidebar Principal - Apenas links com data-page (ignora o botão Sair)
-    document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link[data-page]').forEach(link => {
-        const page = link.getAttribute('data-page');
-        
-        if (page === 'profile-page') {
-            link.parentElement.style.display = 'block';
-            return;
-        }
+            // 2. Filtra a Sidebar Principal - Apenas links com data-page (ignora o botão Sair)
+            document.querySelectorAll('.nav-menu:not(#admin-menu-list) .nav-link[data-page]').forEach(link => {
+                const page = link.getAttribute('data-page');
+                
+                if (page === 'profile-page') {
+                    link.parentElement.style.display = 'block';
+                    return;
+                }
 
-        let isVisible = false;
-        if (isAdmin) {
-            isVisible = true; 
-        } else {
-            const pageToKeyMap = {
-                'dashboard-page': 'view_dashboard',
-                'messages-page': 'view_messages',
-                'maintenance-page': 'view_maintenance', // <-- LINHA ADICIONADA AQUI
-                'requests-page': 'view_requests',
-                'my-routines-page': 'view_routines',
-                'team-page': 'view_team',
-                'organograma-page': 'view_organograma',
-                'rankings-page': 'view_rankings',
-                'mural-page': 'view_mural',
-                'kb-page': 'view_kb'
-            };
-            isVisible = p.includes(pageToKeyMap[page]);
-        }
-        link.parentElement.style.display = isVisible ? 'block' : 'none';
-    });
-
-    // 3. Monta e Controla a Seção de ADMINISTRAÇÃO
-    const adminSection = document.getElementById('admin-section');
-    const adminMenuUl = document.getElementById('admin-menu-list');
-    
-    if (adminSection && adminMenuUl) {
-        let adminMenuHTML = '';
-        if (isAdmin || p.includes('view_admin_dash')) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
-        }
-if (isAdmin) {
-    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
-    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="builder-page"><span class="material-icons">architecture</span> Construtor de Requisições</a></li>`;
-}
-        
-        const hasAnyMgtHR = p.some(perm => perm.startsWith('mgt_') && perm !== 'mgt_travel' && perm !== 'mgt_maintenance');
-        if (isAdmin || hasAnyMgtHR || p.includes('mgt_maintenance')) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
-        }
-        if (isAdmin || p.includes('mgt_travel')) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
-        }
-        if (isAdmin || p.includes('manage_routines')) {
-            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
-        }
-
-        adminMenuUl.innerHTML = adminMenuHTML;
-
-        adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                showPage(e.currentTarget.dataset.page);
+                let isVisible = false;
+                if (isAdmin) {
+                    isVisible = true; 
+                } else {
+                    const pageToKeyMap = {
+                        'dashboard-page': 'view_dashboard',
+                        'messages-page': 'view_messages',
+                        'maintenance-page': 'view_maintenance',
+                        'requests-page': 'view_requests',
+                        'my-routines-page': 'view_routines',
+                        'team-page': 'view_team',
+                        'organograma-page': 'view_organograma',
+                        'rankings-page': 'view_rankings',
+                        'mural-page': 'view_mural',
+                        'kb-page': 'view_kb'
+                    };
+                    isVisible = p.includes(pageToKeyMap[page]);
+                }
+                link.parentElement.style.display = isVisible ? 'block' : 'none';
             });
-        });
-        adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
-    }
 
-    const profileShortcut = document.getElementById('profile-shortcut');
-    const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
-    let avatarHTML = currentUserProfile.avatar_url 
-        ? `<div class="user-avatar" style="background-image: url('https://lh3.googleusercontent.com/d/${currentUserProfile.avatar_url}'); background-size: cover; border-radius: 50%; width: 44px; height: 44px;"></div>`
-        : `<div class="user-avatar" style="width: 44px; height: 44px;">${avatarInitial}</div>`;
-    
-    profileShortcut.innerHTML = `${avatarHTML}<div><div class="user-name">${currentUserProfile.full_name}</div><div class="user-role">${currentUserProfile.role || 'Colaborador'}</div></div>`;
-    profileShortcut.onclick = () => showPage('profile-page');
+            // 3. Monta e Controla a Seção de ADMINISTRAÇÃO
+            const adminSection = document.getElementById('admin-section');
+            const adminMenuUl = document.getElementById('admin-menu-list');
+            
+            if (adminSection && adminMenuUl) {
+                let adminMenuHTML = '';
+                if (isAdmin || p.includes('view_admin_dash')) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="admin-dashboard-page"><span class="material-icons">admin_panel_settings</span> Admin Dashboard</a></li>`;
+                }
+        if (isAdmin) {
+            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
+            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="builder-page"><span class="material-icons">architecture</span> Construtor de Requisições</a></li>`;
+        }
+                
+                // --- CORREÇÃO APLICADA AQUI ---
+                // A condição agora verifica apenas permissões de gestão GERAIS (RH, etc.)
+                const hasAnyGeneralMgt = p.some(perm => perm.startsWith('mgt_') && perm !== 'mgt_travel' && perm !== 'mgt_maintenance');
+                if (isAdmin || hasAnyGeneralMgt) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
+                }
+                // --- FIM DA CORREÇÃO ---
+                
+                if (isAdmin || p.includes('mgt_travel')) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Gerenciar Viagens</a></li>`;
+                }
+                if (isAdmin || p.includes('manage_routines')) {
+                    adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
+                }
 
-    // 4. Redirecionamento Inicial
-    const hasAnyPerm = p.length > 0;
-    if (isAdmin || hasAnyPerm) {
-        if (isAdmin || p.includes('view_dashboard')) showPage('dashboard-page');
-        else if (p.includes('view_requests')) showPage('requests-page');
-        else if (p.includes('view_routines')) showPage('my-routines-page');
-        else if (p.includes('view_messages')) showPage('messages-page');
-        else if (p.includes('view_kb')) showPage('kb-page');
-        else showPage('profile-page');
-    } else {
-        showPage('no-permissions-page');
-    }
+                adminMenuUl.innerHTML = adminMenuHTML;
 
-    loadAllDynamicData();
-}
+                adminMenuUl.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showPage(e.currentTarget.dataset.page);
+                    });
+                });
+                adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
+            }
+
+            const profileShortcut = document.getElementById('profile-shortcut');
+            const avatarInitial = currentUserProfile.full_name ? currentUserProfile.full_name.charAt(0).toUpperCase() : '?';
+            let avatarHTML = currentUserProfile.avatar_url 
+                ? `<div class="user-avatar" style="background-image: url('https://lh3.googleusercontent.com/d/${currentUserProfile.avatar_url}'); background-size: cover; border-radius: 50%; width: 44px; height: 44px;"></div>`
+                : `<div class="user-avatar" style="width: 44px; height: 44px;">${avatarInitial}</div>`;
+            
+            profileShortcut.innerHTML = `${avatarHTML}<div><div class="user-name">${currentUserProfile.full_name}</div><div class="user-role">${currentUserProfile.role || 'Colaborador'}</div></div>`;
+            profileShortcut.onclick = () => showPage('profile-page');
+
+            // 4. Redirecionamento Inicial
+            const hasAnyPerm = p.length > 0;
+            if (isAdmin || hasAnyPerm) {
+                if (isAdmin || p.includes('view_dashboard')) showPage('dashboard-page');
+                else if (p.includes('view_requests')) showPage('requests-page');
+                else if (p.includes('view_routines')) showPage('my-routines-page');
+                else if (p.includes('view_messages')) showPage('messages-page');
+                else if (p.includes('view_kb')) showPage('kb-page');
+                else showPage('profile-page');
+            } else {
+                showPage('no-permissions-page');
+            }
+
+            loadAllDynamicData();
+        }
         
 function showPage(pageId, targetUserId = null) { 
             const appContainer = document.getElementById('app-container'); 
