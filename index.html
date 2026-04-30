@@ -7590,32 +7590,58 @@ async function submitRequestActionWithNotes() {
 		
 		// --- NOVAS FUNÇÕES PARA O FLUXO DE MANUTENÇÃO ---
 
-        function openMaintenancePlanningModal(requestId) {
+async function openMaintenancePlanningModal(requestId) {
             const modal = document.getElementById('maintenance-planning-modal');
             const confirmBtn = document.getElementById('btn-confirm-maintenance-plan');
+            const techSelect1 = document.getElementById('technician-option-1');
+            const techSelect2 = document.getElementById('technician-option-2');
             
             // Limpa campos
             document.getElementById('maintenance-date').value = '';
             document.getElementById('maintenance-time').value = '';
             document.getElementById('maintenance-notes').value = '';
+            techSelect1.innerHTML = '<option value="">Carregando...</option>';
+            techSelect2.innerHTML = '<option value="">Carregando...</option>';
 
+            // Busca e popula os técnicos
+            const { data: technicians, error } = await supabaseClient
+                .from('maintenance_technicians')
+                .select('id, user:user_id(full_name)')
+                .eq('is_active', true)
+                .order('user_id(full_name)');
+            
+            techSelect1.innerHTML = '<option value="">Selecione a Opção 1*</option>';
+            techSelect2.innerHTML = '<option value="">Selecione a Opção 2</option>';
+
+            if (technicians) {
+                technicians.forEach(tech => {
+                    const option1 = document.createElement('option');
+                    option1.value = tech.id;
+                    option1.textContent = tech.user.full_name;
+                    techSelect1.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = tech.id;
+                    option2.textContent = tech.user.full_name;
+                    techSelect2.appendChild(option2);
+                });
+            }
+            
             // Associa a ação ao botão
             confirmBtn.onclick = () => submitMaintenancePlan(requestId);
 
             modal.classList.add('visible');
         }
 
-        function closeMaintenancePlanningModal() {
-            document.getElementById('maintenance-planning-modal').classList.remove('visible');
-        }
-
 async function submitMaintenancePlan(requestId) {
             const date = document.getElementById('maintenance-date').value;
             const time = document.getElementById('maintenance-time').value;
-            const notes = document.getElementById('maintenance-notes').value.trim();
+            const notes = document.getElementById('maintenance-notes').value;
+            const technicianId = document.getElementById('technician-option-1').value;
             const btn = document.getElementById('btn-confirm-maintenance-plan');
 
             if (!date || !time) { showToast('A data e a hora previstas são obrigatórias.', 'warning'); return; }
+            if (!technicianId) { showToast('Selecione pelo menos um técnico (Opção 1).', 'warning'); return; }
 
             const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
             btn.disabled = true;
@@ -7628,14 +7654,15 @@ async function submitMaintenancePlan(requestId) {
                         request_id: requestId,
                         maintenance_scheduled_at: scheduledAt,
                         approval_notes: notes,
-                        changed_by: currentUserProfile.id
+                        changed_by: currentUserProfile.id,
+                        technician_id: technicianId // <-- NOVO CAMPO ENVIADO
                     })
                 });
                 if (!response.ok) throw new Error('Falha ao planejar.');
-                showToast('Manutenção planejada!', 'success');
+                showToast('Manutenção planejada e atribuída!', 'success');
                 closeMaintenancePlanningModal();
-                closeRequestModal();
-                setTimeout(() => loadMaintenancePage(), 1500); // <-- LINHA CORRIGIDA
+                closeRequestModal(); 
+                setTimeout(() => loadMaintenancePage(), 1500);
             } catch (error) { showToast(error.message, 'danger'); } finally { btn.disabled = false; }
         }
 
@@ -10159,7 +10186,21 @@ function promptSelection(title, options, callback) {
                 <span class="material-icons" style="cursor:pointer;" onclick="closeMaintenancePlanningModal()">close</span>
             </div>
             <div class="modal-body">
-                <p style="color: var(--color-text-secondary); margin-top: 0;">Agende a data e hora para o serviço e adicione observações para o solicitante.</p>
+                <p style="color: var(--color-text-secondary); margin-top: 0;">Agende a data, atribua um técnico e adicione observações para o solicitante.</p>
+                
+                <h4 class="form-section-title" style="margin-top: 1rem;">Atribuição da Equipe</h4>
+                <div class="grid grid-cols-2">
+                    <div class="form-group">
+                        <label for="technician-option-1">Técnico (Opção 1)*</label>
+                        <select id="technician-option-1" class="input-field" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="technician-option-2">Técnico (Opção 2)</label>
+                        <select id="technician-option-2" class="input-field"></select>
+                    </div>
+                </div>
+
+                <h4 class="form-section-title">Agendamento</h4>
                 <div class="grid grid-cols-2">
                     <div class="form-group">
                         <label for="maintenance-date">Data Prevista*</label>
