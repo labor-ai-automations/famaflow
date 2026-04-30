@@ -7596,19 +7596,17 @@ async function openMaintenancePlanningModal(requestId) {
             const techSelect1 = document.getElementById('technician-option-1');
             const techSelect2 = document.getElementById('technician-option-2');
             
-            // Limpa campos
             document.getElementById('maintenance-date').value = '';
             document.getElementById('maintenance-time').value = '';
             document.getElementById('maintenance-notes').value = '';
             techSelect1.innerHTML = '<option value="">Carregando...</option>';
             techSelect2.innerHTML = '<option value="">Carregando...</option>';
 
-            // Busca e popula os técnicos
             const { data: technicians, error } = await supabaseClient
                 .from('maintenance_technicians')
-                .select('id, user:user_id(full_name)')
+                .select('id, name')
                 .eq('is_active', true)
-                .order('user_id(full_name)');
+                .order('name');
             
             techSelect1.innerHTML = '<option value="">Selecione a Opção 1*</option>';
             techSelect2.innerHTML = '<option value="">Selecione a Opção 2</option>';
@@ -7617,17 +7615,16 @@ async function openMaintenancePlanningModal(requestId) {
                 technicians.forEach(tech => {
                     const option1 = document.createElement('option');
                     option1.value = tech.id;
-                    option1.textContent = tech.user.full_name;
+                    option1.textContent = tech.name; // Corrigido de tech.user.full_name para tech.name
                     techSelect1.appendChild(option1);
 
                     const option2 = document.createElement('option');
                     option2.value = tech.id;
-                    option2.textContent = tech.user.full_name;
+                    option2.textContent = tech.name; // Corrigido de tech.user.full_name para tech.name
                     techSelect2.appendChild(option2);
                 });
             }
             
-            // Associa a ação ao botão
             confirmBtn.onclick = () => submitMaintenancePlan(requestId);
 
             modal.classList.add('visible');
@@ -7777,8 +7774,9 @@ async function loadTechnicians() {
 
             const { data: technicians, error } = await supabaseClient
                 .from('maintenance_technicians')
-                .select('id, specialty, is_active, user:user_id(full_name)')
-                .order('is_active', { ascending: false });
+                .select('id, name, specialty, is_active')
+                .order('is_active', { ascending: false })
+                .order('name');
 
             if (error) {
                 tableBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:var(--color-danger);">Erro ao carregar técnicos.</td></tr>`;
@@ -7791,7 +7789,7 @@ async function loadTechnicians() {
 
             tableBody.innerHTML = technicians.map(tech => `
                 <tr>
-                    <td>${tech.user.full_name}</td>
+                    <td>${tech.name}</td>
                     <td>${tech.specialty || 'N/A'}</td>
                     <td>
                         <span class="status-tag ${tech.is_active ? 'status-approved' : 'status-rejected'}">
@@ -7803,22 +7801,8 @@ async function loadTechnicians() {
             `).join('');
         }
 
-        async function openRegisterTechnicianModal() {
+        function openRegisterTechnicianModal() {
             const modal = document.getElementById('register-technician-modal');
-            const userSelect = document.getElementById('technician-user-id');
-            userSelect.innerHTML = '<option value="">Selecione um usuário...</option>';
-            
-            // Busca todos os usuários para popular o select
-            const { data: users } = await supabaseClient.from('profiles').select('id, full_name').order('full_name');
-            if (users) {
-                users.forEach(user => {
-                    const option = document.createElement('option');
-                    option.value = user.id;
-                    option.textContent = user.full_name;
-                    userSelect.appendChild(option);
-                });
-            }
-            
             document.getElementById('register-technician-form').reset();
             document.getElementById('technician-modal-title').textContent = 'Registrar Novo Técnico';
             document.getElementById('btn-save-technician').onclick = saveTechnician;
@@ -7826,28 +7810,28 @@ async function loadTechnicians() {
         }
 
         async function saveTechnician() {
-            const userId = document.getElementById('technician-user-id').value;
+            const name = document.getElementById('technician-name').value;
             const specialty = document.getElementById('technician-specialty').value;
 
-            if (!userId) {
-                showToast("Selecione um usuário do sistema.", "warning");
+            if (!name) {
+                showToast("O nome do técnico é obrigatório.", "warning");
                 return;
             }
 
             const { error } = await supabaseClient.from('maintenance_technicians').insert({
-                user_id: userId,
+                name: name,
                 specialty: specialty
             });
 
             if (error) {
                 console.error("Erro ao salvar técnico:", error);
-                showToast(error.code === '23505' ? 'Este usuário já está registrado como técnico.' : 'Erro ao salvar técnico.', 'danger');
+                showToast(error.code === '23505' ? 'Este nome de técnico já está registrado.' : 'Erro ao salvar técnico.', 'danger');
             } else {
                 showToast("Técnico registrado com sucesso!", "success");
                 document.getElementById('register-technician-modal').classList.remove('visible');
                 loadTechnicians(); // Recarrega a lista de técnicos
             }
-        }		
+        }
 
 async function loadMaintenancePage() {
             const p = currentUserProfile.permissions || [];
@@ -10305,6 +10289,7 @@ function promptSelection(title, options, callback) {
     </div>
 	
 	<!-- REGISTER TECHNICIAN MODAL -->
+<!-- REGISTER TECHNICIAN MODAL -->
     <div id="register-technician-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
@@ -10315,8 +10300,8 @@ function promptSelection(title, options, callback) {
                 <form id="register-technician-form">
                     <input type="hidden" id="technician-id">
                     <div class="form-group">
-                        <label for="technician-user-id">Usuário do Sistema</label>
-                        <select id="technician-user-id" class="input-field" required></select>
+                        <label for="technician-name">Nome do Técnico*</label>
+                        <input type="text" id="technician-name" class="input-field" required placeholder="Digite o nome completo">
                     </div>
                     <div class="form-group">
                         <label for="technician-specialty">Especialidade</label>
