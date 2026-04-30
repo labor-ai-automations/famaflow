@@ -2351,7 +2351,7 @@ const appHTML = `<div id="app-container">
                     <div id="maintenance-tab-manage" class="maintenance-tab-content" style="display:none;">
                          <div class="card" style="padding:0;">
                             <table class="data-table">
-                                <thead><tr><th>Solicitante</th><th>Equipamento/Infra</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+                                <thead><tr><th>Tipo</th><th>Solicitante</th><th>Equipamento/Infra</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
                                 <tbody id="manage-maintenance-table-body"></tbody>
                             </table>
                         </div>
@@ -7718,22 +7718,18 @@ async function loadMaintenancePage() {
             const p = currentUserProfile.permissions || [];
             const isAdmin = p.includes('manage_users');
 
-            // --- CORREÇÃO 1: Renomeia o botão e garante a ação de clique ---
             const newRequestBtn = document.getElementById('btn-new-maintenance-request');
             newRequestBtn.innerHTML = '<span class="material-icons">add</span> Pedir Manutenção';
             newRequestBtn.style.display = (isAdmin || p.includes('req_maintenance')) ? 'inline-flex' : 'none';
             newRequestBtn.onclick = () => renderRequestForm('maintenance');
 
-            // Controla visibilidade das abas com base nas permissões
             document.getElementById('tab-btn-manage-maintenance').style.display = (isAdmin || p.includes('mgt_maintenance')) ? 'block' : 'none';
             document.getElementById('tab-btn-technicians').style.display = (isAdmin || p.includes('manage_technicians')) ? 'block' : 'none';
             document.getElementById('tab-btn-preventive').style.display = (isAdmin || p.includes('manage_preventive_schedules')) ? 'block' : 'none';
 
-            // Carrega os dados das tabelas
             const myRequestsBody = document.getElementById('my-maintenance-table-body');
             myRequestsBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando...</td></tr>`;
             
-            // --- CORREÇÃO 2: Remove o .order() da chamada RPC ---
             const { data: myReqs, error: myReqsError } = await supabaseClient.rpc('get_my_requests');
             if (myReqsError) {
                 console.error("Erro em get_my_requests:", myReqsError);
@@ -7747,7 +7743,6 @@ async function loadMaintenancePage() {
                 const manageRequestsBody = document.getElementById('manage-maintenance-table-body');
                 manageRequestsBody.innerHTML = `<tr><td colspan="6" class="empty-state">Carregando...</td></tr>`;
 
-                // --- CORREÇÃO 2: Remove o .order() da chamada RPC ---
                 const { data: allReqs, error: allReqsError } = await supabaseClient.rpc('get_all_requests_for_viewing');
                 if (allReqsError) {
                     console.error("Erro em get_all_requests_for_viewing:", allReqsError);
@@ -7757,7 +7752,7 @@ async function loadMaintenancePage() {
                     renderMaintenanceTable('manage-maintenance-table-body', allMaintenanceReqs, true);
                 }
             }
-            // A aba inicial é definida após o carregamento dos dados para evitar piscar
+            
             const activeTab = document.querySelector('#maintenance-page .mgt-tab-btn.active')?.id || 'tab-btn-my-maintenance';
             const tabKey = activeTab.replace('tab-btn-', '').replace('my-maintenance', 'my_requests').replace('manage-maintenance', 'manage');
             switchMaintenanceTab(tabKey);
