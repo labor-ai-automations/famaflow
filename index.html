@@ -7787,7 +7787,11 @@ async function loadTechnicians() {
                 return;
             }
 
-            tableBody.innerHTML = technicians.map(tech => `
+            tableBody.innerHTML = technicians.map(tech => {
+                // Prepara o objeto de dados para ser passado para a função de edição
+                const techData = JSON.stringify(tech).replace(/'/g, "&apos;");
+
+                return `
                 <tr>
                     <td>${tech.name}</td>
                     <td>${tech.specialty || 'N/A'}</td>
@@ -7796,20 +7800,41 @@ async function loadTechnicians() {
                             ${tech.is_active ? 'Ativo' : 'Inativo'}
                         </span>
                     </td>
-                    <td><button class="btn btn-icon" title="Editar"><span class="material-icons">edit</span></button></td>
+                    <td><button class="btn btn-icon" title="Editar" onclick='openRegisterTechnicianModal(${techData})'><span class="material-icons">edit</span></button></td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
-        function openRegisterTechnicianModal() {
+async function openRegisterTechnicianModal(technicianData = null) {
             const modal = document.getElementById('register-technician-modal');
-            document.getElementById('register-technician-form').reset();
-            document.getElementById('technician-modal-title').textContent = 'Registrar Novo Técnico';
-            document.getElementById('btn-save-technician').onclick = saveTechnician;
+            const form = document.getElementById('register-technician-form');
+            const modalTitle = document.getElementById('technician-modal-title');
+            const nameInput = document.getElementById('technician-name');
+            const specialtyInput = document.getElementById('technician-specialty');
+            const technicianIdInput = document.getElementById('technician-id');
+            const saveBtn = document.getElementById('btn-save-technician');
+
+            form.reset();
+
+            if (technicianData) {
+                // MODO EDIÇÃO
+                modalTitle.textContent = 'Editar Técnico';
+                technicianIdInput.value = technicianData.id;
+                nameInput.value = technicianData.name;
+                specialtyInput.value = technicianData.specialty || '';
+                saveBtn.onclick = () => saveTechnician(true); // Passa flag de edição
+            } else {
+                // MODO CRIAÇÃO
+                modalTitle.textContent = 'Registrar Novo Técnico';
+                technicianIdInput.value = '';
+                saveBtn.onclick = () => saveTechnician(false); // Passa flag de criação
+            }
+            
             modal.classList.add('visible');
         }
 
-        async function saveTechnician() {
+async function saveTechnician(isEditing = false) {
+            const id = document.getElementById('technician-id').value;
             const name = document.getElementById('technician-name').value;
             const specialty = document.getElementById('technician-specialty').value;
 
@@ -7818,18 +7843,29 @@ async function loadTechnicians() {
                 return;
             }
 
-            const { error } = await supabaseClient.from('maintenance_technicians').insert({
-                name: name,
-                specialty: specialty
-            });
+            let error;
+            if (isEditing) {
+                // Lógica de ATUALIZAÇÃO
+                const { error: updateError } = await supabaseClient
+                    .from('maintenance_technicians')
+                    .update({ name: name, specialty: specialty })
+                    .eq('id', id);
+                error = updateError;
+            } else {
+                // Lógica de INSERÇÃO
+                const { error: insertError } = await supabaseClient
+                    .from('maintenance_technicians')
+                    .insert({ name: name, specialty: specialty });
+                error = insertError;
+            }
 
             if (error) {
                 console.error("Erro ao salvar técnico:", error);
                 showToast(error.code === '23505' ? 'Este nome de técnico já está registrado.' : 'Erro ao salvar técnico.', 'danger');
             } else {
-                showToast("Técnico registrado com sucesso!", "success");
+                showToast(`Técnico ${isEditing ? 'atualizado' : 'registrado'} com sucesso!`, "success");
                 document.getElementById('register-technician-modal').classList.remove('visible');
-                loadTechnicians(); // Recarrega a lista de técnicos
+                loadTechnicians();
             }
         }
 
