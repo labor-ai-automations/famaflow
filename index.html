@@ -5820,9 +5820,16 @@ async function submitRequest(event) {
                     throw new Error(errorData.message || 'Falha ao enviar requisição.');
                 }
 
-                showToast("Requisição enviada com sucesso!", "success");
+                showToast("Solicitação enviada com sucesso!", "success");
                 closeRequestModal();
-                loadRequests(); 
+                
+                // --- CORREÇÃO APLICADA AQUI ---
+                if (currentRequestType === 'maintenance') {
+                    loadMaintenancePage();
+                } else {
+                    loadRequests();
+                }
+                // --- FIM DA CORREÇÃO ---
 
             } catch (error) {
                 console.error("Erro ao enviar requisição:", error);
