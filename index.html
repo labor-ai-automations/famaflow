@@ -7604,8 +7604,8 @@ async function submitMaintenancePlan(requestId) {
                 if (!response.ok) throw new Error('Falha ao planejar.');
                 showToast('Manutenção planejada!', 'success');
                 closeMaintenancePlanningModal();
-                closeRequestModal(); // <-- LINHA ADICIONADA AQUI
-                setTimeout(() => loadRequestManagementPage(), 1000);
+                closeRequestModal();
+                setTimeout(() => loadMaintenancePage(), 1500); // <-- LINHA CORRIGIDA
             } catch (error) { showToast(error.message, 'danger'); } finally { btn.disabled = false; }
         }
 
@@ -7663,7 +7663,8 @@ function renderMaintenanceTable(containerId, requests, isManagerView = false) {
             if (!tableBody) return;
 
             if (!requests || requests.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma solicitação encontrada.</td></tr>`;
+                const colspan = isManagerView ? 6 : 5;
+                tableBody.innerHTML = `<tr><td colspan="${colspan}" class="empty-state">Nenhuma solicitação encontrada.</td></tr>`;
                 return;
             }
 
@@ -7687,16 +7688,29 @@ function renderMaintenanceTable(containerId, requests, isManagerView = false) {
                     }
                 }
 
-                return `
-                    <tr>
-                        <td><strong>Manutenção</strong></td>
-                        ${isManagerView ? `<td>${req.requester_name || 'N/A'}</td>` : ''}
-                        <td>${req.data?.equipamento || 'N/A'}</td>
-                        <td>${date}</td>
-                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
-                    </tr>
-                `;
+                // CORREÇÃO: Estrutura condicional para renderizar a linha da tabela
+                if (isManagerView) {
+                    return `
+                        <tr>
+                            <td><strong>Manutenção</strong></td>
+                            <td>${req.requester_name || 'N/A'}</td>
+                            <td>${req.data?.equipamento || 'N/A'}</td>
+                            <td>${date}</td>
+                            <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                            <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+                        </tr>
+                    `;
+                } else {
+                    return `
+                        <tr>
+                            <td><strong>Manutenção</strong></td>
+                            <td>${req.data?.equipamento || 'N/A'}</td>
+                            <td>${date}</td>
+                            <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                            <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+                        </tr>
+                    `;
+                }
             }).join('');
         }
 
@@ -7780,7 +7794,7 @@ function openMaintenanceExecutionModal(requestId) {
             document.getElementById('maintenance-execution-modal').classList.remove('visible');
         }
 
-        async function submitMaintenanceExecution(requestId) {
+async function submitMaintenanceExecution(requestId) {
             const followedPlanRadio = document.querySelector('input[name="execution-followed-plan"]:checked');
             if (!followedPlanRadio) {
                 showToast("Por favor, confirme se o plano foi seguido.", "warning");
@@ -7815,7 +7829,7 @@ function openMaintenanceExecutionModal(requestId) {
                 showToast('Manutenção executada e relatada!', 'success');
                 closeMaintenanceExecutionModal();
                 closeRequestModal();
-                setTimeout(() => loadRequestManagementPage(), 1500);
+                setTimeout(() => loadMaintenancePage(), 1500); // <-- LINHA CORRIGIDA
 
             } catch(e) { 
                 showToast(e.message, 'danger'); 
