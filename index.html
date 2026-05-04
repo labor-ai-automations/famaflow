@@ -7791,12 +7791,12 @@ async function loadTechnicians() {
                 return;
             }
 
-            tableBody.innerHTML = technicians.map(tech => {
-                // Prepara o objeto de dados para ser passado para a função de edição
-                const techData = JSON.stringify(tech).replace(/'/g, "&apos;");
+            // Limpa a tabela antes de adicionar as novas linhas
+            tableBody.innerHTML = ''; 
 
-                return `
-                <tr>
+            technicians.forEach(tech => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
                     <td>${tech.name}</td>
                     <td>${tech.specialty || 'N/A'}</td>
                     <td>
@@ -7804,9 +7804,17 @@ async function loadTechnicians() {
                             ${tech.is_active ? 'Ativo' : 'Inativo'}
                         </span>
                     </td>
-                    <td><button class="btn btn-icon" title="Editar" onclick='openRegisterTechnicianModal(${techData})'><span class="material-icons">edit</span></button></td>
-                </tr>
-            `}).join('');
+                    <td><button class="btn btn-icon" title="Editar"><span class="material-icons">edit</span></button></td>
+                `;
+
+                // Adiciona o EventListener ao botão de editar da linha recém-criada
+                const editButton = row.querySelector('button');
+                editButton.addEventListener('click', () => {
+                    openRegisterTechnicianModal(tech);
+                });
+
+                tableBody.appendChild(row);
+            });
         }
 
 async function openRegisterTechnicianModal(technicianData = null) {
