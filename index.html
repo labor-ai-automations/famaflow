@@ -7838,7 +7838,8 @@ async function openRegisterTechnicianModal(technicianData = null) {
         }
 
 async function saveTechnician(isEditing = false) {
-            const id = document.getElementById('technician-id').value;
+            const technicianIdInput = document.getElementById('technician-id');
+            const id = technicianIdInput.value;
             const name = document.getElementById('technician-name').value;
             const specialty = document.getElementById('technician-specialty').value;
 
@@ -7849,6 +7850,10 @@ async function saveTechnician(isEditing = false) {
 
             let error;
             if (isEditing) {
+                if (!id) {
+                    showToast("Erro: ID do técnico não encontrado para edição.", "danger");
+                    return;
+                }
                 // Lógica de ATUALIZAÇÃO
                 const { error: updateError } = await supabaseClient
                     .from('maintenance_technicians')
