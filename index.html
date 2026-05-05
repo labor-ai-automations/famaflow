@@ -7828,32 +7828,37 @@ async function loadTechnicians() {
 }
 
 async function openRegisterTechnicianModal(technicianData = null) {
-            const modal = document.getElementById('register-technician-modal');
-            const form = document.getElementById('register-technician-form');
-            const modalTitle = document.getElementById('technician-modal-title');
-            const nameInput = document.getElementById('technician-name');
-            const specialtyInput = document.getElementById('technician-specialty');
-            const technicianIdInput = document.getElementById('technician-id');
-            const saveBtn = document.getElementById('btn-save-technician');
+    const modal = document.getElementById('register-technician-modal');
+    const form = document.getElementById('register-technician-form');
+    const modalTitle = document.getElementById('technician-modal-title');
+    const nameInput = document.getElementById('technician-name');
+    const specialtyInput = document.getElementById('technician-specialty');
+    const technicianIdInput = document.getElementById('technician-id');
+    const saveBtn = document.getElementById('btn-save-technician');
 
-            form.reset();
+    // Sempre garante que o botão "Salvar" chame a função correta
+    saveBtn.onclick = () => saveTechnician();
 
-            if (technicianData) {
-                // MODO EDIÇÃO
-                modalTitle.textContent = 'Editar Técnico';
-                technicianIdInput.value = technicianData.id;
-                nameInput.value = technicianData.name;
-                specialtyInput.value = technicianData.specialty || '';
-                saveBtn.onclick = () => saveTechnician(true); // Passa flag de edição
-            } else {
-                // MODO CRIAÇÃO
-                modalTitle.textContent = 'Registrar Novo Técnico';
-                technicianIdInput.value = '';
-                saveBtn.onclick = () => saveTechnician(false); // Passa flag de criação
-            }
-            
-            modal.classList.add('visible');
-        }
+    // A verificação crucial:
+    // Verifica se `technicianData` é um objeto válido E se ele tem a propriedade 'id'.
+    // Isso impede que um MouseEvent ou outro objeto aleatório acione o modo de edição.
+    if (technicianData && technicianData.id) {
+        // MODO EDIÇÃO (Chamado pelo ícone de lápis)
+        modalTitle.textContent = 'Editar Técnico';
+        technicianIdInput.value = technicianData.id;
+        nameInput.value = technicianData.name; // Agora vai preencher "Cesar Abdo Cazangi"
+        specialtyInput.value = technicianData.specialty || '';
+    } else {
+        // MODO CRIAÇÃO (Chamado pelo botão "Registrar Técnico")
+        modalTitle.textContent = 'Registrar Novo Técnico';
+        form.reset(); // Limpa todos os campos do formulário
+        technicianIdInput.value = ''; // Garante que o ID oculto está vazio
+        nameInput.value = ''; // Limpa explicitamente para evitar qualquer resquício
+        specialtyInput.value = '';
+    }
+    
+    modal.classList.add('visible');
+}
 
 async function saveTechnician(isEditing = false) {
             const technicianIdInput = document.getElementById('technician-id');
