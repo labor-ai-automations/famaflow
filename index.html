@@ -7860,46 +7860,69 @@ async function openRegisterTechnicianModal(technicianData = null) {
     modal.classList.add('visible');
 }
 
-async function saveTechnician(isEditing = false) {
-            const technicianIdInput = document.getElementById('technician-id');
-            const id = technicianIdInput.value;
-            const name = document.getElementById('technician-name').value;
-            const specialty = document.getElementById('technician-specialty').value;
+async function saveTechnician() {
+    const technicianIdInput = document.getElementById('technician-id');
+    const id = technicianIdInput.value;
+    const name = document.getElementById('technician-name').value;
+    const specialty = document.getElementById('technician-specialty').value;
 
-            if (!name) {
-                showToast("O nome do técnico é obrigatório.", "warning");
-                return;
-            }
+    if (!name) {
+        showToast("O nome do técnico é obrigatório.", "warning");
+        return;
+    }
 
-            let error;
-            if (isEditing) {
-                if (!id) {
-                    showToast("Erro: ID do técnico não encontrado para edição.", "danger");
-                    return;
-                }
-                // Lógica de ATUALIZAÇÃO
-                const { error: updateError } = await supabaseClient
-                    .from('maintenance_technicians')
-                    .update({ name: name, specialty: specialty })
-                    .eq('id', id);
-                error = updateError;
-            } else {
-                // Lógica de INSERÇÃO
-                const { error: insertError } = await supabaseClient
-                    .from('maintenance_technicians')
-                    .insert({ name: name, specialty: specialty });
-                error = insertError;
-            }
+    const btn = document.getElementById('btn-save-technician');
+    btn.disabled = true;
 
-            if (error) {
-                console.error("Erro ao salvar técnico:", error);
-                showToast(error.code === '23505' ? 'Este nome de técnico já está registrado.' : 'Erro ao salvar técnico.', 'danger');
-            } else {
-                showToast(`Técnico ${isEditing ? 'atualizado' : 'registrado'} com sucesso!`, "success");
-                document.getElementById('register-technician-modal').classList.remove('visible');
-                loadTechnicians();
-            }
+    try {
+        // 1. Obter a sessão atual para pegar o token de autenticação
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session) {
+            throw new Error("Sessão inválida. Faça login novamente.");
         }
+
+        // 2. Montar o payload (os dados a serem enviados)
+        const payload = {
+            name: name,
+            specialty: specialty
+        };
+        // Adiciona o ID apenas se estivermos editando
+        if (id) {
+            payload.id = id;
+        }
+
+        // 3. Definir a URL do webhook no n8n
+        const N8N_MANAGE_TECHNICIAN_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/manage-technician';
+
+        // 4. Fazer a requisição para o n8n usando fetch()
+        const response = await fetch(N8N_MANAGE_TECHNICIAN_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Envia o token do usuário para o n8n validar a permissão
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        // 5. Tratar a resposta do n8n
+        if (!response.ok) {
+            // Se o n8n retornar um erro (como 403), ele será capturado aqui
+            throw new Error('Falha ao salvar técnico. Verifique suas permissões.');
+        }
+
+        const isEditing = !!id;
+        showToast(`Técnico ${isEditing ? 'atualizado' : 'registrado'} com sucesso!`, "success");
+        document.getElementById('register-technician-modal').classList.remove('visible');
+        loadTechnicians(); // Recarrega a lista de técnicos
+
+    } catch (error) {
+        console.error("Erro ao salvar técnico via n8n:", error);
+        showToast(error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
 
 async function loadMaintenancePage() {
             const p = currentUserProfile.permissions || [];
