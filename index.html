@@ -7773,49 +7773,56 @@ function renderMaintenanceTable(containerId, requests, isManagerView = false) {
         }
 		
 async function loadTechnicians() {
-            const tableBody = document.getElementById('technicians-table-body');
-            tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando equipe técnica...</td></tr>`;
+    const tableBody = document.getElementById('technicians-table-body');
+    // 1. Mostra um feedback inicial de "carregando"
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando equipe técnica...</td></tr>`;
 
-            const { data: technicians, error } = await supabaseClient
-                .from('maintenance_technicians')
-                .select('id, name, specialty, is_active')
-                .order('is_active', { ascending: false })
-                .order('name');
+    // 2. Busca os dados no Supabase, ordenando por nome
+    const { data: technicians, error } = await supabaseClient
+        .from('maintenance_technicians')
+        .select('id, name, specialty, is_active')
+        .order('name');
 
-            if (error) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:var(--color-danger);">Erro ao carregar técnicos.</td></tr>`;
-                return;
-            }
-            if (technicians.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Nenhum técnico registrado.</td></tr>`;
-                return;
-            }
+    // 3. Tratamento de Erro: Se a consulta falhar (ex: RLS, rede), exibe o erro.
+    if (error) {
+        console.error("Erro ao carregar técnicos:", error);
+        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:var(--color-danger);">Erro ao carregar técnicos.</td></tr>`;
+        return;
+    }
 
-            // Limpa a tabela antes de adicionar as novas linhas
-            tableBody.innerHTML = ''; 
+    // 4. Tratamento de Tabela Vazia: Se a consulta retornar um array vazio, exibe a mensagem correta.
+    if (!technicians || technicians.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Nenhum técnico registrado.</td></tr>`;
+        return;
+    }
 
-            technicians.forEach(tech => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${tech.name}</td>
-                    <td>${tech.specialty || 'N/A'}</td>
-                    <td>
-                        <span class="status-tag ${tech.is_active ? 'status-approved' : 'status-rejected'}">
-                            ${tech.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
-                    </td>
-                    <td><button class="btn btn-icon" title="Editar"><span class="material-icons">edit</span></button></td>
-                `;
+    // 5. Limpa a tabela para remover a mensagem de "carregando"
+    tableBody.innerHTML = ''; 
 
-                // Adiciona o EventListener ao botão de editar da linha recém-criada
-                const editButton = row.querySelector('button');
-                editButton.addEventListener('click', () => {
-                    openRegisterTechnicianModal(tech);
-                });
+    // 6. Loop de Renderização: Para cada técnico encontrado, cria uma linha na tabela
+    technicians.forEach(tech => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${tech.name}</td>
+            <td>${tech.specialty || 'N/A'}</td>
+            <td>
+                <span class="status-tag ${tech.is_active ? 'status-approved' : 'status-rejected'}">
+                    ${tech.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
+            <td><button class="btn btn-icon" title="Editar"><span class="material-icons">edit</span></button></td>
+        `;
 
-                tableBody.appendChild(row);
-            });
-        }
+        // 7. Adiciona o evento de clique no botão editar da linha recém-criada
+        const editButton = row.querySelector('button');
+        editButton.addEventListener('click', () => {
+            // Chama a função para abrir o modal, passando o objeto 'tech' completo
+            openRegisterTechnicianModal(tech);
+        });
+
+        tableBody.appendChild(row);
+    });
+}
 
 async function openRegisterTechnicianModal(technicianData = null) {
             const modal = document.getElementById('register-technician-modal');
