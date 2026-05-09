@@ -10474,17 +10474,32 @@ let feedbackData = {}; // Objeto para armazenar os dados do feedback durante o p
 // Função principal que é chamada quando a página de feedback é aberta
 async function loadFeedbackPage() {
     const newFeedbackBtn = document.getElementById('btn-new-feedback');
-if (currentUserProfile.permissions.includes('create_feedback') || currentUserProfile.permissions.includes('manage_users')) {
-    newFeedbackBtn.style.display = 'inline-flex';
-    newFeedbackBtn.onclick = openFeedbackModalStep1;
-} else {
-    newFeedbackBtn.style.display = 'none';
-}
+    if (currentUserProfile.permissions.includes('create_feedback') || currentUserProfile.permissions.includes('manage_users')) {
+        newFeedbackBtn.style.display = 'inline-flex';
+        newFeedbackBtn.onclick = openFeedbackModalStep1;
+    } else {
+        newFeedbackBtn.style.display = 'none';
+    }
     
     const tableBody = document.getElementById('feedback-history-table-body');
-    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr>`;
+    const tableHead = tableBody.previousElementSibling; // Pega o <thead>
+    
+    // Atualiza o cabeçalho da tabela para incluir a coluna "Setor"
+    tableHead.innerHTML = `
+        <tr>
+            <th style="width: 20%;">Autor</th>
+            <th style="width: 20%;">Colaborador</th>
+            <th style="width: 15%;">Setor</th>
+            <th style="width: 15%;">Pilar</th>
+            <th style="width: 10%;">Nível</th>
+            <th style="width: 15%;">Data</th>
+            <th style="width: 5%;">Ações</th>
+        </tr>
+    `;
+    
+    tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Carregando histórico...</td></tr>`;
 
-    // Busca o histórico de feedbacks dados pelo usuário logado
+    // Busca o histórico, incluindo a nova coluna 'recipient_sector'
     const { data: feedbacks, error } = await supabaseClient
         .from('feedbacks')
         .select('*, pillar:feedback_pillars(name)')
@@ -10492,28 +10507,27 @@ if (currentUserProfile.permissions.includes('create_feedback') || currentUserPro
         .order('created_at', { ascending: false });
 
     if (error) {
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger);">Falha ao carregar histórico.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--color-danger);">Falha ao carregar histórico.</td></tr>`;
         return;
     }
 
     if (!feedbacks || feedbacks.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhum feedback registrado ainda.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum feedback registrado ainda.</td></tr>`;
         return;
     }
 
     tableBody.innerHTML = feedbacks.map(fb => {
-        const levelText = `Nível ${fb.level}`;
-        const date = new Date(fb.created_at).toLocaleString('pt-BR');
-return `
-    <tr>
-        <td>${currentUserProfile.full_name}</td>
-        <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
-        <td>${fb.pillar.name}</td>
-        <td>Nível ${fb.level}</td>
-        <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
-        <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver Texto</button></td>
-    </tr>
-`;
+        return `
+            <tr>
+                <td>${currentUserProfile.full_name}</td>
+                <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
+                <td>${fb.recipient_sector || 'N/A'}</td>
+                <td>${fb.pillar.name}</td>
+                <td>Nível ${fb.level}</td>
+                <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
+                <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button></td>
+            </tr>
+        `;
     }).join('');
 }
 
@@ -10679,7 +10693,7 @@ async function saveFeedback() {
         showToast("Feedback salvo com sucesso!", "success");
         closeFeedbackModal();
         
-        // LINHA ADICIONADA: Recarrega a lista de feedbacks na tabela.
+        // LINHA CORRIGIDA: Recarrega a lista de feedbacks na tabela.
         loadFeedbackPage();
 
     } catch (error) {
