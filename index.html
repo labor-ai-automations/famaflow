@@ -1909,51 +1909,49 @@ body.fullscreen-flow .flowchart-monitor-bar {
 
 
 // Mapeamento de permissões RBAC (Categorizado e Espelhado)
-// Mapeamento de permissões RBAC (Categorizado e Espelhado)
-        const PERMISSION_MAPPING = {
-            // 1. Visualização de Telas
-            'view_dashboard': 'Dashboard',
-            'view_messages': 'Mensagens (Envio e Visualização)',
-            'view_maintenance': 'Módulo de Manutenção',
-            'view_requests': 'Requisições Gerais (RH/Outros)',
-            'view_routines': 'Minhas Rotinas (Calendário)',
-            'view_team': 'Equipe',
-            'view_organograma': 'Organograma',
-            'view_rankings': 'Performance e Rankings',
-            'view_mural': 'Mural Cultural',
-            'view_kb': 'Base de Conhecimento',
-			'view_feedback': 'Módulo de Feedback (Visualizar)',
-    'create_feedback': 'Módulo de Feedback (Dar Feedback)',
+const PERMISSION_MAPPING = {
+    // 1. Visualização de Telas
+    'view_dashboard': 'Dashboard',
+    'view_messages': 'Mensagens (Envio e Visualização)',
+    'view_maintenance': 'Módulo de Manutenção',
+    'view_requests': 'Requisições Gerais (RH/Outros)',
+    'view_routines': 'Minhas Rotinas (Calendário)',
+    'view_team': 'Equipe',
+    'view_organograma': 'Organograma',
+    'view_rankings': 'Performance e Rankings',
+    'view_mural': 'Mural Cultural',
+    'view_kb': 'Base de Conhecimento',
+    'view_feedback': 'Módulo de Feedback (Visualizar)', // <-- LINHA ADICIONADA CORRETAMENTE
+    'create_feedback': 'Módulo de Feedback (Dar Feedback)', // <-- LINHA ADICIONADA CORRETAMENTE
 
-            // 2. Gerenciamento de Requisições
-            'mgt_maintenance': 'Gerenciar Manutenção (Aprovar/Planejar)',
-            'mgt_new_hire': 'Gerenciar Contratação de Pessoal',
-            'mgt_termination': 'Gerenciar Desligamento',
-            'mgt_promotion': 'Gerenciar Promoção Interna',
-            'mgt_overtime': 'Gerenciar Horas Extras',
-            'mgt_training': 'Gerenciar Treinamento',
-            'mgt_disciplinary_action': 'Gerenciar Medida Disciplinar',
-            'mgt_travel': 'Gerenciar Viagem',
+    // 2. Gerenciamento de Requisições
+    'mgt_maintenance': 'Gerenciar Manutenção (Aprovar/Planejar)',
+    'mgt_new_hire': 'Gerenciar Contratação de Pessoal',
+    'mgt_termination': 'Gerenciar Desligamento',
+    'mgt_promotion': 'Gerenciar Promoção Interna',
+    'mgt_overtime': 'Gerenciar Horas Extras',
+    'mgt_training': 'Gerenciar Treinamento',
+    'mgt_disciplinary_action': 'Gerenciar Medida Disciplinar',
+    'mgt_travel': 'Gerenciar Viagem',
 
-            // 3. Permissão de Solicitação
-            'req_maintenance': 'Solicitar Manutenção',
-            'req_new_hire': 'Solicitar Contratação de Pessoal',
-            'req_termination': 'Solicitar Desligamento',
-            'req_promotion': 'Solicitar Promoção Interna',
-            'req_overtime': 'Solicitar Horas Extras',
-            'req_training': 'Solicitar Treinamento',
-            'req_disciplinary_action': 'Solicitar Medida Disciplinar',
-            'req_travel': 'Solicitar Viagem',
+    // 3. Permissão de Solicitação
+    'req_maintenance': 'Solicitar Manutenção',
+    'req_new_hire': 'Solicitar Contratação de Pessoal',
+    'req_termination': 'Solicitar Desligamento',
+    'req_promotion': 'Solicitar Promoção Interna',
+    'req_overtime': 'Solicitar Horas Extras',
+    'req_training': 'Solicitar Treinamento',
+    'req_disciplinary_action': 'Solicitar Medida Disciplinar',
+    'req_travel': 'Solicitar Viagem',
 
-            // 4. Especiais / Globais
-            'manage_technicians': 'Gerenciar Equipe Técnica de Manutenção',
-            'manage_preventive_schedules': 'Gerenciar Calendário de Manutenção Preventiva',
-            'mgt_kb': 'Gerenciar Base de Conhecimento (Curadoria)',
-            'manage_routines': 'Gerenciar Processos',
-            'view_admin_dash': 'Ver Admin Dashboard',
-            'manage_users': 'Admin Geral (Acesso Total)'
-        };
-
+    // 4. Especiais / Globais
+    'manage_technicians': 'Gerenciar Equipe Técnica de Manutenção',
+    'manage_preventive_schedules': 'Gerenciar Calendário de Manutenção Preventiva',
+    'mgt_kb': 'Gerenciar Base de Conhecimento (Curadoria)',
+    'manage_routines': 'Gerenciar Processos',
+    'view_admin_dash': 'Ver Admin Dashboard',
+    'manage_users': 'Admin Geral (Acesso Total)'
+};
         let currentUserProfile = null;
         let quillEditor = null;
         let allUsers = [];
@@ -2511,7 +2509,7 @@ const appHTML = `<div id="app-container">
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_organograma"><span class="perm-checkmark"></span><span class="material-icons perm-icon">account_tree</span><span class="perm-text">Organograma</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_rankings"><span class="perm-checkmark"></span><span class="material-icons perm-icon">leaderboard</span><span class="perm-text">Performance</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
-                                    <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
+<label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
                                 </div>
 								
 								<!-- NOVO: MÓDULO DE FEEDBACK -->
@@ -2796,19 +2794,19 @@ async function showApp() {
                 if (isAdmin) {
                     isVisible = true; 
                 } else {
-                    const pageToKeyMap = {
-                        'dashboard-page': 'view_dashboard',
-                        'messages-page': 'view_messages',
-                        'maintenance-page': 'view_maintenance',
-                        'requests-page': 'view_requests',
-                        'my-routines-page': 'view_routines',
-						'feedback-page': 'view_feedback'
-                        'team-page': 'view_team',
-                        'organograma-page': 'view_organograma',
-                        'rankings-page': 'view_rankings',
-                        'mural-page': 'view_mural',
-                        'kb-page': 'view_kb'
-                    };
+const pageToKeyMap = {
+    'dashboard-page': 'view_dashboard',
+    'messages-page': 'view_messages',
+    'maintenance-page': 'view_maintenance',
+    'requests-page': 'view_requests',
+    'my-routines-page': 'view_routines',
+    'feedback-page': 'view_feedback', // <-- LINHA ADICIONADA CORRETAMENTE
+    'team-page': 'view_team',
+    'organograma-page': 'view_organograma',
+    'rankings-page': 'view_rankings',
+    'mural-page': 'view_mural',
+    'kb-page': 'view_kb'
+};
                     isVisible = p.includes(pageToKeyMap[page]);
                 }
                 link.parentElement.style.display = isVisible ? 'block' : 'none';
