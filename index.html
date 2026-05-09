@@ -10635,6 +10635,8 @@ async function saveFeedback() {
 
         showToast("Feedback salvo com sucesso!", "success");
         closeFeedbackModal();
+        
+        // LINHA ADICIONADA: Recarrega a lista de feedbacks na tabela.
         loadFeedbackPage();
 
     } catch (error) {
