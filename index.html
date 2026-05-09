@@ -2016,7 +2016,7 @@ const appHTML = `<div id="app-container">
                         <li><a href="#" class="nav-link" data-page="organograma-page"><span class="material-icons">account_tree</span> Organograma</a></li>
                         <li><a href="#" class="nav-link" data-page="rankings-page"><span class="material-icons">leaderboard</span> Performance e Rankings</a></li>
                         <li><a href="#" class="nav-link" data-page="mural-page"><span class="material-icons">campaign</span> Mural Cultural</a></li>
-                        <li><a href="#" class="nav-link" data-page="kb-page"><span class="material-icons">school</span> Base de Conhecimento</a></li>
+                        <li><a href="#" class="nav-link" data-page="feedback-page"><span class="material-icons">record_voice_over</span> Feedback</a></li>
                     </ul>
                     <div id="admin-section" style="display: none;">
                         <div class="nav-section-title">Administração</div>
@@ -2384,6 +2384,37 @@ const appHTML = `<div id="app-container">
                         <div class="empty-state">Calendário de Manutenção Preventiva - Em breve.</div>
                     </div>
                 </div>
+				
+				<!-- NOVA PÁGINA: FEEDBACK -->
+<div id="feedback-page" class="page-content">
+    <div class="page-header">
+        <div>
+            <h1>Módulo de Feedback</h1>
+            <p>Seu histórico pessoal de feedbacks fornecidos à equipe.</p>
+        </div>
+        <div class="page-header-actions">
+            <button id="btn-new-feedback" class="btn btn-danger">
+                <span class="material-icons">add_comment</span> Dar Novo Feedback
+            </button>
+        </div>
+    </div>
+    <div class="card" style="padding:0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Colaborador</th>
+                    <th style="width: 25%;">Pilar</th>
+                    <th style="width: 15%;">Nível</th>
+                    <th style="width: 20%;">Data</th>
+                    <th style="width: 15%;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="feedback-history-table-body">
+                <!-- O histórico será carregado aqui -->
+            </tbody>
+        </table>
+    </div>
+</div>
                 
                 <button class="fab" id="fab-new-message" title="Nova Mensagem"><span class="material-icons">add</span></button>
             </main>
@@ -2884,6 +2915,7 @@ function showPage(pageId, targetUserId = null) {
             if (pageId === 'kb-page') loadKBPage();
             if (pageId === 'users-page') loadUsersForAdmin(); 
             if (pageId === 'maintenance-page') loadMaintenancePage();
+			if (pageId === 'feedback-page') loadFeedbackPage();
         }
 		
 		// NOVA FUNÇÃO: Controle das Abas de Processos
@@ -10398,6 +10430,249 @@ async function submitMaintenancePlan(requestId) {
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA SELEÇÃO DE TÉCNICOS DE MANUTENÇÃO
 // ===================================================================
+
+// ===================================================================
+// INÍCIO: NOVAS FUNÇÕES PARA O MÓDULO DE FEEDBACK
+// ===================================================================
+
+const N8N_GENERATE_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/generate-feedback-text';
+const N8N_SAVE_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-feedback';
+
+let feedbackData = {}; // Objeto para armazenar os dados do feedback durante o processo
+
+// Função principal que é chamada quando a página de feedback é aberta
+async function loadFeedbackPage() {
+    document.getElementById('btn-new-feedback').onclick = openFeedbackModalStep1;
+    
+    const tableBody = document.getElementById('feedback-history-table-body');
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr>`;
+
+    // Busca o histórico de feedbacks dados pelo usuário logado
+    const { data: feedbacks, error } = await supabaseClient
+        .from('feedbacks')
+        .select('*, pillar:feedback_pillars(name)')
+        .eq('giver_id', currentUserProfile.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger);">Falha ao carregar histórico.</td></tr>`;
+        return;
+    }
+
+    if (!feedbacks || feedbacks.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhum feedback registrado ainda.</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = feedbacks.map(fb => {
+        const levelText = `Nível ${fb.level}`;
+        const date = new Date(fb.created_at).toLocaleString('pt-BR');
+        return `
+            <tr>
+                <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
+                <td>${fb.pillar.name}</td>
+                <td>${levelText}</td>
+                <td>${date}</td>
+                <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver Texto</button></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Abre o modal na Etapa 1: Seleção do Pilar
+async function openFeedbackModalStep1() {
+    feedbackData = {}; // Reseta os dados
+    const modal = document.getElementById('feedback-modal');
+    const modalBody = document.getElementById('feedback-modal-body');
+    const modalFooter = document.getElementById('feedback-modal-footer');
+
+    document.getElementById('feedback-modal-title').textContent = 'Novo Feedback (Etapa 1 de 3)';
+    modalBody.innerHTML = '<div class="empty-state">Carregando pilares...</div>';
+    modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeFeedbackModal()">Cancelar</button>`;
+    modal.classList.add('visible');
+
+    const { data: pillars, error } = await supabaseClient
+        .from('feedback_pillars')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+    
+    if (error || !pillars) {
+        modalBody.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar os pilares.</div>';
+        return;
+    }
+
+    modalBody.innerHTML = `
+        <h4 style="margin-top:0;">Selecione o Pilar do Feedback:</h4>
+        <div class="request-type-selection" style="grid-template-columns: 1fr 1fr;">
+            ${pillars.map(p => `
+                <div class="type-card" onclick="selectFeedbackPillar('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
+                    <h3>${p.name}</h3>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Armazena o pilar e avança para a Etapa 2
+function selectFeedbackPillar(pillarId, pillarName) {
+    feedbackData.pillar_id = pillarId;
+    feedbackData.pillar_name = pillarName;
+    openFeedbackModalStep2();
+}
+
+// Abre o modal na Etapa 2: Dados do Colaborador e Nível
+function openFeedbackModalStep2() {
+    document.getElementById('feedback-modal-title').textContent = `Feedback de ${feedbackData.pillar_name} (Etapa 2 de 3)`;
+    const modalBody = document.getElementById('feedback-modal-body');
+    const modalFooter = document.getElementById('feedback-modal-footer');
+
+    modalBody.innerHTML = `
+        <div class="form-group">
+            <label for="fb-recipient-fname">Nome do Colaborador*</label>
+            <input type="text" id="fb-recipient-fname" class="input-field" required>
+        </div>
+        <div class="form-group">
+            <label for="fb-recipient-lname">Sobrenome do Colaborador*</label>
+            <input type="text" id="fb-recipient-lname" class="input-field" required>
+        </div>
+        <div class="form-group">
+            <label>Nível do Feedback*</label>
+            <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.75rem;">
+                <label><input type="radio" name="feedback-level" value="1" required> <strong>Nível 1 - Orientação:</strong> Para orientar e corrigir com leveza.</label>
+                <label><input type="radio" name="feedback-level" value="2"> <strong>Nível 2 - Alinhamento:</strong> Para reforçar o ponto e alinhar expectativa.</label>
+                <label><input type="radio" name="feedback-level" value="3"> <strong>Nível 3 - Crítico:</strong> Para situações críticas e mudança rápida.</label>
+            </div>
+        </div>
+    `;
+
+    modalFooter.innerHTML = `
+        <button class="btn btn-secondary" onclick="openFeedbackModalStep1()">Voltar</button>
+        <button class="btn btn-danger" id="btn-generate-text">Gerar Texto com IA</button>
+    `;
+
+    document.getElementById('btn-generate-text').onclick = generateFeedbackText;
+}
+
+// Valida, armazena os dados e avança para a Etapa 3 (geração de texto)
+async function generateFeedbackText() {
+    const firstName = document.getElementById('fb-recipient-fname').value.trim();
+    const lastName = document.getElementById('fb-recipient-lname').value.trim();
+    const levelRadio = document.querySelector('input[name="feedback-level"]:checked');
+
+    if (!firstName || !lastName) {
+        showToast("Por favor, preencha o nome e sobrenome do colaborador.", "warning");
+        return;
+    }
+    if (!levelRadio) {
+        showToast("Por favor, selecione o nível do feedback.", "warning");
+        return;
+    }
+
+    feedbackData.recipient_first_name = firstName;
+    feedbackData.recipient_last_name = lastName;
+    feedbackData.level = parseInt(levelRadio.value);
+
+    document.getElementById('feedback-modal-title').textContent = 'Verifique e Edite o Texto (Etapa 3 de 3)';
+    const modalBody = document.getElementById('feedback-modal-body');
+    const modalFooter = document.getElementById('feedback-modal-footer');
+
+    modalBody.innerHTML = `<div class="empty-state"><span class="material-icons refresh-spin">psychology</span><br>Nosso agente de IA está redigindo o texto...</div>`;
+    modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="openFeedbackModalStep2()">Voltar</button>`;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_GENERATE_FEEDBACK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({
+                pillar_name: feedbackData.pillar_name,
+                level: feedbackData.level,
+                recipient_name: feedbackData.recipient_first_name
+            })
+        });
+
+        if (!response.ok) throw new Error("Falha ao gerar texto.");
+
+        const result = await response.json();
+        const generatedText = result.generated_text;
+        feedbackData.generated_text = generatedText;
+
+        modalBody.innerHTML = `
+            <div class="form-group">
+                <label>Texto Sugerido (você pode editar abaixo):</label>
+                <textarea id="feedback-final-text" class="input-field" rows="10" style="resize: vertical;">${generatedText}</textarea>
+            </div>
+        `;
+        modalFooter.innerHTML = `
+            <button class="btn btn-secondary" onclick="openFeedbackModalStep2()">Voltar</button>
+            <button class="btn btn-success" id="btn-save-feedback">Salvar Feedback no Histórico</button>
+        `;
+        document.getElementById('btn-save-feedback').onclick = saveFeedback;
+
+    } catch (error) {
+        modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
+    }
+}
+
+// Salva o feedback final no banco de dados
+async function saveFeedback() {
+    const finalText = document.getElementById('feedback-final-text').value;
+    feedbackData.generated_text = finalText;
+
+    const btn = document.getElementById('btn-save-feedback');
+    btn.disabled = true;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_SAVE_FEEDBACK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify(feedbackData) // Envia o objeto completo
+        });
+
+        if (!response.ok) throw new Error("Falha ao salvar o feedback.");
+
+        showToast("Feedback salvo com sucesso!", "success");
+        closeFeedbackModal();
+        loadFeedbackPage();
+
+    } catch (error) {
+        showToast(error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Função para visualizar o texto de um feedback do histórico
+async function viewFeedbackDetails(feedbackId) {
+    const modal = document.getElementById('request-modal'); // Reutilizando o modal genérico
+    const modalBody = document.getElementById('request-modal-body');
+    
+    document.getElementById('request-modal-title').textContent = "Texto do Feedback";
+    modalBody.innerHTML = `<div class="empty-state">Carregando texto...</div>`;
+    document.getElementById('request-modal-footer').innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+    modal.classList.add('visible');
+
+    const { data: feedback, error } = await supabaseClient
+        .from('feedbacks')
+        .select('generated_text')
+        .eq('id', feedbackId)
+        .single();
+    
+    if (error || !feedback) {
+        modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Não foi possível carregar o texto.</div>`;
+        return;
+    }
+
+    modalBody.innerHTML = `<div style="white-space: pre-wrap; padding: 1rem; background: var(--color-background); border-radius: 8px;">${feedback.generated_text}</div>`;
+}
+
+// Fecha e reseta o modal de feedback
+function closeFeedbackModal() {
+    document.getElementById('feedback-modal').classList.remove('visible');
+    feedbackData = {};
+}
 		
     </script>
 
@@ -10623,6 +10898,22 @@ async function submitMaintenancePlan(requestId) {
         <div class="modal-footer">
             <div style="flex-grow: 1; font-size: 0.9rem; color: var(--color-text-secondary);" id="technician-selected-count">0 selecionados</div>
             <button class="btn btn-danger" onclick="closeTechnicianSelectorModal()">Concluir Seleção</button>
+        </div>
+    </div>
+</div>
+
+<!-- NOVO: FEEDBACK MODAL -->
+<div id="feedback-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 id="feedback-modal-title">Novo Feedback</h3>
+            <span class="material-icons" style="cursor:pointer;" onclick="closeFeedbackModal()">close</span>
+        </div>
+        <div class="modal-body" id="feedback-modal-body">
+            <!-- O conteúdo do formulário será injetado dinamicamente aqui -->
+        </div>
+        <div class="modal-footer" id="feedback-modal-footer">
+            <!-- Os botões do formulário serão injetados dinamicamente aqui -->
         </div>
     </div>
 </div>
