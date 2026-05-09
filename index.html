@@ -10655,12 +10655,22 @@ async function generateFeedbackText() {
         const generatedText = result.generated_text;
         feedbackData.generated_text = generatedText;
 
-        modalBody.innerHTML = `
-            <div class="form-group">
-                <label>Texto Sugerido (você pode editar abaixo):</label>
-                <textarea id="feedback-final-text" class="input-field" rows="10" style="resize: vertical;">${generatedText}</textarea>
-            </div>
-        `;
+modalBody.innerHTML = `
+    <div class="form-group">
+        <label>Texto Sugerido (você pode editar abaixo):</label>
+        
+        <!-- AVISO ADICIONADO AQUI -->
+        <div class="info-hint" style="margin-top: 0.5rem; margin-bottom: 1rem; background-color: var(--color-warning-bg); color: var(--color-warning); border-color: rgba(245,158,11,0.2);">
+            <span class="material-icons">warning</span>
+            <span>
+                <strong>Atenção:</strong> Se a IA gerou um exemplo prático (como um número de lote ou situação específica), 
+                **substitua-o pelo exemplo real** que ocorreu na fábrica antes de salvar.
+            </span>
+        </div>
+        
+        <textarea id="feedback-final-text" class="input-field" rows="10" style="resize: vertical;">${generatedText}</textarea>
+    </div>
+`;
         modalFooter.innerHTML = `
             <button class="btn btn-secondary" onclick="openFeedbackModalStep2()">Voltar</button>
             <button class="btn btn-success" id="btn-save-feedback">Salvar Feedback no Histórico</button>
