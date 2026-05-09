@@ -2386,35 +2386,76 @@ const appHTML = `<div id="app-container">
                     </div>
                 </div>
 				
-				<!-- NOVA PÁGINA: FEEDBACK -->
+<!-- PÁGINA DE FEEDBACK (REESTRUTURADA COM ABAS) -->
 <div id="feedback-page" class="page-content">
     <div class="page-header">
         <div>
             <h1>Módulo de Feedback</h1>
-            <p>Seu histórico pessoal de feedbacks fornecidos à equipe.</p>
+            <p>Seu histórico pessoal e ferramentas de gerenciamento.</p>
         </div>
         <div class="page-header-actions">
-            <button id="btn-new-feedback" class="btn btn-danger">
+            <button id="btn-new-feedback" class="btn btn-danger" style="display:none;">
                 <span class="material-icons">add_comment</span> Dar Novo Feedback
             </button>
         </div>
     </div>
-    <div class="card" style="padding:0;">
-        <table class="data-table">
-            <thead>
-                <tr>
-				    <th style="width: 20%;">Autor</th>
-                    <th style="width: 25%;">Colaborador</th>
-                    <th style="width: 25%;">Pilar</th>
-                    <th style="width: 15%;">Nível</th>
-                    <th style="width: 20%;">Data</th>
-                    <th style="width: 15%;">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="feedback-history-table-body">
-                <!-- O histórico será carregado aqui -->
-            </tbody>
-        </table>
+
+    <!-- NAVEGAÇÃO DAS ABAS -->
+    <div class="mgt-tabs" style="margin-bottom: 1.5rem;">
+        <button class="mgt-tab-btn active" id="btn-tab-my-history" onclick="switchFeedbackTab('my_history')">Meu Histórico</button>
+        <button class="mgt-tab-btn" id="btn-tab-management" style="display:none;" onclick="switchFeedbackTab('management')">Gerenciamento (RH)</button>
+    </div>
+
+    <!-- CONTEÚDO DA ABA 1: MEU HISTÓRICO (JÁ EXISTENTE) -->
+    <div id="feedback-tab-my_history" class="feedback-tab-content">
+        <div class="card" style="padding:0;">
+            <table class="data-table">
+                <thead id="feedback-history-table-head">
+                    <!-- O cabeçalho será preenchido via JS -->
+                </thead>
+                <tbody id="feedback-history-table-body">
+                    <!-- O histórico será carregado aqui -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO DA ABA 2: GERENCIAMENTO (NOVA) -->
+    <div id="feedback-tab-management" class="feedback-tab-content" style="display:none;">
+        <!-- BARRA DE FILTROS -->
+        <div class="card team-filters" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin:0;"><label>Filtrar por Autor</label><select id="fb-filter-giver" class="input-field"></select></div>
+            <div class="form-group" style="margin:0;"><label>Filtrar por Colaborador</label><input type="text" id="fb-filter-recipient" class="input-field" placeholder="Digite um nome..."></div>
+            <div class="form-group" style="margin:0;"><label>Filtrar por Pilar</label><select id="fb-filter-pillar" class="input-field"></select></div>
+            <div class="form-group" style="margin:0;"><label>Filtrar por Período</label><div style="display:flex; gap:10px;"><input type="date" id="fb-filter-start-date" class="input-field"><input type="date" id="fb-filter-end-date" class="input-field"></div></div>
+            <div style="grid-column: 1 / -1; display:flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button class="btn btn-secondary" id="btn-clear-fb-filters">Limpar Filtros</button>
+                <button class="btn btn-danger" id="btn-apply-fb-filters"><span class="material-icons">filter_list</span> Aplicar Filtros</button>
+            </div>
+        </div>
+        
+        <!-- AÇÕES DE EXPORTAÇÃO -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+             <button class="btn btn-success" id="btn-export-feedback-pdf" disabled><span class="material-icons">picture_as_pdf</span> Gerar Relatório PDF</button>
+        </div>
+
+        <!-- TABELA DE GERENCIAMENTO -->
+        <div class="card" style="padding:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Autor</th>
+                        <th style="width: 15%;">Colaborador</th>
+                        <th style="width: 15%;">Setor</th>
+                        <th style="width: 20%;">Pilar</th>
+                        <th style="width: 10%;">Nível</th>
+                        <th style="width: 15%;">Data</th>
+                        <th style="width: 10%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="feedback-management-table-body"></tbody>
+            </table>
+        </div>
     </div>
 </div>
                 
@@ -10473,6 +10514,7 @@ let feedbackData = {}; // Objeto para armazenar os dados do feedback durante o p
 
 // Função principal que é chamada quando a página de feedback é aberta
 async function loadFeedbackPage() {
+    // Controla a visibilidade do botão "Dar Novo Feedback"
     const newFeedbackBtn = document.getElementById('btn-new-feedback');
     if (currentUserProfile.permissions.includes('create_feedback') || currentUserProfile.permissions.includes('manage_users')) {
         newFeedbackBtn.style.display = 'inline-flex';
@@ -10480,11 +10522,22 @@ async function loadFeedbackPage() {
     } else {
         newFeedbackBtn.style.display = 'none';
     }
-    
+
+    // Controla a visibilidade da aba de Gerenciamento
+    const managementTabBtn = document.getElementById('btn-tab-management');
+    if (currentUserProfile.permissions.includes('mgt_feedback') || currentUserProfile.permissions.includes('manage_users')) {
+        managementTabBtn.style.display = 'block';
+        loadFeedbackManagementData(); // Pré-carrega os dados do RH em segundo plano
+    } else {
+        managementTabBtn.style.display = 'none';
+    }
+
+    switchFeedbackTab('my_history'); // Garante que a aba inicial seja sempre a de histórico pessoal
+
+    // Carrega os dados da aba "Meu Histórico"
     const tableBody = document.getElementById('feedback-history-table-body');
-    const tableHead = tableBody.previousElementSibling; // Pega o <thead>
+    const tableHead = document.getElementById('feedback-history-table-head');
     
-    // Atualiza o cabeçalho da tabela para incluir a coluna "Setor"
     tableHead.innerHTML = `
         <tr>
             <th style="width: 20%;">Autor</th>
@@ -10496,10 +10549,8 @@ async function loadFeedbackPage() {
             <th style="width: 5%;">Ações</th>
         </tr>
     `;
-    
-    tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Carregando histórico...</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Carregando seu histórico...</td></tr>`;
 
-    // Busca o histórico, incluindo a nova coluna 'recipient_sector'
     const { data: feedbacks, error } = await supabaseClient
         .from('feedbacks')
         .select('*, pillar:feedback_pillars(name)')
@@ -10512,23 +10563,21 @@ async function loadFeedbackPage() {
     }
 
     if (!feedbacks || feedbacks.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum feedback registrado ainda.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum feedback registrado por você ainda.</td></tr>`;
         return;
     }
 
-    tableBody.innerHTML = feedbacks.map(fb => {
-        return `
-            <tr>
-                <td>${currentUserProfile.full_name}</td>
-                <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
-                <td>${fb.recipient_sector || 'N/A'}</td>
-                <td>${fb.pillar.name}</td>
-                <td>Nível ${fb.level}</td>
-                <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
-                <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button></td>
-            </tr>
-        `;
-    }).join('');
+    tableBody.innerHTML = feedbacks.map(fb => `
+        <tr>
+            <td>${currentUserProfile.full_name}</td>
+            <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
+            <td>${fb.recipient_sector || 'N/A'}</td>
+            <td>${fb.pillar.name}</td>
+            <td>Nível ${fb.level}</td>
+            <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
+            <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button></td>
+        </tr>
+    `).join('');
 }
 
 // Abre o modal na Etapa 1: Seleção do Pilar
@@ -10742,6 +10791,133 @@ function closeFeedbackModal() {
     document.getElementById('feedback-modal').classList.remove('visible');
     feedbackData = {};
 }
+		
+		// ===================================================================
+// INÍCIO: NOVAS FUNÇÕES PARA GERENCIAMENTO DE FEEDBACK (RH)
+// ===================================================================
+
+let allFeedbacksCache = []; // Cache para armazenar todos os feedbacks e agilizar a filtragem
+
+// Função para alternar entre as abas "Meu Histórico" e "Gerenciamento"
+function switchFeedbackTab(tabId) {
+    document.querySelectorAll('.feedback-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('#feedback-page .mgt-tab-btn').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`feedback-tab-${tabId}`).style.display = 'block';
+    document.getElementById(`btn-tab-${tabId.replace('_', '-')}`).classList.add('active');
+}
+
+// Função principal que carrega os dados da página de Gerenciamento
+async function loadFeedbackManagementData() {
+    const tableBody = document.getElementById('feedback-management-table-body');
+    tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Carregando todos os feedbacks...</td></tr>`;
+
+    // Chama a nova RPC segura que criamos no banco de dados
+    const { data: allFeedbacks, error } = await supabaseClient.rpc('get_all_feedbacks_for_management');
+
+    if (error) {
+        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--color-danger);">Acesso negado ou erro ao carregar dados.</td></tr>`;
+        console.error(error);
+        return;
+    }
+
+    allFeedbacksCache = allFeedbacks; // Salva os dados no cache
+    populateFeedbackFilters(allFeedbacks); // Popula os dropdowns de filtro
+    renderManagementTable(allFeedbacks); // Renderiza a tabela com todos os dados
+    
+    // Adiciona os event listeners aos botões de filtro
+    document.getElementById('btn-apply-fb-filters').onclick = applyFeedbackFilters;
+    document.getElementById('btn-clear-fb-filters').onclick = clearFeedbackFilters;
+}
+
+// Popula os dropdowns de filtro com base nos dados carregados
+function populateFeedbackFilters(feedbacks) {
+    const giverSelect = document.getElementById('fb-filter-giver');
+    const pillarSelect = document.getElementById('fb-filter-pillar');
+
+    const uniqueGivers = [...new Map(feedbacks.map(item => [item['giver_id'], item])).values()];
+    const uniquePillars = [...new Map(feedbacks.map(item => [item['pillar_id'], item])).values()];
+    
+    giverSelect.innerHTML = '<option value="">Todos os Autores</option>';
+    uniqueGivers.forEach(fb => {
+        giverSelect.innerHTML += `<option value="${fb.giver_id}">${fb.giver_name}</option>`;
+    });
+
+    pillarSelect.innerHTML = '<option value="">Todos os Pilares</option>';
+    uniquePillars.forEach(fb => {
+        pillarSelect.innerHTML += `<option value="${fb.pillar_id}">${fb.pillar_name}</option>`;
+    });
+}
+
+// Aplica os filtros selecionados aos dados em cache e re-renderiza a tabela
+function applyFeedbackFilters() {
+    const giverId = document.getElementById('fb-filter-giver').value;
+    const recipientName = document.getElementById('fb-filter-recipient').value.toLowerCase();
+    const pillarId = document.getElementById('fb-filter-pillar').value;
+    const startDate = document.getElementById('fb-filter-start-date').value;
+    const endDate = document.getElementById('fb-filter-end-date').value;
+
+    let filteredData = allFeedbacksCache;
+
+    if (giverId) {
+        filteredData = filteredData.filter(fb => fb.giver_id === giverId);
+    }
+    if (recipientName) {
+        filteredData = filteredData.filter(fb => 
+            (fb.recipient_first_name + ' ' + fb.recipient_last_name).toLowerCase().includes(recipientName)
+        );
+    }
+    if (pillarId) {
+        filteredData = filteredData.filter(fb => fb.pillar_id === pillarId);
+    }
+    if (startDate) {
+        filteredData = filteredData.filter(fb => new Date(fb.created_at) >= new Date(startDate));
+    }
+    if (endDate) {
+        filteredData = filteredData.filter(fb => new Date(fb.created_at) <= new Date(endDate + 'T23:59:59'));
+    }
+
+    renderManagementTable(filteredData);
+}
+
+// Limpa todos os filtros e re-renderiza a tabela com os dados completos
+function clearFeedbackFilters() {
+    document.getElementById('fb-filter-giver').value = '';
+    document.getElementById('fb-filter-recipient').value = '';
+    document.getElementById('fb-filter-pillar').value = '';
+    document.getElementById('fb-filter-start-date').value = '';
+    document.getElementById('fb-filter-end-date').value = '';
+    renderManagementTable(allFeedbacksCache);
+}
+
+// Renderiza a tabela da aba de gerenciamento com os dados fornecidos
+function renderManagementTable(feedbacks) {
+    const tableBody = document.getElementById('feedback-management-table-body');
+    
+    if (!feedbacks || feedbacks.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="7" class="empty-state">Nenhum feedback encontrado com os filtros aplicados.</td></tr>`;
+        document.getElementById('btn-export-feedback-pdf').disabled = true;
+        return;
+    }
+
+    tableBody.innerHTML = feedbacks.map(fb => `
+        <tr>
+            <td>${fb.giver_name}</td>
+            <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
+            <td>${fb.recipient_sector || 'N/A'}</td>
+            <td>${fb.pillar_name}</td>
+            <td>Nível ${fb.level}</td>
+            <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
+            <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button></td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('btn-export-feedback-pdf').disabled = false;
+}
+
+// ===================================================================
+// FIM: NOVAS FUNÇÕES PARA GERENCIAMENTO DE FEEDBACK (RH)
+// ===================================================================
 		
     </script>
 
