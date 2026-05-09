@@ -1922,6 +1922,8 @@ body.fullscreen-flow .flowchart-monitor-bar {
             'view_rankings': 'Performance e Rankings',
             'view_mural': 'Mural Cultural',
             'view_kb': 'Base de Conhecimento',
+			'view_feedback': 'Módulo de Feedback (Visualizar)',
+    'create_feedback': 'Módulo de Feedback (Dar Feedback)',
 
             // 2. Gerenciamento de Requisições
             'mgt_maintenance': 'Gerenciar Manutenção (Aprovar/Planejar)',
@@ -2511,6 +2513,28 @@ const appHTML = `<div id="app-container">
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_mural"><span class="perm-checkmark"></span><span class="material-icons perm-icon">campaign</span><span class="perm-text">Mural Cultural</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Base de Conhecimento</span></label>
                                 </div>
+								
+								<!-- NOVO: MÓDULO DE FEEDBACK -->
+<div style="background: var(--color-background); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; grid-column: 1 / -1;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <span class="material-icons" style="font-size: 20px; color: var(--color-success);">record_voice_over</span>
+        <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">Módulo de Feedback</label>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+        <label class="perm-checkbox">
+            <input type="checkbox" id="perm-view_feedback">
+            <span class="perm-checkmark"></span>
+            <span class="material-icons perm-icon">visibility</span>
+            <span class="perm-text">Visualizar Módulo</span>
+        </label>
+        <label class="perm-checkbox">
+            <input type="checkbox" id="perm-create_feedback">
+            <span class="perm-checkmark"></span>
+            <span class="material-icons perm-icon">add_comment</span>
+            <span class="perm-text">Permitir Dar Feedback</span>
+        </label>
+    </div>
+</div>
                                 
                                 <!-- MÓDULO DE MANUTENÇÃO (NOVO) -->
                                 <div style="background: var(--color-background); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
@@ -2778,6 +2802,7 @@ async function showApp() {
                         'maintenance-page': 'view_maintenance',
                         'requests-page': 'view_requests',
                         'my-routines-page': 'view_routines',
+						'feedback-page': 'view_feedback'
                         'team-page': 'view_team',
                         'organograma-page': 'view_organograma',
                         'rankings-page': 'view_rankings',
@@ -10442,7 +10467,13 @@ let feedbackData = {}; // Objeto para armazenar os dados do feedback durante o p
 
 // Função principal que é chamada quando a página de feedback é aberta
 async function loadFeedbackPage() {
-    document.getElementById('btn-new-feedback').onclick = openFeedbackModalStep1;
+    const newFeedbackBtn = document.getElementById('btn-new-feedback');
+if (currentUserProfile.permissions.includes('create_feedback') || currentUserProfile.permissions.includes('manage_users')) {
+    newFeedbackBtn.style.display = 'inline-flex';
+    newFeedbackBtn.onclick = openFeedbackModalStep1;
+} else {
+    newFeedbackBtn.style.display = 'none';
+}
     
     const tableBody = document.getElementById('feedback-history-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr>`;
