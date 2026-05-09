@@ -1948,6 +1948,7 @@ const PERMISSION_MAPPING = {
     'manage_technicians': 'Gerenciar Equipe Técnica de Manutenção',
     'manage_preventive_schedules': 'Gerenciar Calendário de Manutenção Preventiva',
     'mgt_kb': 'Gerenciar Base de Conhecimento (Curadoria)',
+	'mgt_feedback': 'Gerenciar Feedbacks (RH)', // <-- LINHA ADICIONADA AQUI
     'manage_routines': 'Gerenciar Processos',
     'view_admin_dash': 'Ver Admin Dashboard',
     'manage_users': 'Admin Geral (Acesso Total)'
@@ -2402,6 +2403,7 @@ const appHTML = `<div id="app-container">
         <table class="data-table">
             <thead>
                 <tr>
+				    <th style="width: 20%;">Autor</th>
                     <th style="width: 25%;">Colaborador</th>
                     <th style="width: 25%;">Pilar</th>
                     <th style="width: 15%;">Nível</th>
@@ -2586,6 +2588,12 @@ const appHTML = `<div id="app-container">
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">4. Permissões Especiais Globais</label>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem;">
+								<label class="perm-checkbox">
+    <input type="checkbox" id="perm-mgt_feedback">
+    <span class="perm-checkmark"></span>
+    <span class="material-icons perm-icon">manage_search</span>
+    <span class="perm-text">Gerenciar Feedbacks (RH)</span>
+</label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-manage_routines"><span class="perm-checkmark"></span><span class="material-icons perm-icon">hub</span><span class="perm-text">Gerenciar Processos</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_kb"><span class="perm-checkmark"></span><span class="material-icons perm-icon">school</span><span class="perm-text">Gerenciar Base Conhec.</span></label>
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-view_admin_dash"><span class="perm-checkmark"></span><span class="material-icons perm-icon">query_stats</span><span class="perm-text">Ver Admin Dashboard</span></label>
@@ -10496,15 +10504,16 @@ if (currentUserProfile.permissions.includes('create_feedback') || currentUserPro
     tableBody.innerHTML = feedbacks.map(fb => {
         const levelText = `Nível ${fb.level}`;
         const date = new Date(fb.created_at).toLocaleString('pt-BR');
-        return `
-            <tr>
-                <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
-                <td>${fb.pillar.name}</td>
-                <td>${levelText}</td>
-                <td>${date}</td>
-                <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver Texto</button></td>
-            </tr>
-        `;
+return `
+    <tr>
+        <td>${currentUserProfile.full_name}</td>
+        <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
+        <td>${fb.pillar.name}</td>
+        <td>Nível ${fb.level}</td>
+        <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
+        <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver Texto</button></td>
+    </tr>
+`;
     }).join('');
 }
 
@@ -10565,6 +10574,10 @@ function openFeedbackModalStep2() {
             <label for="fb-recipient-lname">Sobrenome do Colaborador*</label>
             <input type="text" id="fb-recipient-lname" class="input-field" required>
         </div>
+		<div class="form-group">
+    <label for="fb-recipient-sector">Setor do Colaborador</label>
+    <input type="text" id="fb-recipient-sector" class="input-field">
+</div>
         <div class="form-group">
             <label>Nível do Feedback*</label>
             <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.75rem;">
@@ -10601,6 +10614,7 @@ async function generateFeedbackText() {
     feedbackData.recipient_first_name = firstName;
     feedbackData.recipient_last_name = lastName;
     feedbackData.level = parseInt(levelRadio.value);
+	feedbackData.recipient_sector = document.getElementById('fb-recipient-sector').value.trim();
 
     document.getElementById('feedback-modal-title').textContent = 'Verifique e Edite o Texto (Etapa 3 de 3)';
     const modalBody = document.getElementById('feedback-modal-body');
