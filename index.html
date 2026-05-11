@@ -10888,29 +10888,37 @@ async function loadFeedbackManagementData() {
 
     allFeedbacksCache = allFeedbacks || []; // Garante que o cache não seja nulo
     
-    // --- LÓGICA DO DASHBOARD (KPIs) ---
+// --- LÓGICA DO DASHBOARD (KPIs) ---
     const total = allFeedbacksCache.length;
     const nivel1 = allFeedbacksCache.filter(fb => fb.level === 1).length;
     const nivel2 = allFeedbacksCache.filter(fb => fb.level === 2).length;
     const nivel3 = allFeedbacksCache.filter(fb => fb.level === 3).length;
 
+    // Utilizamos estilos inline para garantir a formatação, contornando possíveis conflitos CSS
+    dashboardContainer.style.display = 'grid';
+    dashboardContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(220px, 1fr))';
+    dashboardContainer.style.gap = '1.5rem';
+    dashboardContainer.style.marginBottom = '2rem';
+
+    // Função auxiliar para gerar cada card com um estilo consistente e moderno
+    const createKpiCard = (value, label, icon, iconColor, bgColor, borderColor) => `
+        <div style="background-color: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: transform 0.2s;">
+            <div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">${label}</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: var(--color-text-primary); line-height: 1;">${value}</div>
+            </div>
+            <div style="width: 48px; height: 48px; border-radius: 50%; background-color: ${borderColor}; display: flex; align-items: center; justify-content: center;">
+                <span class="material-icons" style="font-size: 24px; color: ${iconColor};">${icon}</span>
+            </div>
+        </div>
+    `;
+
+    // Renderiza os cards usando a função auxiliar
     dashboardContainer.innerHTML = `
-        <div class="kpi-card total">
-            <div class="kpi-value">${total}</div>
-            <div class="kpi-label">Total de Feedbacks</div>
-        </div>
-        <div class="kpi-card level-1">
-            <div class="kpi-value">${nivel1}</div>
-            <div class="kpi-label">Nível 1 (Orientação)</div>
-        </div>
-        <div class="kpi-card level-2">
-            <div class="kpi-value">${nivel2}</div>
-            <div class="kpi-label">Nível 2 (Alinhamento)</div>
-        </div>
-        <div class="kpi-card level-3">
-            <div class="kpi-value">${nivel3}</div>
-            <div class="kpi-label">Nível 3 (Crítico)</div>
-        </div>
+        ${createKpiCard(total, 'Total Registrado', 'forum', 'var(--color-info)', 'var(--color-info-bg)', 'rgba(59, 130, 246, 0.2)')}
+        ${createKpiCard(nivel1, 'Nível 1 (Orientação)', 'lightbulb', 'var(--color-success)', 'var(--color-success-bg)', 'rgba(16, 185, 129, 0.2)')}
+        ${createKpiCard(nivel2, 'Nível 2 (Alinhamento)', 'balance', 'var(--color-warning)', 'var(--color-warning-bg)', 'rgba(245, 158, 11, 0.2)')}
+        ${createKpiCard(nivel3, 'Nível 3 (Crítico)', 'warning', 'var(--color-danger)', 'var(--color-danger-bg)', 'rgba(216, 25, 32, 0.2)')}
     `;
     
     // --- LÓGICA DA TABELA E FILTROS ---
