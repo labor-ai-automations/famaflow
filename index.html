@@ -11053,9 +11053,15 @@ async function loadRequestSettingsData() {
     const tableBody = document.getElementById('request-settings-table-body');
     tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando configurações...</td></tr>`;
 
-    const { data, error } = await supabaseClient.from('request_type_settings').select('*, approver:specific_approver_id(full_name)');
+    // CONSULTA CORRIGIDA: Agora inclui '*, approver:specific_approver_id(full_name)'
+    // para buscar o nome do perfil relacionado ao specific_approver_id.
+    const { data, error } = await supabaseClient
+        .from('request_type_settings')
+        .select('*, approver:specific_approver_id(full_name)');
+        
     if (error) {
         tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Erro ao carregar.</td></tr>`;
+        console.error(error);
         return;
     }
     requestTypeSettingsCache = data || [];
@@ -11069,13 +11075,15 @@ function renderRequestSettingsTable(settings) {
 
     tableBody.innerHTML = settings.map(s => {
         let approverDisplay = 'N/A';
+        // LÓGICA DE EXIBIÇÃO CORRIGIDA
         if (s.requires_manager_check) {
             if (s.approver_type === 'manager') {
-                approverDisplay = 'Gerente Direto do Solicitante';
-            } else if (s.approver_type === 'specific_user' && s.approver) {
+                approverDisplay = 'Gerente Direto';
+            } else if (s.approver_type === 'specific_user' && s.approver && s.approver.full_name) {
+                // Agora ele usa o 's.approver.full_name' que veio do JOIN
                 approverDisplay = s.approver.full_name;
             } else {
-                approverDisplay = '<span style="color:var(--color-danger);">Não configurado</span>';
+                approverDisplay = '<span style="color:var(--color-danger);">Selecione um usuário</span>';
             }
         }
         
@@ -11090,13 +11098,16 @@ function renderRequestSettingsTable(settings) {
                 </td>
                 <td>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <select id="type-${s.request_type}" class="input-field" style="max-width: 250px;">
+                        <select id="type-${s.request_type}" class="input-field" style="max-width: 200px;">
                             <option value="manager" ${s.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto</option>
                             <option value="specific_user" ${s.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
                         </select>
-                        <button class="btn btn-secondary" id="btn-select-${s.request_type}" style="display:${s.approver_type === 'specific_user' ? 'inline-flex' : 'none'};" onclick="selectSpecificApprover('${s.request_type}')">Selecionar</button>
-                        <span id="name-${s.request_type}">${approverDisplay}</span>
-                        <input type="hidden" id="id-${s.request_type}" value="${s.specific_approver_id || ''}">
+                        <div id="specific-approver-controls-${s.request_type}" style="display:${s.approver_type === 'specific_user' ? 'flex' : 'none'}; gap: 10px; align-items: center;">
+                            <button class="btn btn-secondary" id="btn-select-${s.request_type}" onclick="selectSpecificApprover('${s.request_type}')">Selecionar</button>
+                            <span id="name-${s.request_type}">${approverDisplay}</span>
+                            <input type="hidden" id="id-${s.request_type}" value="${s.specific_approver_id || ''}">
+                        </div>
+                        <span id="manager-approver-label-${s.request_type}" style="display:${s.approver_type === 'manager' ? 'block' : 'none'};">${approverDisplay}</span>
                     </div>
                 </td>
                 <td><button class="btn btn-success" onclick="saveRequestSetting('${s.request_type}')">Salvar</button></td>
@@ -11104,11 +11115,12 @@ function renderRequestSettingsTable(settings) {
         `;
     }).join('');
 
+    // Adiciona a lógica para mostrar/esconder os controles de seleção de usuário
     settings.forEach(s => {
         document.getElementById(`type-${s.request_type}`).onchange = () => {
             const isSpecific = document.getElementById(`type-${s.request_type}`).value === 'specific_user';
-            document.getElementById(`btn-select-${s.request_type}`).style.display = isSpecific ? 'inline-flex' : 'none';
-            document.getElementById(`name-${s.request_type}`).textContent = isSpecific ? 'Nenhum selecionado' : 'Gerente Direto do Solicitante';
+            document.getElementById(`specific-approver-controls-${s.request_type}`).style.display = isSpecific ? 'flex' : 'none';
+            document.getElementById(`manager-approver-label-${s.request_type}`).style.display = isSpecific ? 'none' : 'block';
         };
     });
 }
