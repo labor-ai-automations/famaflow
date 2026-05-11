@@ -10612,7 +10612,8 @@ async function loadFeedbackPage() {
         return;
     }
 
-    tableBody.innerHTML = feedbacks.map(fb => `
+tableBody.innerHTML = feedbacks.map(fb => {
+    return `
         <tr>
             <td>${currentUserProfile.full_name}</td>
             <td><strong>${fb.recipient_first_name} ${fb.recipient_last_name}</strong></td>
@@ -10620,9 +10621,17 @@ async function loadFeedbackPage() {
             <td>${fb.pillar.name}</td>
             <td>Nível ${fb.level}</td>
             <td>${new Date(fb.created_at).toLocaleString('pt-BR')}</td>
-            <td><button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button></td>
+            <td>
+                <div style="display:flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="viewFeedbackDetails('${fb.id}')">Ver</button>
+                    <button class="btn btn-icon" title="Gerar PDF do Feedback" onclick="generateSingleFeedbackPDF('${fb.id}')">
+                        <span class="material-icons">picture_as_pdf</span>
+                    </button>
+                </div>
+            </td>
         </tr>
-    `).join('');
+    `;
+}).join('');
 }
 
 // Abre o modal na Etapa 1: Seleção do Pilar
@@ -10765,11 +10774,13 @@ modalBody.innerHTML = `
         <textarea id="feedback-final-text" class="input-field" rows="10" style="resize: vertical;">${generatedText}</textarea>
     </div>
 `;
-        modalFooter.innerHTML = `
-            <button class="btn btn-secondary" onclick="openFeedbackModalStep2()">Voltar</button>
-            <button class="btn btn-success" id="btn-save-feedback">Salvar Feedback no Histórico</button>
-        `;
-        document.getElementById('btn-save-feedback').onclick = saveFeedback;
+modalFooter.innerHTML = `
+    <button class="btn btn-secondary" onclick="openFeedbackModalStep2()">Voltar</button>
+    <button class="btn btn-secondary" id="btn-generate-pdf-single"><span class="material-icons" style="font-size: 16px; margin-right: 5px;">picture_as_pdf</span> Gerar PDF</button>
+    <button class="btn btn-success" id="btn-save-feedback">Salvar Feedback no Histórico</button>
+`;
+document.getElementById('btn-save-feedback').onclick = saveFeedback;
+document.getElementById('btn-generate-pdf-single').onclick = () => generateSingleFeedbackPDF(); // Adiciona o evento ao novo botão
 
     } catch (error) {
         modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
@@ -11175,6 +11186,79 @@ async function saveRequestSetting(requestType) {
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
 // ===================================================================
+
+const N8N_GENERATE_FEEDBACK_PDF_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/generate-feedback-pdf';
+
+async function generateSingleFeedbackPDF(feedbackId = null) {
+    const btn = event.target.closest('button');
+    if(btn) btn.disabled = true;
+
+    showToast('Preparando dados para o relatório...', 'info');
+
+    let dataForPDF;
+
+    try {
+        if (feedbackId) {
+            // Se um ID foi passado, busca o feedback salvo no histórico
+            const { data, error } = await supabaseClient
+                .from('feedbacks')
+                .select('*, pillar:feedback_pillars(name)')
+                .eq('id', feedbackId)
+                .single();
+            
+            if (error || !data) { throw new Error('Erro ao buscar dados do feedback.'); }
+
+            dataForPDF = {
+                giver_name: currentUserProfile.full_name,
+                recipient_name: `${data.recipient_first_name} ${data.recipient_last_name}`,
+                pillar_name: data.pillar.name,
+                level: data.level,
+                feedback_text: data.generated_text,
+                date: new Date(data.created_at).toLocaleDateString('pt-BR')
+            };
+        } else {
+            // Se nenhum ID foi passado, pega os dados do modal de criação que está aberto
+            dataForPDF = {
+                giver_name: currentUserProfile.full_name,
+                recipient_name: `${feedbackData.recipient_first_name} ${feedbackData.recipient_last_name}`,
+                pillar_name: feedbackData.pillar_name,
+                level: feedbackData.level,
+                feedback_text: document.getElementById('feedback-final-text').value,
+                date: new Date().toLocaleDateString('pt-BR')
+            };
+        }
+        
+        showToast('Gerando documento PDF... Por favor, aguarde.', 'info');
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_GENERATE_FEEDBACK_PDF_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify(dataForPDF)
+        });
+
+        if (!response.ok) {
+            throw new Error('Falha na comunicação com o servidor de relatórios.');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Feedback_${dataForPDF.recipient_name.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast('Relatório baixado com sucesso!', 'success');
+
+    } catch(error) {
+        showToast(error.message, 'danger');
+    } finally {
+        if(btn) btn.disabled = false;
+    }
+}
 		
     </script>
 
