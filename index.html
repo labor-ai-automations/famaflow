@@ -2051,8 +2051,58 @@ const appHTML = `<div id="app-container">
 
                 <div id="dashboard-page" class="page-content"><div class="page-header"><div><h1 id="dashboard-title">Dashboard</h1><p>Visão geral do seu desempenho</p></div></div><div class="grid grid-cols-2"><div class="card stat-card card-warning"><div class="stat-icon"><span class="material-icons">mark_email_unread</span></div><div class="stat-info"><h3>Mensagens Pendentes</h3><p id="pending-messages-count">0</p></div></div><div class="card stat-card card-danger"><div class="stat-icon"><span class="material-icons">report_problem</span></div><div class="stat-info"><h3>Chamados Abertos</h3><p id="urgent-tickets-count">0</p></div></div></div></div>
                 <div id="messages-page" class="page-content"><div class="page-header"><h1>Mensagens</h1></div><div class="message-actions-header"><div class="tabs-container"><button class="tab-link active" data-tab="inbox-content">Caixa de Entrada</button><button class="tab-link" data-tab="sent-content">Enviados</button><button class="tab-link" data-tab="tickets-content">Chamados</button><button class="tab-link" data-tab="archived-content">Arquivados</button></div><div class="page-header-actions"><div id="sort-menu-container" style="position: relative;"><button id="sort-button" class="btn btn-secondary" style="padding: 0.5rem 1rem;"><span class="material-icons">sort</span> Ordenar por: <span id="sort-label" style="font-weight: 700;">Mais Recente</span></button><div id="sort-options" style="display: none; position: absolute; top: 100%; right: 0; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow); z-index: 10; min-width: 220px; padding: 0.5rem; margin-top: 0.25rem;"><a href="#" data-sort="newest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Recente)</a><a href="#" data-sort="oldest" class="nav-link" style="padding: 0.5rem 1rem;">Data (Mais Antigo)</a><a href="#" data-sort="priority" class="nav-link" style="padding: 0.5rem 1rem;">Prioridade (Urgente Primeiro)</a></div></div><button id="refresh-messages-btn" class="refresh-btn" title="Atualizar mensagens"><span class="material-icons">refresh</span></button></div></div><div class="card" style="padding: 0; border-top-left-radius: 0; border-top-right-radius: 0;"><div id="inbox-content" class="tab-content active"></div><div id="sent-content" class="tab-content"></div><div id="tickets-content" class="tab-content"></div><div id="archived-content" class="tab-content"></div></div></div>
-                <div id="requests-page" class="page-content"><div class="page-header"><div><h1>Requisições</h1><p>Gerencie solicitações de RH e administrativas.</p></div><div class="page-header-actions"><button id="btn-new-request" class="btn btn-danger"><span class="material-icons">add</span> Nova Requisição</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th style="width: 18%;">Tipo</th><th style="width: 25%;">Solicitante</th><th style="width: 14%;">Data</th><th style="width: 20%;">Status</th><th style="width: 23%;">Ações</th></tr></thead><tbody id="request-table-body"></tbody></table></div></div>
-                <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
+<div id="requests-page" class="page-content">
+    <div class="page-header">
+        <div>
+            <h1>Requisições</h1>
+            <p>Gerencie solicitações de RH e administrativas.</p>
+        </div>
+        <div class="page-header-actions">
+            <button id="btn-new-request" class="btn btn-danger"><span class="material-icons">add</span> Nova Requisição</button>
+        </div>
+    </div>
+
+    <!-- NAVEGAÇÃO DAS ABAS -->
+    <div class="mgt-tabs" style="margin-bottom: 1.5rem;">
+        <button class="mgt-tab-btn active" id="btn-tab-my-requests" onclick="switchRequestTab('my_requests')">Minhas Requisições</button>
+        <button class="mgt-tab-btn" id="btn-tab-request-settings" style="display:none;" onclick="switchRequestTab('settings')">Configurações</button>
+    </div>
+
+    <!-- CONTEÚDO DA ABA 1: MINHAS REQUISIÇÕES -->
+    <div id="request-tab-my_requests" class="request-tab-content">
+        <div class="card" style="padding:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18%;">Tipo</th>
+                        <th style="width: 25%;">Solicitante</th>
+                        <th style="width: 14%;">Data</th>
+                        <th style="width: 20%;">Status</th>
+                        <th style="width: 23%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="request-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO DA ABA 2: CONFIGURAÇÕES (NOVA) -->
+    <div id="request-tab-settings" class="request-tab-content" style="display:none;">
+        <div class="card" style="padding:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tipo de Requisição</th>
+                        <th style="text-align: center;">Exige "Check" do Gerente?</th>
+                        <th>Aprovador Designado</th>
+                        <th style="width: 10%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="request-settings-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>                <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
                 <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div><div class="card team-filters"><div class="form-group" style="margin:0;"><label for="team-search-name">Buscar por Nome</label><input type="text" id="team-search-name" class="input-field" placeholder="Digite um nome..."></div><div class="form-group" style="margin:0;"><label for="team-filter-dept">Filtrar por Setor</label><select id="team-filter-dept" class="input-field"></select></div><div class="form-group" style="margin:0;"><label for="team-filter-role">Filtrar por Cargo</label><select id="team-filter-role" class="input-field"></select></div></div><div id="team-list-content">Carregando equipe...</div></div>
                 <div id="organograma-page" class="page-content"><div class="page-header organograma-header"><div><h1>Organograma Vivo</h1><p>Estrutura hierárquica da empresa</p></div></div><div class="card organograma-actions-bar" style="margin-bottom: 2rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 1rem; flex: 1;"><label for="org-filter-dept" style="font-weight: 600; font-size: 0.9rem; color: var(--color-text-secondary); white-space: nowrap;">Visualizar Área:</label><select id="org-filter-dept" class="input-field" onchange="loadOrganogramaPage(this.value)" style="max-width: 300px; flex-grow: 1;"></select></div><button class="btn btn-danger" onclick="openUserModal(null)"><span class="material-icons">person_add</span> Novo Colaborador</button></div><div class="card organograma-tree-card" id="organograma-tree-container" style="overflow-x: auto; position: relative;"><div class="zoom-controls" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; gap: 0.5rem;"><button onclick="zoomOrganograma(-0.1)" class="btn-icon-secondary" title="Diminuir Zoom"><span class="material-icons">zoom_out</span></button><span id="zoom-level" style="padding: 0.5rem 1rem; background: var(--color-surface); border-radius: 6px; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">100%</span><button onclick="zoomOrganograma(0.1)" class="btn-icon-secondary" title="Aumentar Zoom"><span class="material-icons">zoom_in</span></button><button onclick="resetZoomOrganograma()" class="btn-icon-secondary" title="Resetar Zoom"><span class="material-icons">restart_alt</span></button></div><div class="empty-state">Carregando organograma...</div></div></div>
                 <div id="channels-page" class="page-content"><div class="page-header"><h1>Canais</h1></div><div class="empty-state">Funcionalidade em desenvolvimento.</div></div>
@@ -5032,73 +5082,78 @@ function initOrgZoomPan() {
 
         // --- REQUESTS MODULE LOGIC ---
 
-        async function loadRequests() {
-            const tableBody = document.getElementById('request-table-body');
-            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
+async function loadRequests() {
+    // Controla a visibilidade da aba de Configurações para Admins
+    const settingsTabBtn = document.getElementById('btn-tab-request-settings');
+    if (currentUserProfile.permissions.includes('manage_users')) {
+        settingsTabBtn.style.display = 'block';
+        loadRequestSettingsData(); // Carrega os dados da aba de configurações em segundo plano
+    } else {
+        settingsTabBtn.style.display = 'none';
+    }
 
-            const { data, error } = await supabaseClient.rpc('get_my_requests');
-            
-            if (error) {
-                console.error("Erro ao buscar requisições:", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar requisições.</td></tr>`;
-                return;
-            }
+    // Garante que a aba inicial seja sempre a de "Minhas Requisições"
+    switchRequestTab('my_requests');
 
-            if (!data || data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada.</td></tr>`;
-                return;
-            }
-            
-            const requestTypeLabels = {
-                'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
-                'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
-                'disciplinary_action': 'Medida Disciplinar',
-                'maintenance': 'Manutenção'
-            };
+    const tableBody = document.getElementById('request-table-body');
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-            const statusLabels = {
-                'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
-                'planned': 'Planejada', 'executed': 'Executada',
-                'pending_review': 'Aguardando Análise', 'approved_by_director': 'Aprovado (Diretor)',
-                'rejected_by_director': 'Recusado (Diretor)', 'pending_final_approval': 'Aprovação Final Pendente',
-                'approved_definitively': 'Aprovada', 'rejected_definitively': 'Recusada',
-                'cancelled_by_requester': 'Cancelada pelo Solicitante'
-            };
+    // Busca as requisições do usuário logado
+    const { data, error } = await supabaseClient.rpc('get_my_requests');
+    
+    if (error) {
+        console.error("Erro ao buscar requisições:", error);
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar requisições.</td></tr>`;
+        return;
+    }
 
-            tableBody.innerHTML = data.map(req => {
-                let statusLabel, statusClass;
+    if (!data || data.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada.</td></tr>`;
+        return;
+    }
+    
+    const requestTypeLabels = {
+        'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
+        'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
+        'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção'
+    };
 
-                statusLabel = statusLabels[req.status] || req.status.replace(/_/g, ' ');
+    const statusLabels = {
+        'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check', 'approved': 'Aprovada', 
+        'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada',
+        'pending_review': 'Aguardando Análise', 'approved_by_director': 'Aprovado (Diretor)',
+        'rejected_by_director': 'Recusado (Diretor)', 'pending_final_approval': 'Aprovação Final Pendente',
+        'approved_definitively': 'Aprovada', 'rejected_definitively': 'Recusada',
+        'cancelled_by_requester': 'Cancelada'
+    };
 
-                if (req.type === 'travel') {
-                    if (req.status === 'pending_review' || req.status === 'pending_final_approval') statusClass = 'status-pending';
-                    else if (req.status.includes('cancelled') || req.status.includes('rejected')) statusClass = 'status-rejected';
-                    else statusClass = 'status-approved';
-                } else {
-                    statusClass = `status-${req.status}`;
-                }
-                
-                const typeLabel = requestTypeLabels[req.type] || req.type;
-                const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+    tableBody.innerHTML = data.map(req => {
+        let statusLabel = statusLabels[req.status] || req.status.replace(/_/g, ' ');
+        let statusClass = `status-${req.status}`;
 
-                return `
-                    <tr>
-                        <td style="width: 18%;"><strong>${typeLabel}</strong></td>
-                        <td style="width: 25%;">${currentUserProfile.full_name}</td>
-                        <td style="width: 14%;">${date}</td>
-                        <td style="width: 20%;"><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td style="width: 23%;">
-                            <div style="display: flex; gap: 0.4rem; justify-content: flex-start;">
-                                <button class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
-                                ${req.type === 'travel' && req.status === 'approved_by_director' ? `
-                                    <button class="btn btn-warning" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="promptCancellation('${req.id}')">Cancelar</button>
-                                ` : ''}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+        // Lógica de cores específica para o novo status
+        if (req.status === 'pending_manager_check') {
+            statusClass = 'status-pending'; // Usa a cor amarela de pendente
         }
+        
+        const typeLabel = requestTypeLabels[req.type] || req.type;
+        const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+
+        return `
+            <tr>
+                <td style="width: 18%;"><strong>${typeLabel}</strong></td>
+                <td style="width: 25%;">${currentUserProfile.full_name}</td>
+                <td style="width: 14%;">${date}</td>
+                <td style="width: 20%;"><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                <td style="width: 23%;">
+                    <div style="display: flex; gap: 0.4rem; justify-content: flex-start;">
+                        <button class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
         // NOVAS FUNÇÕES DE CANCELAMENTO
         function promptCancellation(requestId) {
@@ -10976,6 +11031,134 @@ function renderManagementTable(feedbacks) {
 
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA GERENCIAMENTO DE FEEDBACK (RH)
+// ===================================================================
+
+// ===================================================================
+// INÍCIO: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
+// ===================================================================
+
+let requestTypeSettingsCache = []; // Cache para as configurações
+
+// Função para alternar entre as abas da página de requisições
+function switchRequestTab(tabId) {
+    document.querySelectorAll('.request-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('#requests-page .mgt-tab-btn').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`request-tab-${tabId}`).style.display = 'block';
+    document.getElementById(`btn-tab-${tabId.replace('_', '-')}`).classList.add('active');
+}
+
+// Carrega os dados da aba de Configurações
+async function loadRequestSettingsData() {
+    const tableBody = document.getElementById('request-settings-table-body');
+    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando configurações...</td></tr>`;
+
+    const { data, error } = await supabaseClient.from('request_type_settings').select('*, approver:specific_approver_id(full_name)');
+    if (error) {
+        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Erro ao carregar.</td></tr>`;
+        return;
+    }
+    requestTypeSettingsCache = data || [];
+    renderRequestSettingsTable(requestTypeSettingsCache);
+}
+
+// Renderiza a tabela de configurações
+function renderRequestSettingsTable(settings) {
+    const tableBody = document.getElementById('request-settings-table-body');
+    const typeLabels = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar', 'travel': 'Viagem', 'maintenance': 'Manutenção' };
+
+    tableBody.innerHTML = settings.map(s => {
+        let approverDisplay = 'N/A';
+        if (s.requires_manager_check) {
+            if (s.approver_type === 'manager') {
+                approverDisplay = 'Gerente Direto do Solicitante';
+            } else if (s.approver_type === 'specific_user' && s.approver) {
+                approverDisplay = s.approver.full_name;
+            } else {
+                approverDisplay = '<span style="color:var(--color-danger);">Não configurado</span>';
+            }
+        }
+        
+        return `
+            <tr>
+                <td><strong>${typeLabels[s.request_type] || s.request_type}</strong></td>
+                <td style="text-align: center;">
+                    <label class="custom-checkbox" style="justify-content: center;">
+                        <input type="checkbox" id="check-${s.request_type}" ${s.requires_manager_check ? 'checked' : ''}>
+                        <span class="checkbox-box"><span class="material-icons">check</span></span>
+                    </label>
+                </td>
+                <td>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <select id="type-${s.request_type}" class="input-field" style="max-width: 250px;">
+                            <option value="manager" ${s.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto</option>
+                            <option value="specific_user" ${s.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
+                        </select>
+                        <button class="btn btn-secondary" id="btn-select-${s.request_type}" style="display:${s.approver_type === 'specific_user' ? 'inline-flex' : 'none'};" onclick="selectSpecificApprover('${s.request_type}')">Selecionar</button>
+                        <span id="name-${s.request_type}">${approverDisplay}</span>
+                        <input type="hidden" id="id-${s.request_type}" value="${s.specific_approver_id || ''}">
+                    </div>
+                </td>
+                <td><button class="btn btn-success" onclick="saveRequestSetting('${s.request_type}')">Salvar</button></td>
+            </tr>
+        `;
+    }).join('');
+
+    settings.forEach(s => {
+        document.getElementById(`type-${s.request_type}`).onchange = () => {
+            const isSpecific = document.getElementById(`type-${s.request_type}`).value === 'specific_user';
+            document.getElementById(`btn-select-${s.request_type}`).style.display = isSpecific ? 'inline-flex' : 'none';
+            document.getElementById(`name-${s.request_type}`).textContent = isSpecific ? 'Nenhum selecionado' : 'Gerente Direto do Solicitante';
+        };
+    });
+}
+
+// Abre o modal para selecionar um aprovador específico
+function selectSpecificApprover(requestType) {
+    openUserSelectorModal({
+        title: 'Selecionar Aprovador Específico',
+        targetArray: [], // Array temporário
+        onComplete: () => {
+            const tempArray = _selectorConfig.targetArray;
+            if (tempArray && tempArray.length > 0) {
+                const user = tempArray[0];
+                document.getElementById(`id-${requestType}`).value = user.id;
+                document.getElementById(`name-${requestType}`).textContent = user.full_name;
+            }
+            closeRecipientModal();
+        }
+    });
+}
+
+// Salva a configuração de uma linha no banco
+async function saveRequestSetting(requestType) {
+    const requiresCheck = document.getElementById(`check-${requestType}`).checked;
+    const approverType = document.getElementById(`type-${requestType}`).value;
+    const specificId = document.getElementById(`id-${requestType}`).value;
+
+    if (requiresCheck && approverType === 'specific_user' && !specificId) {
+        showToast('Para "Usuário Específico", você deve selecionar um aprovador.', 'warning');
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from('request_type_settings')
+        .update({
+            requires_manager_check: requiresCheck,
+            approver_type: requiresCheck ? approverType : null,
+            specific_approver_id: (requiresCheck && approverType === 'specific_user') ? specificId : null
+        })
+        .eq('request_type', requestType);
+    
+    if (error) {
+        showToast('Erro ao salvar configuração.', 'danger');
+    } else {
+        showToast('Configuração salva com sucesso!', 'success');
+        loadRequestSettingsData(); // Recarrega para garantir consistência
+    }
+}
+// ===================================================================
+// FIM: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
 // ===================================================================
 		
     </script>
