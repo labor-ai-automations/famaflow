@@ -11115,46 +11115,71 @@ function renderRequestSettingsTable(settings) {
 
 // Abre o modal para selecionar um aprovador específico
 function selectSpecificApprover(requestType) {
+    // Abre o modal de seleção de usuários que já existe no sistema
     openUserSelectorModal({
         title: 'Selecionar Aprovador Específico',
-        targetArray: [], // Array temporário
+        targetArray: [], // Usa um array temporário para não interferir em outras seleções
+        // A mágica acontece na função onComplete:
         onComplete: () => {
-            const tempArray = _selectorConfig.targetArray;
+            const tempArray = _selectorConfig.targetArray; // Pega o usuário selecionado
             if (tempArray && tempArray.length > 0) {
-                const user = tempArray[0];
+                const user = tempArray[0]; // Pega o primeiro usuário selecionado
+                
+                // ATUALIZA O CAMPO OCULTO E O TEXTO NA TELA
                 document.getElementById(`id-${requestType}`).value = user.id;
                 document.getElementById(`name-${requestType}`).textContent = user.full_name;
             }
-            closeRecipientModal();
+            closeRecipientModal(); // Fecha o modal de seleção
         }
     });
 }
 
 // Salva a configuração de uma linha no banco
 async function saveRequestSetting(requestType) {
+    const btn = event.target;
+    btn.disabled = true;
+    
     const requiresCheck = document.getElementById(`check-${requestType}`).checked;
     const approverType = document.getElementById(`type-${requestType}`).value;
     const specificId = document.getElementById(`id-${requestType}`).value;
 
     if (requiresCheck && approverType === 'specific_user' && !specificId) {
         showToast('Para "Usuário Específico", você deve selecionar um aprovador.', 'warning');
+        btn.disabled = false;
         return;
     }
 
-    const { error } = await supabaseClient
-        .from('request_type_settings')
-        .update({
-            requires_manager_check: requiresCheck,
-            approver_type: requiresCheck ? approverType : null,
-            specific_approver_id: (requiresCheck && approverType === 'specific_user') ? specificId : null
-        })
-        .eq('request_type', requestType);
-    
-    if (error) {
-        showToast('Erro ao salvar configuração.', 'danger');
-    } else {
+    // URL do novo workflow
+    const N8N_SAVE_REQUEST_SETTING_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-setting';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_SAVE_REQUEST_SETTING_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                request_type: requestType,
+                requires_manager_check: requiresCheck,
+                approver_type: requiresCheck ? approverType : null,
+                specific_approver_id: (requiresCheck && approverType === 'specific_user') ? specificId : null
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Falha ao salvar configuração. Verifique suas permissões.');
+        }
+
         showToast('Configuração salva com sucesso!', 'success');
-        loadRequestSettingsData(); // Recarrega para garantir consistência
+        await loadRequestSettingsData(); // Recarrega a tabela para garantir consistência
+
+    } catch (error) {
+        showToast(error.message, 'danger');
+        console.error(error);
+    } finally {
+        btn.disabled = false;
     }
 }
 // ===================================================================
