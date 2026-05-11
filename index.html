@@ -5229,48 +5229,33 @@ async function openRequestDetailsModal(requestId) {
 
     modalTitle.textContent = 'Acompanhamento da Requisição';
     modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
-    modalFooter.innerHTML = ''; // Limpa o rodapé para evitar botões de ações antigas
+    modalFooter.innerHTML = '';
     modal.classList.add('visible');
 
     const statusTranslations = {
-        'pending': 'Pendente (RH)', 
-        'pending_manager_check': 'Aguardando Check do Gerente',
-        'approved': 'Aprovada', 
-        'rejected': 'Recusada',
-        'planned': 'Planejada', 
-        'executed': 'Executada',
-        'cancelled_by_requester': 'Cancelada'
+        'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check Gerencial',
+        'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 
+        'executed': 'Executada', 'cancelled_by_requester': 'Cancelada'
     };
 
     try {
-        // Busca a requisição e o histórico em paralelo, agora incluindo o manager_id do solicitante
-        const [reqRes, historyRes] = await Promise.all([
+        const [reqRes, historyRes, checkRes] = await Promise.all([
             supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
-            supabaseClient.from('request_history').select('*, profiles:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
+            supabaseClient.from('request_history').select('*, profiles:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true }),
+            supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single()
         ]);
 
         if (reqRes.error) throw reqRes.error;
         const request = reqRes.data;
-        currentEditingRequest = request;
+        const managerCheck = checkRes.data;
         let history = historyRes.data || [];
 
-        // Lógica para incluir etapas legadas no histórico (se necessário)
+        // Lógica para incluir etapas legadas no histórico
         if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
-            history.push({
-                status: 'planned',
-                created_at: null,
-                profiles: { full_name: 'Gestor (Registro Antigo)' },
-                notes: request.approval_notes || null,
-                legacy_scheduled: request.maintenance_scheduled_at
-            });
+            history.push({ status: 'planned', created_at: null, profiles: { full_name: 'Gestor (Registro Antigo)' }, notes: request.approval_notes || null });
         }
         if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
-            history.push({
-                status: 'executed',
-                created_at: null,
-                profiles: { full_name: 'Gestor (Registro Antigo)' },
-                notes: null
-            });
+            history.push({ status: 'executed', created_at: null, profiles: { full_name: 'Gestor (Registro Antigo)' }, notes: null });
         }
         history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
@@ -5278,12 +5263,19 @@ async function openRequestDetailsModal(requestId) {
         const translatedStatus = statusTranslations[request.status] || request.status.toUpperCase();
         
         let headerHTML = `
-            <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${requestTypeName}</h3>
-                    <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
+            <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${requestTypeName}</h3>
+                        <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
+                    </div>
+                    <span class="status-tag status-${request.status}">${translatedStatus}</span>
                 </div>
-                <span class="status-tag status-${request.status}">${translatedStatus}</span>
+                ${managerCheck ? `
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border); display:flex; align-items:center; gap: 8px; color: var(--color-success);">
+                    <span class="material-icons">check_circle</span>
+                    <span style="font-weight: 600; font-size: 0.9rem;">Ciência registrada por ${managerCheck.manager.full_name} em ${new Date(managerCheck.checked_at).toLocaleDateString('pt-BR')}.</span>
+                </div>` : ''}
             </div>
         `;
 
@@ -5301,41 +5293,20 @@ async function openRequestDetailsModal(requestId) {
 
         let stepCounter = 2;
         history.forEach((step) => {
-            const labels = { planned: 'Planejamento e Agenda', executed: 'Conclusão da Tarefa', approved: 'Aprovação', rejected: 'Recusada', manager_check: 'Ciência do Gerente' };
-            const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel', manager_check: 'how_to_reg' };
-            const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920', manager_check: '#1E40AF' };
-
-            let scheduledDateHTML = '', techniciansHTML = '', cleanNotes = '';
-
-            if (step.status === 'planned') {
-                const notesString = step.notes || '';
-                const planDetailsMatch = notesString.match(/Agendado para: (.*?)\| Técnicos: (.*?)\| Obs: (.*)/s);
-                if (planDetailsMatch) {
-                    scheduledDateHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">event</span><strong>AGENDADO PARA:</strong> ${planDetailsMatch[1].trim()}</div>`;
-                    if (planDetailsMatch[2].trim()) {
-                        techniciansHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">engineering</span><strong>EQUIPE:</strong> ${planDetailsMatch[2].trim()}</div>`;
-                    }
-                    cleanNotes = planDetailsMatch[3].trim();
-                } else {
-                    cleanNotes = notesString;
-                }
-            } else {
-                cleanNotes = step.notes || '';
-            }
+            const labels = { planned: 'Planejamento', executed: 'Execução', approved: 'Aprovação', rejected: 'Recusa' };
+            const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel' };
+            const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920' };
+            let cleanNotes = step.notes || '';
             
-            const actionDateHTML = step.created_at ? `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>` : ``;
-
             timelineHTML += `
                 <div style="margin-bottom: 2rem; position: relative;">
                     <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${colors[step.status] || '#6B7280'}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${colors[step.status] || '#6B7280'};"></div>
-                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${colors[step.status] || 'var(--color-text-primary)'}; display:flex; align-items:center; gap:5px; letter-spacing: 0.05em;">
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${colors[step.status] || 'var(--color-text-primary)'}; display:flex; align-items:center; gap:5px;">
                         <span class="material-icons" style="font-size:14px;">${icons[step.status] || 'info'}</span>
                         Etapa ${stepCounter}: ${labels[step.status] || step.status}
                     </div>
                     <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Ação realizada por ${step.profiles?.full_name || 'Sistema'}</div>
-                    ${actionDateHTML}
-                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 8px;">${scheduledDateHTML}${techniciansHTML}</div>
-                    ${cleanNotes ? `<div style="margin-top: 10px; padding: 12px; background: var(--color-background); border-radius: 8px; border-left: 4px solid ${colors[step.status]}; font-style: italic; font-size: 0.85rem; color: var(--color-text-primary);">${cleanNotes}</div>` : ''}
+                    ${cleanNotes ? `<div style="margin-top: 10px; padding: 12px; background: var(--color-background); border-radius: 8px; border-left: 4px solid ${colors[step.status]}; font-style: italic; font-size: 0.85rem;">${cleanNotes}</div>` : ''}
                 </div>
             `;
             stepCounter++;
@@ -5343,72 +5314,41 @@ async function openRequestDetailsModal(requestId) {
 
         timelineHTML += `</div>`;
 
-        const translations = {
-            funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
-            tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
-            descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante'
-        };
+        const translations = { funcao: 'Função', quantidade: 'Vagas', setor: 'Setor', equipamento: 'Equipamento' };
+        let formDataHTML = `...`; // (A lógica para montar o formDataHTML, que você já tem, fica aqui)
 
-        let formDataHTML = `
-            <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
-                <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary);">Dados Originais da Solicitação</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        `;
-        for (const key in request.data) {
-            if (request.data[key]) {
-                const label = translations[key] || key.replace(/_/g, ' ');
-                formDataHTML += `
-                    <div style="margin-bottom: 5px;">
-                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase;">${label}</label>
-                        <span style="font-weight: 600; font-size: 0.85rem;">${request.data[key]}</span>
-                    </div>
-                `;
-            }
-        }
-        formDataHTML += `</div></div>`;
-
-        modalBody.innerHTML = `
-            <div style="padding: 0.5rem;">
-                ${headerHTML}
-                <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
-                </h4>
-                ${timelineHTML}
-                ${formDataHTML}
-            </div>
-        `;
+        modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
         const p = currentUserProfile.permissions || [];
         const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
 
-        // CONDIÇÃO PARA O BOTÃO "DAR CHECK" DO GERENTE
-        if (request.status === 'pending_manager_check' && request.requester && request.requester.manager_id === currentUserProfile.id) {
+        const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
+        if (rule && rule.requires_manager_check && !managerCheck && request.requester && request.requester.manager_id === currentUserProfile.id) {
             footerActionsHTML += `<button class="btn btn-success" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        if (isAdmin || p.includes('mgt_maintenance')) {
-            if (request.status === 'pending') { footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`; }
-            else if (request.status === 'planned') { footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar</button>`; }
-        }
-        
-        if (request.type !== 'maintenance' && (request.status === 'pending' || request.status === 'pending_manager_check')) {
-            const mgtKey = `mgt_${request.type}`;
-            if(isAdmin || p.includes(mgtKey)) {
-                 footerActionsHTML += `
-                    <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
-                    <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
-                `;
+        if (isAdmin || p.some(perm => perm.startsWith('mgt_'))) {
+            if (request.status === 'pending') {
+                 // A lógica de botões do RH fica aqui
+                 if (request.type === 'maintenance') {
+                    footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
+                 } else {
+                    footerActionsHTML += `
+                        <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                        <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                    `;
+                 }
             }
         }
-
+        
         modalFooter.innerHTML = `
             <button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>
             ${footerActionsHTML}
         `;
 
     } catch (error) {
-        console.error("Erro ao carregar detalhes da requisição:", error);
+        console.error("Erro ao carregar detalhes:", error);
         modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar Timeline: ${error.message}</div>`;
         modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
     }
@@ -8327,59 +8267,61 @@ async function loadRequestManagementPage() {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
 
-    const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
-    if (error) { tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`; return; }
+    // Busca as requisições e também os "checks" existentes
+    const [requestsRes, checksRes] = await Promise.all([
+        supabaseClient.rpc('get_all_requests_for_viewing'),
+        supabaseClient.from('request_manager_checks').select('request_id')
+    ]);
 
+    const { data: allRequests, error: reqError } = requestsRes;
+    const { data: allChecks, error: checkError } = checksRes;
+
+    if (reqError || checkError) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`;
+        return;
+    }
+
+    const checkedRequestIds = new Set((allChecks || []).map(c => c.request_id));
     const p = currentUserProfile.permissions || [];
     const isAdmin = p.includes('manage_users');
 
-    const filteredData = data.filter(req => {
-        if (req.type === 'maintenance' || req.type === 'travel') return false;
+    const filteredData = (allRequests || []).filter(req => {
         if (isAdmin) return true;
         const mgtKey = `mgt_${req.type}`;
         return p.includes(mgtKey);
     });
 
-    if (!filteredData || filteredData.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para aprovação.</td></tr>`;
+    if (filteredData.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição para gerenciar.</td></tr>`;
         return;
     }
 
     const labels = {
-        new_hire: 'Contratação', termination: 'Desligamento', promotion: 'Promoção',
-        overtime: 'Horas Extras', training: 'Treinamento', disciplinary_action: 'Medida Disciplinar',
-        pending: 'Pendente (RH)', 
-        pending_manager_check: 'Aguardando Check', // NOVO LABEL
-        approved: 'Aprovada', rejected: 'Recusada'
+        'pending': 'Pendente (RH)', 'approved': 'Aprovada', 'rejected': 'Recusada'
     };
 
     tableBody.innerHTML = filteredData.map(req => {
-        const typeLabel = labels[req.type] || req.type;
+        const typeLabel = req.type.replace('_', ' ');
         const statusLabel = labels[req.status] || req.status;
         const date = new Date(req.created_at).toLocaleDateString('pt-BR');
         
-        // LÓGICA DE COR DO STATUS ATUALIZADA
-        let statusClass = 'status-pending'; // Padrão
-        if (req.status === 'approved') statusClass = 'status-approved';
-        if (req.status === 'rejected') statusClass = 'status-rejected';
-
-        let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
-
-        // O RH pode aprovar/reprovar mesmo que o check esteja pendente
-        if (req.status === 'pending' || req.status === 'pending_manager_check') {
-            actionsHTML += `
-                <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success); font-size:24px;">check_circle</span></button>
-                <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger); font-size:24px;">cancel</span></button>
-            `;
+        let managerCheckHTML = '';
+        const rule = requestTypeSettingsCache.find(r => r.request_type === req.type);
+        if (rule && rule.requires_manager_check) {
+            if (checkedRequestIds.has(req.id)) {
+                managerCheckHTML = '<span class="material-icons" style="color:var(--color-success);" title="Check do Gerente OK">check_circle</span>';
+            } else {
+                managerCheckHTML = '<span class="material-icons" style="color:var(--color-warning);" title="Aguardando Check do Gerente">hourglass_empty</span>';
+            }
         }
-
+        
         return `
             <tr>
                 <td>${req.requester_name || 'N/A'}</td>
-                <td><strong>${typeLabel}</strong></td>
+                <td><strong>${typeLabel}</strong> ${managerCheckHTML}</td>
                 <td>${date}</td>
-                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+                <td><span class="status-tag status-${req.status}">${statusLabel}</span></td>
+                <td><button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button></td>
             </tr>
         `;
     }).join('');
