@@ -5245,7 +5245,7 @@ async function openRequestDetailsModal(requestId) {
         const managerCheck = checkRes.data;
         let history = historyRes.data || [];
 
-        // LÓGICA DE STATUS CORRIGIDA
+        // Lógica para status "real" vs. status "visual"
         let finalStatus = request.status;
         if (request.status === 'pending_manager_check' && managerCheck) {
             finalStatus = 'pending';
@@ -5257,19 +5257,12 @@ async function openRequestDetailsModal(requestId) {
         };
         const translatedStatus = statusTranslations[finalStatus] || finalStatus.replace(/_/g, ' ');
 
-        // Dicionário de traduções para os tipos de requisição
-const typeTranslations = {
-    'new_hire': 'Contratação', 
-    'termination': 'Desligamento', 
-    'promotion': 'Promoção Interna',
-    'overtime': 'Horas Extras', 
-    'training': 'Treinamento', 
-    'travel': 'Viagem',
-    'disciplinary_action': 'Medida Disciplinar', 
-    'maintenance': 'Manutenção'
-};
-// Busca a tradução no dicionário; se não encontrar, formata o nome técnico
-const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
+        const typeTranslations = {
+            'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
+            'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
+            'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção'
+        };
+        const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
         // RENDERIZAÇÃO DO HEADER
         let headerHTML = `
@@ -5291,6 +5284,9 @@ const requestTypeName = typeTranslations[request.type] || request.type.replace(/
         
         // RENDERIZAÇÃO DO HISTÓRICO (TIMELINE)
         let timelineHTML = `
+            <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
+            </h4>
             <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
                 <div style="margin-bottom: 2rem; position: relative;">
                     <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
@@ -5300,22 +5296,21 @@ const requestTypeName = typeTranslations[request.type] || request.type.replace(/
                         Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR')}
                     </div>
                 </div>
-            `;
-        timelineHTML += `</div>`; // Fechamento da div da timeline
+            </div>`;
 
         // RENDERIZAÇÃO DOS DADOS DO FORMULÁRIO
         const translations = { funcao: 'Função', quantidade: 'Vagas', setor_he: 'Setor', data_he: 'Data', horario_adicional: 'Horário Adicional', equipamento: 'Equipamento', descricao_problema: 'Problema' };
         let formDataHTML = `
             <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
                 <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary);">Dados Originais da Solicitação</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">`;
         for (const key in request.data) {
             if (request.data[key]) {
                 const label = translations[key] || key.replace(/_/g, ' ');
                 formDataHTML += `
                     <div>
-                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase;">${label}</label>
-                        <span style="font-weight: 600; font-size: 0.85rem;">${request.data[key]}</span>
+                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase; font-weight: 600;">${label}</label>
+                        <span style="font-weight: 500; font-size: 0.9rem;">${request.data[key]}</span>
                     </div>`;
             }
         }
@@ -5328,20 +5323,21 @@ const requestTypeName = typeTranslations[request.type] || request.type.replace(/
         const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
 
-        // Botão para o gerente dar o check
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         if (rule && rule.requires_manager_check && !managerCheck && request.requester?.manager_id === currentUserProfile.id) {
             footerActionsHTML += `<button class="btn btn-success" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
 
-        // Botões para o RH (Aprovar/Reprovar)
         const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`);
-        // O RH pode agir se o status for 'pending' (check já dado) OU se for 'pending_manager_check' (para furar a fila)
         if (canManageRequest && (finalStatus === 'pending' || request.status === 'pending_manager_check')) {
-            footerActionsHTML += `
-                <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
-                <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
-            `;
+             if (request.type === 'maintenance' && finalStatus === 'pending') {
+                footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
+             } else if (request.type !== 'maintenance') {
+                footerActionsHTML += `
+                    <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                    <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                `;
+             }
         }
         
         modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>${footerActionsHTML}`;
