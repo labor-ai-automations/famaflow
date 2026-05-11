@@ -5167,212 +5167,197 @@ function initOrgZoomPan() {
         }
 
 async function openRequestDetailsModal(requestId) {
-            const modal = document.getElementById('request-modal');
-            const modalTitle = document.getElementById('request-modal-title');
-            const modalBody = document.getElementById('request-modal-body');
-            const modalFooter = document.getElementById('request-modal-footer');
+    const modal = document.getElementById('request-modal');
+    const modalTitle = document.getElementById('request-modal-title');
+    const modalBody = document.getElementById('request-modal-body');
+    const modalFooter = document.getElementById('request-modal-footer');
 
-            modalTitle.textContent = 'Acompanhamento da Requisição';
-            modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
-            modal.classList.add('visible');
+    modalTitle.textContent = 'Acompanhamento da Requisição';
+    modalBody.innerHTML = '<div class="empty-state">Carregando histórico...</div>';
+    modalFooter.innerHTML = ''; // Limpa o rodapé para evitar botões de ações antigas
+    modal.classList.add('visible');
 
-            const statusTranslations = {
-                'pending': 'Pendente', 'approved': 'Aprovada', 'rejected': 'Recusada',
-                'planned': 'Planejada', 'executed': 'Executada',
-                'cancelled_by_requester': 'Cancelada'
-            };
+    const statusTranslations = {
+        'pending': 'Pendente (RH)', 
+        'pending_manager_check': 'Aguardando Check do Gerente',
+        'approved': 'Aprovada', 
+        'rejected': 'Recusada',
+        'planned': 'Planejada', 
+        'executed': 'Executada',
+        'cancelled_by_requester': 'Cancelada'
+    };
 
-            try {
-                const [reqRes, historyRes] = await Promise.all([
-                    supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name)').eq('id', requestId).single(),
-                    supabaseClient.from('request_history').select('*, profiles:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
-                ]);
+    try {
+        // Busca a requisição e o histórico em paralelo, agora incluindo o manager_id do solicitante
+        const [reqRes, historyRes] = await Promise.all([
+            supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
+            supabaseClient.from('request_history').select('*, profiles:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true })
+        ]);
 
-                if (reqRes.error) throw reqRes.error;
-                const request = reqRes.data;
-                currentEditingRequest = request;
-                let history = historyRes.data || [];
+        if (reqRes.error) throw reqRes.error;
+        const request = reqRes.data;
+        currentEditingRequest = request;
+        let history = historyRes.data || [];
 
-                if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
-                    history.push({
-                        status: 'planned',
-                        created_at: null,
-                        profiles: { full_name: 'Gestor (Registro Antigo)' },
-                        notes: request.approval_notes || null,
-                        legacy_scheduled: request.maintenance_scheduled_at
-                    });
+        // Lógica para incluir etapas legadas no histórico (se necessário)
+        if (request.maintenance_scheduled_at && !history.some(h => h.status === 'planned')) {
+            history.push({
+                status: 'planned',
+                created_at: null,
+                profiles: { full_name: 'Gestor (Registro Antigo)' },
+                notes: request.approval_notes || null,
+                legacy_scheduled: request.maintenance_scheduled_at
+            });
+        }
+        if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
+            history.push({
+                status: 'executed',
+                created_at: null,
+                profiles: { full_name: 'Gestor (Registro Antigo)' },
+                notes: null
+            });
+        }
+        history.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+        const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : 'Solicitação Geral';
+        const translatedStatus = statusTranslations[request.status] || request.status.toUpperCase();
+        
+        let headerHTML = `
+            <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${requestTypeName}</h3>
+                    <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
+                </div>
+                <span class="status-tag status-${request.status}">${translatedStatus}</span>
+            </div>
+        `;
+
+        let timelineHTML = `
+            <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
+                <div style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
+                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
+                        Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR')}
+                    </div>
+                </div>
+        `;
+
+        let stepCounter = 2;
+        history.forEach((step) => {
+            const labels = { planned: 'Planejamento e Agenda', executed: 'Conclusão da Tarefa', approved: 'Aprovação', rejected: 'Recusada', manager_check: 'Ciência do Gerente' };
+            const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel', manager_check: 'how_to_reg' };
+            const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920', manager_check: '#1E40AF' };
+
+            let scheduledDateHTML = '', techniciansHTML = '', cleanNotes = '';
+
+            if (step.status === 'planned') {
+                const notesString = step.notes || '';
+                const planDetailsMatch = notesString.match(/Agendado para: (.*?)\| Técnicos: (.*?)\| Obs: (.*)/s);
+                if (planDetailsMatch) {
+                    scheduledDateHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">event</span><strong>AGENDADO PARA:</strong> ${planDetailsMatch[1].trim()}</div>`;
+                    if (planDetailsMatch[2].trim()) {
+                        techniciansHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">engineering</span><strong>EQUIPE:</strong> ${planDetailsMatch[2].trim()}</div>`;
+                    }
+                    cleanNotes = planDetailsMatch[3].trim();
+                } else {
+                    cleanNotes = notesString;
                 }
-                if (request.status === 'executed' && !history.some(h => h.status === 'executed')) {
-                    const executedTime = request.maintenance_scheduled_at ? new Date(new Date(request.maintenance_scheduled_at).getTime() + 3600000) : new Date();
-                    history.push({
-                        status: 'executed',
-                        created_at: null,
-                        profiles: { full_name: 'Gestor (Registro Antigo)' },
-                        notes: null
-                    });
-                }
-                history.sort((a, b) => {
-                    const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
-                    const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
-                    return dateA - dateB;
-                });
+            } else {
+                cleanNotes = step.notes || '';
+            }
+            
+            const actionDateHTML = step.created_at ? `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>` : ``;
 
-                const isDynamic = request.blueprint_id != null;
-                const requestTypeName = request.type === 'maintenance' ? 'Manutenção Corretiva' : (isDynamic ? 'Requisição Dinâmica' : 'Solicitação Geral');
-                const translatedStatus = statusTranslations[request.status] || request.status.toUpperCase();
-                
-                let headerHTML = `
-                    <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h3 style="margin:0; font-size: 1.1rem; color: var(--color-text-primary);">${requestTypeName}</h3>
-                            <p style="margin: 4px 0 0 0; color: var(--color-text-secondary); font-size: 0.8rem;">Protocolo: #${request.id.substring(0,8).toUpperCase()}</p>
-                        </div>
-                        <span class="status-tag status-${request.status}">${translatedStatus}</span>
+            timelineHTML += `
+                <div style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${colors[step.status] || '#6B7280'}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${colors[step.status] || '#6B7280'};"></div>
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${colors[step.status] || 'var(--color-text-primary)'}; display:flex; align-items:center; gap:5px; letter-spacing: 0.05em;">
+                        <span class="material-icons" style="font-size:14px;">${icons[step.status] || 'info'}</span>
+                        Etapa ${stepCounter}: ${labels[step.status] || step.status}
+                    </div>
+                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Ação realizada por ${step.profiles?.full_name || 'Sistema'}</div>
+                    ${actionDateHTML}
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 8px;">${scheduledDateHTML}${techniciansHTML}</div>
+                    ${cleanNotes ? `<div style="margin-top: 10px; padding: 12px; background: var(--color-background); border-radius: 8px; border-left: 4px solid ${colors[step.status]}; font-style: italic; font-size: 0.85rem; color: var(--color-text-primary);">${cleanNotes}</div>` : ''}
+                </div>
+            `;
+            stepCounter++;
+        });
+
+        timelineHTML += `</div>`;
+
+        const translations = {
+            funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
+            tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
+            descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante'
+        };
+
+        let formDataHTML = `
+            <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
+                <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary);">Dados Originais da Solicitação</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        `;
+        for (const key in request.data) {
+            if (request.data[key]) {
+                const label = translations[key] || key.replace(/_/g, ' ');
+                formDataHTML += `
+                    <div style="margin-bottom: 5px;">
+                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase;">${label}</label>
+                        <span style="font-weight: 600; font-size: 0.85rem;">${request.data[key]}</span>
                     </div>
                 `;
-
-                let timelineHTML = `
-                    <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
-                        <div style="margin-bottom: 2rem; position: relative;">
-                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
-                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
-                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
-                                Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR')}
-                            </div>
-                        </div>
-                `;
-
-                let stepCounter = 2;
-                history.forEach((step) => {
-                    const labels = { planned: 'Planejamento e Agenda', executed: 'Conclusão da Tarefa', approved: 'Aprovação Gestora', rejected: 'Solicitação Recusada', pending_approval: 'Aguardando Avaliação' };
-                    const icons = { planned: 'calendar_today', executed: 'check_circle', approved: 'verified', rejected: 'cancel', pending_approval: 'hourglass_top' };
-                    const colors = { planned: '#3B82F6', executed: '#10B981', approved: '#10B981', rejected: '#D81920', pending_approval: '#F59E0B' };
-
-                    let scheduledDateHTML = '';
-                    let cleanNotes = '';
-
-                    if (step.status === 'planned') {
-                        const notesString = step.notes || '';
-                        const scheduledTextMatch = notesString.match(/Agendado para: (.*?)\|/);
-                        const obsTextMatch = notesString.match(/Obs: (.*)/);
-
-                        if(step.legacy_scheduled) {
-                            scheduledDateHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">event</span><strong>AGENDADO PARA:</strong> ${new Date(step.legacy_scheduled).toLocaleString('pt-BR')}</div>`;
-                        } else if (scheduledTextMatch) {
-                            scheduledDateHTML = `<div style="margin-top: 8px; padding: 8px 12px; background: var(--color-info-bg); color: var(--color-info); border-radius: 8px; font-size: 0.85rem; border: 1px solid rgba(59,130,246,0.2); display: inline-flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size:16px;">event</span><strong>AGENDADO PARA:</strong> ${scheduledTextMatch[1].trim()}</div>`;
-                        }
-                        
-                        cleanNotes = obsTextMatch ? obsTextMatch[1].trim() : (step.legacy_scheduled ? notesString : '');
-
-                    } else if (step.status === 'executed') {
-                        const notesString = step.notes || '';
-                        const followedPlanMatch = notesString.match(/Seguiu o plano: (.*?)\|/);
-                        const detailsMatch = notesString.match(/Detalhes: (.*)/);
-
-                        let followedPlanText = followedPlanMatch ? `<strong>Plano seguido:</strong> ${followedPlanMatch[1].trim()}<br>` : '';
-                        let detailsText = detailsMatch ? `"${detailsMatch[1].trim()}"` : (notesString || '');
-                        cleanNotes = `${followedPlanText}${detailsText}`;
-                    }
-
-                    const actionDateHTML = step.created_at
-                        ? `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data: ${new Date(step.created_at).toLocaleString('pt-BR')}</div>`
-                        : `<div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Data da ação não registrada.</div>`;
-
-                    timelineHTML += `
-                        <div style="margin-bottom: 2rem; position: relative;">
-                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${colors[step.status] || '#ccc'}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${colors[step.status] || '#ccc'};"></div>
-                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${colors[step.status] || 'var(--color-text-primary)'}; display:flex; align-items:center; gap:5px; letter-spacing: 0.05em;">
-                                <span class="material-icons" style="font-size:14px;">${icons[step.status] || 'info'}</span>
-                                Etapa ${stepCounter}: ${labels[step.status] || step.status}
-                            </div>
-                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Ação realizada por ${step.profiles?.full_name || 'Sistema/Gestor'}</div>
-                            ${actionDateHTML}
-                            
-                            ${scheduledDateHTML}
-
-                            ${cleanNotes ? `<div style="margin-top: 10px; padding: 12px; background: var(--color-background); border-radius: 8px; border-left: 4px solid ${colors[step.status]}; font-style: italic; font-size: 0.85rem; color: var(--color-text-primary); box-shadow: var(--shadow);">${cleanNotes}</div>` : ''}
-                        </div>
-                    `;
-                    stepCounter++;
-                });
-
-                timelineHTML += `</div>`;
-
-                const translations = {
-                    funcao: 'Função', quantidade: 'Vagas', motivo_contratacao: 'Motivo', substituicao_nome: 'Substituído',
-                    tipo_contrato: 'Contrato', horario: 'Horário', setor: 'Setor', equipamento: 'Equipamento',
-                    descricao_problema: 'Problema relatado', situacao_maquina: 'Situação da Máquina', solicitante_nome: 'Solicitante',
-                    approval_notes: 'Observações Internas'
-                };
-
-                let formDataHTML = `
-                    <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
-                        <h4 style="margin: 0 0 1rem 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary);">Dados Originais da Solicitação</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                `;
-
-                for (const key in request.data) {
-                    if (request.data[key] && key !== 'history' && key !== 'maintenance_scheduled_at') {
-                        const label = translations[key] || key.replace(/_/g, ' ');
-                        formDataHTML += `
-                            <div style="margin-bottom: 5px;">
-                                <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase;">${label}</label>
-                                <span style="font-weight: 600; font-size: 0.85rem;">${request.data[key]}</span>
-                            </div>
-                        `;
-                    }
-                }
-                formDataHTML += `</div></div>`;
-
-                modalBody.innerHTML = `
-                    <div style="padding: 0.5rem;">
-                        ${headerHTML}
-                        <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
-                            <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
-                        </h4>
-                        ${timelineHTML}
-                        ${formDataHTML}
-                    </div>
-                `;
-
-                // --- INÍCIO DA LÓGICA DE BOTÕES DINÂMICOS ---
-                const p = currentUserProfile.permissions || [];
-                const isAdmin = p.includes('manage_users');
-                let footerActionsHTML = '';
-                
-                if (isAdmin || p.includes('mgt_maintenance')) {
-                    if (request.status === 'pending') {
-                        footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
-                    } else if (request.status === 'planned') {
-                        footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar</button>`;
-                    }
-                }
-                
-                // Lógica para requisições gerais (não-manutenção)
-                if (request.type !== 'maintenance' && request.status === 'pending') {
-                    const mgtKey = `mgt_${request.type}`;
-                    if(isAdmin || p.includes(mgtKey)) {
-                         footerActionsHTML += `
-                            <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
-                            <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
-                        `;
-                    }
-                }
-
-                modalFooter.innerHTML = `
-                    <button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>
-                    ${footerActionsHTML}
-                `;
-                // --- FIM DA LÓGICA DE BOTÕES DINÂMICOS ---
-
-
-            } catch (error) {
-                console.error(error);
-                modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar Timeline: ${error.message}</div>`;
-                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
             }
         }
+        formDataHTML += `</div></div>`;
+
+        modalBody.innerHTML = `
+            <div style="padding: 0.5rem;">
+                ${headerHTML}
+                <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
+                </h4>
+                ${timelineHTML}
+                ${formDataHTML}
+            </div>
+        `;
+
+        const p = currentUserProfile.permissions || [];
+        const isAdmin = p.includes('manage_users');
+        let footerActionsHTML = '';
+
+        // CONDIÇÃO PARA O BOTÃO "DAR CHECK" DO GERENTE
+        if (request.status === 'pending_manager_check' && request.requester && request.requester.manager_id === currentUserProfile.id) {
+            footerActionsHTML += `<button class="btn btn-success" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
+        }
+        
+        if (isAdmin || p.includes('mgt_maintenance')) {
+            if (request.status === 'pending') { footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`; }
+            else if (request.status === 'planned') { footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar</button>`; }
+        }
+        
+        if (request.type !== 'maintenance' && (request.status === 'pending' || request.status === 'pending_manager_check')) {
+            const mgtKey = `mgt_${request.type}`;
+            if(isAdmin || p.includes(mgtKey)) {
+                 footerActionsHTML += `
+                    <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                    <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                `;
+            }
+        }
+
+        modalFooter.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeRequestModal()">Fechar Painel</button>
+            ${footerActionsHTML}
+        `;
+
+    } catch (error) {
+        console.error("Erro ao carregar detalhes da requisição:", error);
+        modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar Timeline: ${error.message}</div>`;
+        modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+    }
+}
 
         async function openRequestModal() {
             const modal = document.getElementById('request-modal');
@@ -6618,6 +6603,40 @@ function toggleRecipientSelection(user) {
         function closeConfirmationModal() {
             document.getElementById('confirmation-modal').classList.remove('visible');
         }
+		
+		// NOVA FUNÇÃO: Processa o "check" do gerente
+async function processManagerCheck(requestId) {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Processando...';
+
+    // O N8N precisa de um novo workflow para esta ação
+    const N8N_PROCESS_MANAGER_CHECK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/process-manager-check';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_PROCESS_MANAGER_CHECK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ request_id: requestId })
+        });
+
+        if (!response.ok) throw new Error("Falha ao processar o 'check'.");
+
+        showToast("'Check' de ciência registrado com sucesso!", "success");
+        // Recarrega os detalhes do modal para refletir a mudança de status
+        openRequestDetailsModal(requestId);
+        // Recarrega a tabela de gerenciamento em segundo plano
+        if (document.getElementById('feedback-tab-management')?.style.display === 'block') {
+            loadRequestManagementPage();
+        }
+
+    } catch (error) {
+        showToast(error.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = 'Dar Check de Ciência';
+    }
+}
 
 async function loadUserProfileData(userId) {
             const container = document.getElementById('user-profile-content');
@@ -8248,68 +8267,68 @@ function toggleMgtView(view) {
             }
         }
 
-        async function loadRequestManagementPage() {
-            const tableBody = document.getElementById('request-management-table-body');
-            if(!tableBody) return;
-            tableBody.innerHTML = '';
+async function loadRequestManagementPage() {
+    const tableBody = document.getElementById('request-management-table-body');
+    if(!tableBody) return;
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
 
-            const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
-            if (error) { tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`; return; }
+    const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
+    if (error) { tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`; return; }
 
-            const p = currentUserProfile.permissions || [];
-            const isAdmin = p.includes('manage_users');
+    const p = currentUserProfile.permissions || [];
+    const isAdmin = p.includes('manage_users');
 
-            const filteredData = data.filter(req => {
-                if (req.type === 'maintenance' || req.type === 'travel') return false; // Exclui manutenção e viagem da lista geral
-                if (isAdmin) return true;
-                const mgtKey = `mgt_${req.type}`;
-                return p.includes(mgtKey);
-            });
+    const filteredData = data.filter(req => {
+        if (req.type === 'maintenance' || req.type === 'travel') return false;
+        if (isAdmin) return true;
+        const mgtKey = `mgt_${req.type}`;
+        return p.includes(mgtKey);
+    });
 
-            if (!filteredData || filteredData.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para aprovação.</td></tr>`;
-                return;
-            }
+    if (!filteredData || filteredData.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Não há requisições pendentes para aprovação.</td></tr>`;
+        return;
+    }
 
-            const labels = {
-                new_hire: 'Contratação', termination: 'Desligamento', promotion: 'Promoção',
-                overtime: 'Horas Extras', training: 'Treinamento', disciplinary_action: 'Medida Disciplinar',
-                maintenance: 'Manutenção', pending: 'Pendente', approved: 'Aprovada', rejected: 'Recusada',
-                planned: 'Planejada', executed: 'Executada', cancelled_by_requester: 'Cancelada'
-            };
+    const labels = {
+        new_hire: 'Contratação', termination: 'Desligamento', promotion: 'Promoção',
+        overtime: 'Horas Extras', training: 'Treinamento', disciplinary_action: 'Medida Disciplinar',
+        pending: 'Pendente (RH)', 
+        pending_manager_check: 'Aguardando Check', // NOVO LABEL
+        approved: 'Aprovada', rejected: 'Recusada'
+    };
 
-            tableBody.innerHTML = filteredData.map(req => {
-                const typeLabel = labels[req.type] || req.type;
-                const statusLabel = labels[req.status] || req.status;
-                const date = new Date(req.created_at).toLocaleDateString('pt-BR');
-                const statusClass = `status-${req.status}`;
-                
-                let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+    tableBody.innerHTML = filteredData.map(req => {
+        const typeLabel = labels[req.type] || req.type;
+        const statusLabel = labels[req.status] || req.status;
+        const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+        
+        // LÓGICA DE COR DO STATUS ATUALIZADA
+        let statusClass = 'status-pending'; // Padrão
+        if (req.status === 'approved') statusClass = 'status-approved';
+        if (req.status === 'rejected') statusClass = 'status-rejected';
 
-                if (req.status === 'pending') {
-                    if (req.type === 'maintenance') {
-                        actionsHTML += `<button class="btn btn-warning" style="padding: 0.4rem 0.8rem;" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button>`;
-                    } else {
-                        actionsHTML += `
-                            <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success); font-size:24px;">check_circle</span></button>
-                            <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger); font-size:24px;">cancel</span></button>
-                        `;
-                    }
-                } else if (req.status === 'planned' && req.type === 'maintenance') {
-                    actionsHTML += `<button class="btn btn-success" style="padding: 0.4rem 0.8rem;" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button>`;
-                }
+        let actionsHTML = `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
 
-                return `
-                    <tr>
-                        <td>${req.requester_name || 'N/A'}</td>
-                        <td><strong>${typeLabel}</strong></td>
-                        <td>${date}</td>
-                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
-                    </tr>
-                `;
-            }).join('');
+        // O RH pode aprovar/reprovar mesmo que o check esteja pendente
+        if (req.status === 'pending' || req.status === 'pending_manager_check') {
+            actionsHTML += `
+                <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success); font-size:24px;">check_circle</span></button>
+                <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger); font-size:24px;">cancel</span></button>
+            `;
         }
+
+        return `
+            <tr>
+                <td>${req.requester_name || 'N/A'}</td>
+                <td><strong>${typeLabel}</strong></td>
+                <td>${date}</td>
+                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+            </tr>
+        `;
+    }).join('');
+}
 		
 // --- LÓGICA DO BUILDER (ADM) ---
         function createNewBlueprint() {
