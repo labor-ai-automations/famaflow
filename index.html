@@ -8267,25 +8267,20 @@ async function loadRequestManagementPage() {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
 
-    // Busca as requisições e também os "checks" existentes
-    const [requestsRes, checksRes] = await Promise.all([
-        supabaseClient.rpc('get_all_requests_for_viewing'),
-        supabaseClient.from('request_manager_checks').select('request_id')
-    ]);
-
-    const { data: allRequests, error: reqError } = requestsRes;
-    const { data: allChecks, error: checkError } = checksRes;
-
-    if (reqError || checkError) {
+    const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
+    if (error) { 
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`;
         return;
     }
 
+    // Busca os checks existentes para exibir o indicador visual
+    const { data: allChecks } = await supabaseClient.from('request_manager_checks').select('request_id');
     const checkedRequestIds = new Set((allChecks || []).map(c => c.request_id));
+    
     const p = currentUserProfile.permissions || [];
     const isAdmin = p.includes('manage_users');
 
-    const filteredData = (allRequests || []).filter(req => {
+    const filteredData = (data || []).filter(req => {
         if (isAdmin) return true;
         const mgtKey = `mgt_${req.type}`;
         return p.includes(mgtKey);
@@ -8296,32 +8291,64 @@ async function loadRequestManagementPage() {
         return;
     }
 
-    const labels = {
-        'pending': 'Pendente (RH)', 'approved': 'Aprovada', 'rejected': 'Recusada'
+    // DICIONÁRIO DE TRADUÇÕES (AQUI ESTÁ A MÁGICA)
+    const typeTranslations = {
+        'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção',
+        'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
+        'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção'
+    };
+
+    const statusTranslations = {
+        'pending': 'Pendente', // Tradução simplificada para manutenção
+        'pending_rh': 'Pendente (RH)', // Específico para outros fluxos
+        'pending_manager_check': 'Aguardando Check',
+        'approved': 'Aprovada', 'rejected': 'Recusada',
+        'planned': 'Planejada', 'executed': 'Executada'
     };
 
     tableBody.innerHTML = filteredData.map(req => {
-        const typeLabel = req.type.replace('_', ' ');
-        const statusLabel = labels[req.status] || req.status;
+        // LÓGICA DE TRADUÇÃO E FORMATAÇÃO
+        const typeLabel = typeTranslations[req.type] || req.type;
+        
+        let statusLabel = statusTranslations[req.status] || req.status;
+        // Regra especial para o 'pending' de manutenção
+        if (req.type === 'maintenance' && req.status === 'pending') {
+            statusLabel = 'Pendente';
+        } else if (req.status === 'pending') {
+            statusLabel = 'Pendente (RH)';
+        }
+
+        let statusClass;
+        if (req.status.includes('approved') || req.status === 'executed' || req.status === 'planned') {
+            statusClass = 'status-approved';
+        } else if (req.status.includes('rejected')) {
+            statusClass = 'status-rejected';
+        } else {
+            statusClass = 'status-pending'; // 'pending' e 'pending_manager_check'
+        }
+        
         const date = new Date(req.created_at).toLocaleDateString('pt-BR');
         
+        // LÓGICA DO INDICADOR DE CHECK
         let managerCheckHTML = '';
         const rule = requestTypeSettingsCache.find(r => r.request_type === req.type);
         if (rule && rule.requires_manager_check) {
             if (checkedRequestIds.has(req.id)) {
-                managerCheckHTML = '<span class="material-icons" style="color:var(--color-success);" title="Check do Gerente OK">check_circle</span>';
+                managerCheckHTML = '<span class="material-icons" style="color:var(--color-success); vertical-align: middle; margin-left: 5px;" title="Check do Gerente OK">check_circle</span>';
             } else {
-                managerCheckHTML = '<span class="material-icons" style="color:var(--color-warning);" title="Aguardando Check do Gerente">hourglass_empty</span>';
+                managerCheckHTML = '<span class="material-icons" style="color:var(--color-warning); vertical-align: middle; margin-left: 5px;" title="Aguardando Check do Gerente">hourglass_empty</span>';
             }
         }
         
+        let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
+
         return `
             <tr>
                 <td>${req.requester_name || 'N/A'}</td>
-                <td><strong>${typeLabel}</strong> ${managerCheckHTML}</td>
+                <td><strong>${typeLabel}</strong>${managerCheckHTML}</td>
                 <td>${date}</td>
-                <td><span class="status-tag status-${req.status}">${statusLabel}</span></td>
-                <td><button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button></td>
+                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
             </tr>
         `;
     }).join('');
