@@ -2492,7 +2492,7 @@ const appHTML = `<div id="app-container">
     
     <!-- AÇÕES DE EXPORTAÇÃO -->
     <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-         <button class="btn btn-success" id="btn-export-feedback-pdf" disabled><span class="material-icons">picture_as_pdf</span> Gerar Relatório PDF</button>
+         <button class="btn btn-success" id="btn-export-feedback-pdf" onclick="exportFeedbackManagementReport()" disabled><span class="material-icons">picture_as_pdf</span> Gerar Relatório PDF</button>
     </div>
 
     <!-- TABELA DE GERENCIAMENTO -->
@@ -10987,6 +10987,74 @@ function clearFeedbackFilters() {
     document.getElementById('fb-filter-start-date').value = '';
     document.getElementById('fb-filter-end-date').value = '';
     renderManagementTable(allFeedbacksCache);
+}
+
+// Função para coletar os filtros e gerar o relatório PDF do RH
+async function exportFeedbackManagementReport() {
+    const btn = document.getElementById('btn-export-feedback-pdf');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons refresh-spin" style="font-size: 18px;">sync</span> Gerando...';
+
+    // 1. Coleta os valores atuais dos filtros
+    const startDate = document.getElementById('fb-filter-start-date').value;
+    const endDate = document.getElementById('fb-filter-end-date').value;
+
+    // Validação mínima: datas são obrigatórias para o relatório do n8n
+    if (!startDate || !endDate) {
+        showToast('Para gerar o relatório, selecione o Período de Início e Fim.', 'warning');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+    }
+
+    const payload = {
+        start_date: startDate,
+        end_date: endDate,
+        giver_id: document.getElementById('fb-filter-giver').value,
+        recipient_name: document.getElementById('fb-filter-recipient').value.toLowerCase(),
+        pillar_id: document.getElementById('fb-filter-pillar').value,
+        usuario_gerador: currentUserProfile.full_name // Para aparecer no cabeçalho do PDF
+    };
+
+    const N8N_MANAGEMENT_REPORT_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/famaflow-gerar-relatorio-feedback';
+
+    showToast('Gerando relatório consolidado. Por favor, aguarde.', 'info');
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        const response = await fetch(N8N_MANAGEMENT_REPORT_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${session.access_token}` 
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('Falha na comunicação com o servidor de relatórios.');
+
+        // O workflow do n8n (respondWith: binary) retorna o arquivo diretamente
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Relatorio_Feedbacks_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast('Relatório baixado com sucesso!', 'success');
+
+    } catch(error) {
+        console.error(error);
+        showToast('Erro ao gerar relatório: ' + error.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 // Renderiza a tabela da aba de gerenciamento com os dados fornecidos
