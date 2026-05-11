@@ -2492,7 +2492,8 @@ const appHTML = `<div id="app-container">
     
     <!-- AÇÕES DE EXPORTAÇÃO -->
     <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
-         <button class="btn btn-success" id="btn-export-feedback-pdf" onclick="exportFeedbackManagementReport()" disabled><span class="material-icons">picture_as_pdf</span> Gerar Relatório PDF</button>
+         <!-- O botão agora abre o modal em vez de chamar a função diretamente, e nunca fica desabilitado -->
+         <button class="btn btn-success" id="btn-open-report-modal" onclick="openFeedbackReportModal()"><span class="material-icons">summarize</span> Ferramenta de Relatórios</button>
     </div>
 
     <!-- TABELA DE GERENCIAMENTO -->
@@ -10989,32 +10990,67 @@ function clearFeedbackFilters() {
     renderManagementTable(allFeedbacksCache);
 }
 
-// Função para coletar os filtros e gerar o relatório PDF do RH
-async function exportFeedbackManagementReport() {
-    const btn = document.getElementById('btn-export-feedback-pdf');
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="material-icons refresh-spin" style="font-size: 18px;">sync</span> Gerando...';
+// Abre o modal de relatórios de feedback e popula os dropdowns
+function openFeedbackReportModal() {
+    const modal = document.getElementById('feedback-report-modal');
+    
+    // Configura a data inicial para 30 dias atrás e a final para hoje, como padrão
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    document.getElementById('rep-fb-start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+    document.getElementById('rep-fb-end-date').value = today.toISOString().split('T')[0];
+    
+    // Popula os dropdowns com base no cache de feedbacks que já carregamos
+    const giverSelect = document.getElementById('rep-fb-giver');
+    const pillarSelect = document.getElementById('rep-fb-pillar');
 
-    // 1. Coleta os valores atuais dos filtros
-    const startDate = document.getElementById('fb-filter-start-date').value;
-    const endDate = document.getElementById('fb-filter-end-date').value;
+    if (allFeedbacksCache && allFeedbacksCache.length > 0) {
+        const uniqueGivers = [...new Map(allFeedbacksCache.map(item => [item['giver_id'], item])).values()];
+        const uniquePillars = [...new Map(allFeedbacksCache.map(item => [item['pillar_id'], item])).values()];
+        
+        giverSelect.innerHTML = '<option value="">Todos os Autores</option>';
+        uniqueGivers.forEach(fb => {
+            giverSelect.innerHTML += `<option value="${fb.giver_id}">${fb.giver_name}</option>`;
+        });
 
-    // Validação mínima: datas são obrigatórias para o relatório do n8n
+        pillarSelect.innerHTML = '<option value="">Todos os Pilares</option>';
+        uniquePillars.forEach(fb => {
+            pillarSelect.innerHTML += `<option value="${fb.pillar_id}">${fb.pillar_name}</option>`;
+        });
+    }
+
+    modal.classList.add('visible');
+}
+
+function closeFeedbackReportModal() {
+    document.getElementById('feedback-report-modal').classList.remove('visible');
+}
+
+// Coleta os dados do modal e envia para o n8n
+async function executeFeedbackManagementReport() {
+    const btn = document.getElementById('btn-confirm-feedback-report');
+    
+    const startDate = document.getElementById('rep-fb-start-date').value;
+    const endDate = document.getElementById('rep-fb-end-date').value;
+
     if (!startDate || !endDate) {
-        showToast('Para gerar o relatório, selecione o Período de Início e Fim.', 'warning');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        showToast('As datas de início e fim são obrigatórias.', 'warning');
         return;
     }
+
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons refresh-spin" style="font-size: 18px; margin-right: 5px;">sync</span> Gerando...';
 
     const payload = {
         start_date: startDate,
         end_date: endDate,
-        giver_id: document.getElementById('fb-filter-giver').value,
-        recipient_name: document.getElementById('fb-filter-recipient').value.toLowerCase(),
-        pillar_id: document.getElementById('fb-filter-pillar').value,
-        usuario_gerador: currentUserProfile.full_name // Para aparecer no cabeçalho do PDF
+        giver_id: document.getElementById('rep-fb-giver').value,
+        recipient_name: document.getElementById('rep-fb-recipient').value.trim().toLowerCase(),
+        pillar_id: document.getElementById('rep-fb-pillar').value,
+        usuario_gerador: currentUserProfile.full_name
     };
 
     const N8N_MANAGEMENT_REPORT_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/famaflow-gerar-relatorio-feedback';
@@ -11035,7 +11071,6 @@ async function exportFeedbackManagementReport() {
 
         if (!response.ok) throw new Error('Falha na comunicação com o servidor de relatórios.');
 
-        // O workflow do n8n (respondWith: binary) retorna o arquivo diretamente
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -11046,7 +11081,9 @@ async function exportFeedbackManagementReport() {
         a.click();
         window.URL.revokeObjectURL(url);
         a.remove();
+        
         showToast('Relatório baixado com sucesso!', 'success');
+        closeFeedbackReportModal(); // Fecha o modal após sucesso
 
     } catch(error) {
         console.error(error);
@@ -11079,7 +11116,7 @@ function renderManagementTable(feedbacks) {
         </tr>
     `).join('');
     
-    document.getElementById('btn-export-feedback-pdf').disabled = false;
+    
 }
 
 // ===================================================================
@@ -11576,6 +11613,62 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
         </div>
         <div class="modal-footer" id="feedback-modal-footer">
             <!-- Os botões do formulário serão injetados dinamicamente aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- NOVO: MODAL DE GERAÇÃO DE RELATÓRIO DE FEEDBACKS -->
+<div id="feedback-report-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Exportar Relatório de Feedbacks</h3>
+            <span class="material-icons" style="cursor:pointer;" onclick="closeFeedbackReportModal()">close</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--color-text-secondary); margin-top: 0; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                Defina os parâmetros abaixo para gerar um arquivo PDF consolidado.
+            </p>
+            
+            <div class="form-group">
+                <label>Período de Análise*</label>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem; color: var(--color-text-secondary);">Data Inicial</label>
+                        <input type="date" id="rep-fb-start-date" class="input-field" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem; color: var(--color-text-secondary);">Data Final</label>
+                        <input type="date" id="rep-fb-end-date" class="input-field" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Autor (Opcional)</label>
+                <select id="rep-fb-giver" class="input-field">
+                    <option value="">Todos os Autores</option>
+                    <!-- Preenchido via JS -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Pilar de Avaliação (Opcional)</label>
+                <select id="rep-fb-pillar" class="input-field">
+                    <option value="">Todos os Pilares</option>
+                    <!-- Preenchido via JS -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Colaborador Específico (Opcional)</label>
+                <input type="text" id="rep-fb-recipient" class="input-field" placeholder="Digite o nome para filtrar...">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeFeedbackReportModal()">Cancelar</button>
+            <button class="btn btn-danger" id="btn-confirm-feedback-report" onclick="executeFeedbackManagementReport()">
+                <span class="material-icons" style="font-size: 18px; margin-right: 5px;">picture_as_pdf</span> Gerar Relatório
+            </button>
         </div>
     </div>
 </div>
