@@ -11074,17 +11074,14 @@ function renderRequestSettingsTable(settings) {
     const typeLabels = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar', 'travel': 'Viagem', 'maintenance': 'Manutenção' };
 
     tableBody.innerHTML = settings.map(s => {
-        let approverDisplay = 'N/A';
+        let approverDisplay = 'N/A'; // Padrão
+        
         // LÓGICA DE EXIBIÇÃO CORRIGIDA
-        if (s.requires_manager_check) {
-            if (s.approver_type === 'manager') {
-                approverDisplay = 'Gerente Direto';
-            } else if (s.approver_type === 'specific_user' && s.approver && s.approver.full_name) {
-                // Agora ele usa o 's.approver.full_name' que veio do JOIN
-                approverDisplay = s.approver.full_name;
-            } else {
-                approverDisplay = '<span style="color:var(--color-danger);">Selecione um usuário</span>';
-            }
+        if (s.approver_type === 'manager') {
+            approverDisplay = 'Gerente Direto';
+        } else if (s.approver_type === 'specific_user') {
+            // Usa o nome do aprovador que veio do JOIN, ou um placeholder se não houver
+            approverDisplay = s.approver ? s.approver.full_name : '<span style="color:var(--color-danger);">Selecione...</span>';
         }
         
         return `
@@ -11092,12 +11089,12 @@ function renderRequestSettingsTable(settings) {
                 <td><strong>${typeLabels[s.request_type] || s.request_type}</strong></td>
                 <td style="text-align: center;">
                     <label class="custom-checkbox" style="justify-content: center;">
-                        <input type="checkbox" id="check-${s.request_type}" ${s.requires_manager_check ? 'checked' : ''}>
+                        <input type="checkbox" id="check-${s.request_type}" onchange="toggleApproverSection('${s.request_type}')" ${s.requires_manager_check ? 'checked' : ''}>
                         <span class="checkbox-box"><span class="material-icons">check</span></span>
                     </label>
                 </td>
                 <td>
-                    <div style="display:flex; gap:10px; align-items:center;">
+                    <div id="approver-section-${s.request_type}" style="display:${s.requires_manager_check ? 'flex' : 'none'}; gap:10px; align-items:center;">
                         <select id="type-${s.request_type}" class="input-field" style="max-width: 200px;">
                             <option value="manager" ${s.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto</option>
                             <option value="specific_user" ${s.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
@@ -11107,7 +11104,7 @@ function renderRequestSettingsTable(settings) {
                             <span id="name-${s.request_type}">${approverDisplay}</span>
                             <input type="hidden" id="id-${s.request_type}" value="${s.specific_approver_id || ''}">
                         </div>
-                        <span id="manager-approver-label-${s.request_type}" style="display:${s.approver_type === 'manager' ? 'block' : 'none'};">${approverDisplay}</span>
+                        <span id="manager-approver-label-${s.request_type}" style="display:${s.approver_type === 'manager' ? 'block' : 'none'};">N/A</span>
                     </div>
                 </td>
                 <td><button class="btn btn-success" onclick="saveRequestSetting('${s.request_type}')">Salvar</button></td>
@@ -11115,14 +11112,29 @@ function renderRequestSettingsTable(settings) {
         `;
     }).join('');
 
-    // Adiciona a lógica para mostrar/esconder os controles de seleção de usuário
+    // Adiciona a lógica para mostrar/esconder os controles dinamicamente
     settings.forEach(s => {
         document.getElementById(`type-${s.request_type}`).onchange = () => {
-            const isSpecific = document.getElementById(`type-${s.request_type}`).value === 'specific_user';
-            document.getElementById(`specific-approver-controls-${s.request_type}`).style.display = isSpecific ? 'flex' : 'none';
-            document.getElementById(`manager-approver-label-${s.request_type}`).style.display = isSpecific ? 'none' : 'block';
+            toggleApproverTypeControls(s.request_type);
         };
     });
+}
+
+// NOVA FUNÇÃO AUXILIAR para controlar a visibilidade
+function toggleApproverSection(requestType) {
+    const isChecked = document.getElementById(`check-${requestType}`).checked;
+    document.getElementById(`approver-section-${requestType}`).style.display = isChecked ? 'flex' : 'none';
+}
+
+function toggleApproverTypeControls(requestType) {
+    const isSpecific = document.getElementById(`type-${requestType}`).value === 'specific_user';
+    document.getElementById(`specific-approver-controls-${requestType}`).style.display = isSpecific ? 'flex' : 'none';
+    document.getElementById(`manager-approver-label-${requestType}`).style.display = isSpecific ? 'none' : 'block';
+    if (!isSpecific) {
+        // Limpa a seleção de usuário específico se mudar para "Gerente Direto"
+        document.getElementById(`name-${requestType}`).textContent = 'N/A';
+        document.getElementById(`id-${requestType}`).value = '';
+    }
 }
 
 // Abre o modal para selecionar um aprovador específico
