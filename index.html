@@ -5234,18 +5234,16 @@ async function openRequestDetailsModal(requestId) {
 
     try {
         // Busca todas as informações necessárias em paralelo
-        const [reqRes, historyRes, checkRes] = await Promise.all([
+        const [reqRes, checkRes] = await Promise.all([
             supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
-            supabaseClient.from('request_history').select('*, profiles:changed_by(full_name)').eq('request_id', requestId).order('created_at', { ascending: true }),
             supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single()
         ]);
 
         if (reqRes.error) throw reqRes.error;
         const request = reqRes.data;
         const managerCheck = checkRes.data;
-        let history = historyRes.data || [];
 
-        // Lógica para status "real" vs. status "visual"
+        // Lógica de status "real" vs. status "visual"
         let finalStatus = request.status;
         if (request.status === 'pending_manager_check' && managerCheck) {
             finalStatus = 'pending';
@@ -5324,7 +5322,11 @@ async function openRequestDetailsModal(requestId) {
         let footerActionsHTML = '';
 
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
-        if (rule && rule.requires_manager_check && !managerCheck && request.requester?.manager_id === currentUserProfile.id) {
+        const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
+        const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
+        const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
+
+        if (rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover)) {
             footerActionsHTML += `<button class="btn btn-success" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
 
