@@ -5257,7 +5257,19 @@ async function openRequestDetailsModal(requestId) {
         };
         const translatedStatus = statusTranslations[finalStatus] || finalStatus.replace(/_/g, ' ');
 
-        const requestTypeName = request.type.replace('_', ' ');
+        // Dicionário de traduções para os tipos de requisição
+const typeTranslations = {
+    'new_hire': 'Contratação', 
+    'termination': 'Desligamento', 
+    'promotion': 'Promoção Interna',
+    'overtime': 'Horas Extras', 
+    'training': 'Treinamento', 
+    'travel': 'Viagem',
+    'disciplinary_action': 'Medida Disciplinar', 
+    'maintenance': 'Manutenção'
+};
+// Busca a tradução no dicionário; se não encontrar, formata o nome técnico
+const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
         // RENDERIZAÇÃO DO HEADER
         let headerHTML = `
