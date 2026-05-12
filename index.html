@@ -7847,7 +7847,7 @@ async function submitMaintenancePlan(requestId) {
 
             const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
             btn.disabled = true;
-            try {
+try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const response = await fetch(N8N_PLAN_MAINTENANCE_URL, {
                     method: 'POST',
@@ -7857,7 +7857,8 @@ async function submitMaintenancePlan(requestId) {
                         maintenance_scheduled_at: scheduledAt,
                         approval_notes: notes,
                         changed_by: currentUserProfile.id,
-                        technician_id: technicianId // <-- NOVO CAMPO ENVIADO
+                        changed_by_name: currentUserProfile.full_name, // NOVO: Envia o nome de quem planejou
+                        technician_ids: technicianIds
                     })
                 });
                 if (!response.ok) throw new Error('Falha ao planejar.');
@@ -8226,7 +8227,7 @@ async function submitMaintenanceExecution(requestId) {
             const btn = document.getElementById('btn-confirm-maintenance-execution');
             btn.disabled = true;
 
-            try {
+try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
                     method: 'POST',
@@ -8234,6 +8235,7 @@ async function submitMaintenanceExecution(requestId) {
                     body: JSON.stringify({ 
                         request_id: requestId,
                         changed_by: currentUserProfile.id,
+                        changed_by_name: currentUserProfile.full_name, // NOVO: Envia o nome de quem executou
                         followed_plan: followedPlan,
                         execution_notes: executionNotes
                     })
