@@ -5383,22 +5383,17 @@ async function openRequestDetailsModal(requestId) {
         // ETAPA 2: PLANEJAMENTO (Apenas Manutenção)
         if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
             const planHistory = requestHistory.find(h => h.status === 'planned');
-            // Como o n8n está salvando o nome de quem planejou misturado nas notas: "[Planejado por: Nome] Agendado para...",
-            // vamos extrair esse nome usando uma expressão regular.
             let planDateStr = 'Data indisponível';
             let planUserStr = 'Usuário desconhecido';
             let notesLimpos = request.approval_notes || 'Nenhuma observação adicional.';
 
             if (planHistory) {
                  planDateStr = new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
-                 
-                 // Expressão regular para extrair o nome de dentro de [Planejado por: NOME]
                  const regexPlanejadoPor = /\[Planejado por:\s*(.+?)\]/;
                  const match = planHistory.notes ? planHistory.notes.match(regexPlanejadoPor) : null;
                  
                  if (match && match[1]) {
                      planUserStr = match[1];
-                     // Limpa as notas removendo o trecho "[Planejado por: Nome]" para não ficar repetitivo
                      notesLimpos = notesLimpos.replace(match[0], '').trim();
                  }
             }
@@ -5429,10 +5424,6 @@ async function openRequestDetailsModal(requestId) {
             if (execHistory) {
                 const executedDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
                 const execNotes = execHistory.notes || 'Sem detalhes fornecidos.';
-                
-                // O n8n ainda estava salvando a string de quem executou misturada nas notas de histórico
-                // Mas, com a correção do Passo 1 desta resposta, isso não acontecerá mais nas NOVAS execuções.
-                // Como essa requisição antiga tem o erro "[Executado por...", vamos limpá-lo visualmente.
                 let notasLimpasExecucao = execNotes;
                 let execUserStr = 'Equipe de Manutenção'; // Fallback
                 
@@ -5464,33 +5455,39 @@ async function openRequestDetailsModal(requestId) {
 
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}</div>`;
 
-        // LÓGICA DE BOTÕES DO RODAPÉ
+        // CORREÇÃO: LÓGICA DE BOTÕES DO RODAPÉ (AGORA BASEADA 100% EM PERMISSÕES)
+        const p = currentUserProfile.permissions || [];
+        const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
+        
+        // 1. O usuário tem poder para tomar a decisão final neste tipo de requisição?
+        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`); 
+        
+        // 2. A requisição precisa de um Check Gerencial e o usuário é o responsável?
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
-        const finalApproverRoles = ['Admin', 'Gerente de RH', 'Gerente'];
-        const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
-
-        // 1. O usuário pode dar o "check"?
+        // Seção A: Botão de Check de Ciência
         if (canGiveCheck) {
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // 2. O usuário pode tomar a decisão final?
-        if (isFinalApprover && (finalStatus === 'pending' || (isManagerCheckPending && isFinalApprover))) {
+        // Seção B: Botões de Decisão Final (Aprovar, Reprovar, Planejar)
+        // Só exibe se o usuário tiver a permissão de gerir (`canManageRequest`)
+        // Se a requisição ainda espera um check, ele só vê os botões de decisão SE também for a pessoa responsável por dar o check.
+        if (canManageRequest && (finalStatus === 'pending' || (isManagerCheckPending && canGiveCheck))) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
             } else if (request.type !== 'maintenance') {
-                if(!canGiveCheck || isFinalApprover) {
-                    footerActionsHTML += `
-                        <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
-                        <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
-                    `;
-                }
+                // Se ele é um "middleman" (só dá o check), a variável canManageRequest será falsa, e isso nunca executará.
+                // Isso conserta o problema da Daniella ver os botões nas requisições normais.
+                footerActionsHTML += `
+                    <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                    <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                `;
             }
         }
         
