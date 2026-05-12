@@ -5351,7 +5351,7 @@ async function openRequestDetailsModal(requestId) {
         
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
-        // LÓGICA DE BOTÕES DO RODAPÉ (COM A SOLUÇÃO RÁPIDA)
+        // LÓGICA DE BOTÕES DO RODAPÉ
         let footerActionsHTML = '';
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
@@ -5360,7 +5360,7 @@ async function openRequestDetailsModal(requestId) {
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
         // Define os cargos que podem tomar a decisão final (Solução Rápida "Hard-coded")
-        const finalApproverRoles = ['Admin', 'Gerente de RH'];
+        const finalApproverRoles = ['Admin', 'Gerente de RH', 'Gerente']; // <-- CORREÇÃO APLICADA AQUI
         const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
 
         // 1. O usuário pode dar o "check"?
@@ -5369,7 +5369,7 @@ async function openRequestDetailsModal(requestId) {
         }
         
         // 2. O usuário pode tomar a decisão final? (APENAS se for um dos cargos definidos)
-        if (isFinalApprover && (finalStatus === 'pending' || isManagerCheckPending)) {
+        if (isFinalApprover && (finalStatus === 'pending' || (isManagerCheckPending && isFinalApprover))) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
             } else if (request.type !== 'maintenance') {
@@ -8320,7 +8320,7 @@ async function loadRequestManagementPage() {
         
         let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
         
-        const finalApproverRoles = ['Admin', 'Gerente de RH'];
+        const finalApproverRoles = ['Admin', 'Gerente de RH', 'Gerente']; // <-- CORREÇÃO APLICADA AQUI
         const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
         
         const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
