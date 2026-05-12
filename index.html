@@ -8319,11 +8319,14 @@ async function loadRequestManagementPage() {
         }
         
         let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
-        const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`);
+        
+        const finalApproverRoles = ['Admin', 'Gerente de RH'];
+        const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
+        
         const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
 
-        // Adiciona botões de ação rápida APENAS se o usuário puder gerenciar e a requisição estiver pendente
-        if (canManageRequest && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && canManageRequest))) {
+        // Adiciona botões de ação rápida APENAS se o usuário for um Aprovador Final e a requisição estiver pendente
+        if (isFinalApprover && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && isFinalApprover))) {
              if (req.type !== 'maintenance') {
                 actionsHTML += `
                     <button class="btn btn-icon" title="Reprovar Requisição" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">thumb_down</span></button>
