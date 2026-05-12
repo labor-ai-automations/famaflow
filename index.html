@@ -5259,7 +5259,7 @@ async function processManagerCheck(requestId) {
     }
 }
 
-async function openRequestDetailsModal(requestId) {
+        async function openRequestDetailsModal(requestId) {
     const modal = document.getElementById('request-modal');
     const modalTitle = document.getElementById('request-modal-title');
     const modalBody = document.getElementById('request-modal-body');
@@ -5351,32 +5351,34 @@ async function openRequestDetailsModal(requestId) {
         
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
-        // LÓGICA DE BOTÕES DO RODAPÉ
+        const p = currentUserProfile.permissions || [];
+        const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
+        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`);
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
-        // Define os cargos que podem tomar a decisão final (Solução Rápida "Hard-coded")
-        const finalApproverRoles = ['Admin', 'Gerente de RH', 'Gerente']; // <-- CORREÇÃO APLICADA AQUI
-        const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
-
         // 1. O usuário pode dar o "check"?
         if (canGiveCheck) {
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // 2. O usuário pode tomar a decisão final? (APENAS se for um dos cargos definidos)
-        if (isFinalApprover && (finalStatus === 'pending' || (isManagerCheckPending && isFinalApprover))) {
+        // 2. O usuário pode tomar a decisão final? A condição agora é baseada em permissão.
+        if (canManageRequest && (finalStatus === 'pending' || (isManagerCheckPending && canManageRequest))) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
             } else if (request.type !== 'maintenance') {
-                footerActionsHTML += `
-                    <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
-                    <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
-                `;
+                // Se o usuário PODE dar o check mas TAMBÉM pode gerenciar (caso do Admin), não duplicamos os botões.
+                // A condição `!canGiveCheck` garante que um gerente "middleman" nunca veja estes botões.
+                if(!canGiveCheck || isAdmin) {
+                    footerActionsHTML += `
+                        <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                        <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                    `;
+                }
             }
         }
         
@@ -8319,14 +8321,11 @@ async function loadRequestManagementPage() {
         }
         
         let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
-        
-        const finalApproverRoles = ['Admin', 'Gerente de RH', 'Gerente']; // <-- CORREÇÃO APLICADA AQUI
-        const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
-        
+        const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`);
         const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
 
-        // Adiciona botões de ação rápida APENAS se o usuário for um Aprovador Final e a requisição estiver pendente
-        if (isFinalApprover && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && isFinalApprover))) {
+        // CORREÇÃO: Usa a permissão 'canManageRequest' em vez do cargo
+        if (canManageRequest && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && canManageRequest))) {
              if (req.type !== 'maintenance') {
                 actionsHTML += `
                     <button class="btn btn-icon" title="Reprovar Requisição" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">thumb_down</span></button>
