@@ -5244,13 +5244,11 @@ async function processManagerCheck(requestId) {
         if (!response.ok) throw new Error("Falha ao processar o 'check'.");
 
         showToast("'Check' de ciência registrado com sucesso!", "success");
-        // Recarrega os detalhes do modal para refletir a mudança de status
+        
+        // Atualiza tanto o modal quanto a tabela principal ao fundo.
         openRequestDetailsModal(requestId);
-        // Recarrega a tabela de gerenciamento em segundo plano
-        if (document.getElementById('request-management-page')?.classList.contains('active')) {
-            loadRequestManagementPage();
-        }
-
+        loadRequestManagementPage();
+        
     } catch (error) {
         showToast(error.message, 'danger');
         btn.disabled = false;
