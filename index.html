@@ -5271,19 +5271,17 @@ async function openRequestDetailsModal(requestId) {
     modal.classList.add('visible');
 
     try {
-        // CORREÇÃO: Busca todas as informações necessárias, incluindo as configurações, em paralelo.
         const [reqRes, checkRes, settingsRes] = await Promise.all([
             supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
             supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single(),
-            supabaseClient.from('request_type_settings').select('*') // Busca todas as configurações
+            supabaseClient.from('request_type_settings').select('*')
         ]);
 
         if (reqRes.error) throw reqRes.error;
         const request = reqRes.data;
         const managerCheck = checkRes.data;
-        requestTypeSettingsCache = settingsRes.data || []; // CORREÇÃO: Atualiza o cache local com os dados frescos.
+        requestTypeSettingsCache = settingsRes.data || [];
 
-        // Lógica de status "real" vs. status "visual"
         let finalStatus = request.status;
         if (request.status === 'pending_manager_check' && managerCheck) {
             finalStatus = 'pending';
@@ -5302,7 +5300,6 @@ async function openRequestDetailsModal(requestId) {
         };
         const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
-        // RENDERIZAÇÃO DO HEADER
         let headerHTML = `
             <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -5320,7 +5317,6 @@ async function openRequestDetailsModal(requestId) {
             </div>
         `;
         
-        // RENDERIZAÇÃO DO HISTÓRICO (TIMELINE)
         let timelineHTML = `
             <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
                 <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
@@ -5336,7 +5332,6 @@ async function openRequestDetailsModal(requestId) {
                 </div>
             </div>`;
 
-        // RENDERIZAÇÃO DOS DADOS DO FORMULÁRIO
         const translations = { funcao: 'Função', quantidade: 'Vagas', setor_he: 'Setor', data_he: 'Data', horario_adicional: 'Horário Adicional', equipamento: 'Equipamento', descricao_problema: 'Problema' };
         let formDataHTML = `
             <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
@@ -5356,27 +5351,28 @@ async function openRequestDetailsModal(requestId) {
         
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
-        // LÓGICA DE BOTÕES DO RODAPÉ
-        const p = currentUserProfile.permissions || [];
-        const isAdmin = p.includes('manage_users');
+        // LÓGICA DE BOTÕES DO RODAPÉ (COM A SOLUÇÃO RÁPIDA)
         let footerActionsHTML = '';
-        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`);
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
+        // Define os cargos que podem tomar a decisão final (Solução Rápida "Hard-coded")
+        const finalApproverRoles = ['Admin', 'Gerente de RH'];
+        const isFinalApprover = finalApproverRoles.includes(currentUserProfile.role);
+
+        // 1. O usuário pode dar o "check"?
         if (canGiveCheck) {
-            // Cenário A (Middleman) OU Cenário B (Admin que também é o checker)
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // Exibe Aprovar/Reprovar se o usuário tiver permissão de gestão.
-        if (canManageRequest) {
+        // 2. O usuário pode tomar a decisão final? (APENAS se for um dos cargos definidos)
+        if (isFinalApprover && (finalStatus === 'pending' || isManagerCheckPending)) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
-            } else if (request.type !== 'maintenance' && (finalStatus === 'pending' || (isManagerCheckPending && canManageRequest))) {
+            } else if (request.type !== 'maintenance') {
                 footerActionsHTML += `
                     <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
                     <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
