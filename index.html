@@ -5312,7 +5312,12 @@ async function openRequestDetailsModal(requestId) {
             'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check Gerencial',
             'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada'
         };
-        const translatedStatus = statusTranslations[finalStatus] || finalStatus.replace(/_/g, ' ');
+        
+        // CORREÇÃO: Lógica específica para o rótulo de Manutenção
+        let translatedStatus = statusTranslations[finalStatus] || finalStatus.replace(/_/g, ' ');
+        if (request.type === 'maintenance' && finalStatus === 'pending') {
+            translatedStatus = 'Pendente';
+        }
 
         const typeTranslations = {
             'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
