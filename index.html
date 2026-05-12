@@ -1906,6 +1906,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
         // NOVOS WEBHOOKS PARA MANUTENÇÃO
         const N8N_PLAN_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/plan-maintenance-request';
         const N8N_EXECUTE_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/execute-maintenance-request';
+        const N8N_PROCESS_MANAGER_CHECK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/process-manager-check';
 
 
 // Mapeamento de permissões RBAC (Categorizado e Espelhado)
@@ -1959,6 +1960,7 @@ const PERMISSION_MAPPING = {
         let selectedRecipients = [];
         let selectedFile = null;
         let currentRequestType = null;
+        let requestTypeSettingsCache = [];
         let currentBlueprints = [];
         let editingBlueprint = null;
 
@@ -5221,6 +5223,37 @@ async function loadRequests() {
                 loadRequests(); // Reverte para o estado real em caso de erro
             }
         }
+
+// NOVA FUNÇÃO: Processa o "check" do gerente
+async function processManagerCheck(requestId) {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Processando...';
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const response = await fetch(N8N_PROCESS_MANAGER_CHECK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ request_id: requestId })
+        });
+
+        if (!response.ok) throw new Error("Falha ao processar o 'check'.");
+
+        showToast("'Check' de ciência registrado com sucesso!", "success");
+        // Recarrega os detalhes do modal para refletir a mudança de status
+        openRequestDetailsModal(requestId);
+        // Recarrega a tabela de gerenciamento em segundo plano
+        if (document.getElementById('request-management-page')?.classList.contains('active')) {
+            loadRequestManagementPage();
+        }
+
+    } catch (error) {
+        showToast(error.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = 'Dar Check de Ciência';
+    }
+}
 
 async function openRequestDetailsModal(requestId) {
     const modal = document.getElementById('request-modal');
