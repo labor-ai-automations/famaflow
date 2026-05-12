@@ -5557,13 +5557,16 @@ function renderRequestForm(type) {
                         <div class="form-group">
                             <label>1. Setor*</label>
                             <div class="radio-group" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-                                <label><input type="radio" name="setor" value="Mola plana" required> Mola plana</label>
-                                <label><input type="radio" name="setor" value="Mola helicoidal"> Mola helicoidal</label>
-                                <label><input type="radio" name="setor" value="Grampo"> Grampo</label>
-                                <label><input type="radio" name="setor" value="Usinagem"> Usinagem</label>
-                                <label><input type="radio" name="setor" value="Fundição"> Fundição</label>
-                                <label><input type="radio" name="setor" value="Fundição Cold Box"> Fundição Cold Box</label>
-                                <label><input type="radio" name="setor" value="Outra"> Outra</label>
+                                <label><input type="radio" name="setor" value="Mola plana" required onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Mola plana</label>
+                                <label><input type="radio" name="setor" value="Mola helicoidal" onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Mola helicoidal</label>
+                                <label><input type="radio" name="setor" value="Grampo" onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Grampo</label>
+                                <label><input type="radio" name="setor" value="Usinagem" onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Usinagem</label>
+                                <label><input type="radio" name="setor" value="Fundição" onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Fundição</label>
+                                <label><input type="radio" name="setor" value="Fundição Cold Box" onchange="document.getElementById('setor-outro-input').style.display='none'; document.getElementById('req-maint-setor-outro').required=false;"> Fundição Cold Box</label>
+                                <label><input type="radio" name="setor" value="Outra" onchange="document.getElementById('setor-outro-input').style.display='block'; document.getElementById('req-maint-setor-outro').required=true;"> Outra</label>
+                            </div>
+                            <div id="setor-outro-input" style="display: none; margin-top: 0.5rem; margin-left: 28px;">
+                                <input type="text" id="req-maint-setor-outro" name="setor_especificado" class="input-field" placeholder="Especifique o setor" style="width: 100%; max-width: 300px;">
                             </div>
                         </div>
 
