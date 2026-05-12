@@ -5270,15 +5270,19 @@ async function openRequestDetailsModal(requestId) {
     modal.classList.add('visible');
 
     try {
-        const [reqRes, checkRes] = await Promise.all([
+        // CORREÇÃO: Busca todas as informações necessárias, incluindo as configurações, em paralelo.
+        const [reqRes, checkRes, settingsRes] = await Promise.all([
             supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
-            supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single()
+            supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single(),
+            supabaseClient.from('request_type_settings').select('*') // Busca todas as configurações
         ]);
 
         if (reqRes.error) throw reqRes.error;
         const request = reqRes.data;
         const managerCheck = checkRes.data;
+        requestTypeSettingsCache = settingsRes.data || []; // CORREÇÃO: Atualiza o cache local com os dados frescos.
 
+        // Lógica de status "real" vs. status "visual"
         let finalStatus = request.status;
         if (request.status === 'pending_manager_check' && managerCheck) {
             finalStatus = 'pending';
@@ -5297,6 +5301,7 @@ async function openRequestDetailsModal(requestId) {
         };
         const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
+        // RENDERIZAÇÃO DO HEADER
         let headerHTML = `
             <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -5314,6 +5319,7 @@ async function openRequestDetailsModal(requestId) {
             </div>
         `;
         
+        // RENDERIZAÇÃO DO HISTÓRICO (TIMELINE)
         let timelineHTML = `
             <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
                 <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
@@ -5329,6 +5335,7 @@ async function openRequestDetailsModal(requestId) {
                 </div>
             </div>`;
 
+        // RENDERIZAÇÃO DOS DADOS DO FORMULÁRIO
         const translations = { funcao: 'Função', quantidade: 'Vagas', setor_he: 'Setor', data_he: 'Data', horario_adicional: 'Horário Adicional', equipamento: 'Equipamento', descricao_problema: 'Problema' };
         let formDataHTML = `
             <div style="border-top: 1px solid var(--color-border); padding-top: 1.5rem; margin-top: 1rem;">
@@ -5348,6 +5355,7 @@ async function openRequestDetailsModal(requestId) {
         
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
+        // LÓGICA DE BOTÕES DO RODAPÉ
         const p = currentUserProfile.permissions || [];
         const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
@@ -5363,7 +5371,7 @@ async function openRequestDetailsModal(requestId) {
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // Exibe Aprovar/Reprovar se o usuário tiver permissão de gestão E não for apenas um "middleman" sem poder de decisão final.
+        // Exibe Aprovar/Reprovar se o usuário tiver permissão de gestão.
         if (canManageRequest) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
