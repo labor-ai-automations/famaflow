@@ -1927,6 +1927,7 @@ const PERMISSION_MAPPING = {
     'view_kb': 'Base de Conhecimento',
     'view_feedback': 'Módulo de Feedback (Visualizar)', // <-- LINHA ADICIONADA CORRETAMENTE
     'create_feedback': 'Módulo de Feedback (Dar Feedback)', // <-- LINHA ADICIONADA CORRETAMENTE
+    'view_management_requests': 'Visualizar Gerenciamento de Requisições',
 
     // 2. Gerenciamento de Requisições
     'mgt_maintenance': 'Gerenciar Manutenção (Aprovar/Planejar)',
@@ -2661,6 +2662,14 @@ const appHTML = `<div id="app-container">
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                                     <span class="material-icons" style="font-size: 20px; color: var(--color-success);">rule_folder</span>
                                     <label style="font-weight: 600; font-size: 0.95rem; margin: 0;">2. Gerenciamento de Requisições (Gerais)</label>
+                                </div>
+                                <div style="background: var(--color-background); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                                    <label class="perm-checkbox">
+                                        <input type="checkbox" id="perm-view_management_requests">
+                                        <span class="perm-checkmark"></span>
+                                        <span class="material-icons perm-icon">visibility</span>
+                                        <span class="perm-text">Visualizar Gerenciamento (Sem poder de decisão)</span>
+                                    </label>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-bottom: 1.5rem;">
                                     <label class="perm-checkbox"><input type="checkbox" id="perm-mgt_new_hire"><span class="perm-checkmark"></span><span class="material-icons perm-icon">person_add</span><span class="perm-text">Contratação</span></label>
@@ -5259,7 +5268,7 @@ async function processManagerCheck(requestId) {
     }
 }
 
-        async function openRequestDetailsModal(requestId) {
+async function openRequestDetailsModal(requestId) {
     const modal = document.getElementById('request-modal');
     const modalTitle = document.getElementById('request-modal-title');
     const modalBody = document.getElementById('request-modal-body');
@@ -5351,10 +5360,11 @@ async function processManagerCheck(requestId) {
         
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${formDataHTML}</div>`;
 
+        // LÓGICA DE BOTÕES DO RODAPÉ (VERSÃO FINAL E CORRETA)
         const p = currentUserProfile.permissions || [];
         const isAdmin = p.includes('manage_users');
         let footerActionsHTML = '';
-        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`);
+        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`); // Verifica se tem poder de decisão final.
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
@@ -5366,14 +5376,16 @@ async function processManagerCheck(requestId) {
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // 2. O usuário pode tomar a decisão final? A condição agora é baseada em permissão.
+        // 2. O usuário pode tomar a decisão final? (APENAS se tiver a permissão de gestão 'mgt_...')
         if (canManageRequest && (finalStatus === 'pending' || (isManagerCheckPending && canManageRequest))) {
             if (request.type === 'maintenance' && finalStatus === 'pending') {
                 footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
             } else if (request.type !== 'maintenance') {
-                // Se o usuário PODE dar o check mas TAMBÉM pode gerenciar (caso do Admin), não duplicamos os botões.
-                // A condição `!canGiveCheck` garante que um gerente "middleman" nunca veja estes botões.
-                if(!canGiveCheck || isAdmin) {
+                // Se o usuário pode dar o check (é um middleman), mas NÃO tem poder de gestão final,
+                // os botões de Aprovar/Reprovar não devem aparecer. A lógica !canGiveCheck || canManageRequest garante isso.
+                // Um Admin como o Leandro (canGiveCheck=true, canManageRequest=true) verá todos os botões.
+                // Um Gerente como Cleivandy (canGiveCheck=true, canManageRequest=false) verá apenas o de check.
+                if(!canGiveCheck || canManageRequest) {
                     footerActionsHTML += `
                         <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
                         <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
@@ -8286,7 +8298,8 @@ async function loadRequestManagementPage() {
     const filteredData = (data || []).filter(req => {
         if (isAdmin) return true;
         const mgtKey = `mgt_${req.type}`;
-        return p.includes(mgtKey);
+        // CORREÇÃO: Usuário vê a lista se tiver permissão de gestão OU a nova permissão de visualização.
+        return p.includes(mgtKey) || p.includes('view_management_requests');
     });
 
     if (filteredData.length === 0) {
@@ -8321,10 +8334,10 @@ async function loadRequestManagementPage() {
         }
         
         let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
-        const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`);
+        const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`); // Verifica se tem poder de decisão
         const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
 
-        // CORREÇÃO: Usa a permissão 'canManageRequest' em vez do cargo
+        // CORREÇÃO: Ações rápidas só aparecem se tiver permissão de gestão (canManageRequest)
         if (canManageRequest && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && canManageRequest))) {
              if (req.type !== 'maintenance') {
                 actionsHTML += `
