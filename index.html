@@ -2949,9 +2949,9 @@ const pageToKeyMap = {
         }
                 
                 // --- CORREÇÃO APLICADA AQUI ---
-                // A condição agora verifica apenas permissões de gestão GERAIS (RH, etc.)
+                // A condição agora verifica se o usuário tem permissão de gestão OU a nova permissão de visualização
                 const hasAnyGeneralMgt = p.some(perm => perm.startsWith('mgt_') && perm !== 'mgt_travel' && perm !== 'mgt_maintenance');
-                if (isAdmin || hasAnyGeneralMgt) {
+                if (isAdmin || hasAnyGeneralMgt || p.includes('view_management_requests')) {
                     adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
                 }
                 // --- FIM DA CORREÇÃO ---
@@ -8295,10 +8295,11 @@ async function loadRequestManagementPage() {
     const p = currentUserProfile.permissions || [];
     const isAdmin = p.includes('manage_users');
 
+    // A RPC 'get_all_requests_for_viewing' já deveria retornar apenas o que o usuário pode ver.
+    // Manteremos um filtro de segurança no frontend.
     const filteredData = (data || []).filter(req => {
         if (isAdmin) return true;
         const mgtKey = `mgt_${req.type}`;
-        // CORREÇÃO: Usuário vê a lista se tiver permissão de gestão OU a nova permissão de visualização.
         return p.includes(mgtKey) || p.includes('view_management_requests');
     });
 
@@ -8337,7 +8338,7 @@ async function loadRequestManagementPage() {
         const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`); // Verifica se tem poder de decisão
         const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
 
-        // CORREÇÃO: Ações rápidas só aparecem se tiver permissão de gestão (canManageRequest)
+        // Ações rápidas só aparecem se tiver permissão de gestão (canManageRequest)
         if (canManageRequest && (finalStatus === 'pending' || (finalStatus === 'pending_manager_check' && canManageRequest))) {
              if (req.type !== 'maintenance') {
                 actionsHTML += `
