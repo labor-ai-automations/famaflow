@@ -5358,18 +5358,8 @@ async function openRequestDetailsModal(requestId) {
 
         // CORREÇÃO: Adiciona a Etapa 2 dinamicamente se a manutenção foi planejada
         if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
-            let techsString = "Técnico não especificado";
-            try {
-                // Busca rapidamente os técnicos associados a esta manutenção
-                const { data: assignments } = await supabaseClient
-                    .from('maintenance_assignments')
-                    .select('maintenance_technicians(name)')
-                    .eq('request_id', request.id);
-                    
-                if (assignments && assignments.length > 0) {
-                    techsString = assignments.map(a => a.maintenance_technicians?.name).filter(Boolean).join(', ');
-                }
-            } catch(e) { console.error("Erro ao buscar técnicos", e); }
+            // Lógica simplificada: lê os técnicos diretamente do JSON que o n8n injetou
+            let techsString = request.data.tecnicos_planejados || "Técnico não especificado";
 
             const scheduledDate = request.maintenance_scheduled_at ? new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data não informada';
             const notes = request.approval_notes || 'Nenhuma observação adicional.';
