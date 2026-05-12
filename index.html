@@ -8265,25 +8265,29 @@ async function submitMaintenanceExecution(requestId) {
             const btn = document.getElementById('btn-confirm-maintenance-execution');
             btn.disabled = true;
 
-try {
+            try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                // CORREÇÃO: Montando o payload de forma explícita
+                const payload = {
+                    request_id: requestId,
+                    changed_by: currentUserProfile.id,
+                    changed_by_name: currentUserProfile.full_name, // <-- O dado crucial
+                    followed_plan: followedPlan,
+                    execution_notes: executionNotes
+                };
+
                 const response = await fetch(N8N_EXECUTE_MAINTENANCE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`},
-                    body: JSON.stringify({ 
-                        request_id: requestId,
-                        changed_by: currentUserProfile.id,
-                        changed_by_name: currentUserProfile.full_name, // NOVO: Envia o nome de quem executou
-                        followed_plan: followedPlan,
-                        execution_notes: executionNotes
-                    })
+                    body: JSON.stringify(payload)
                 });
                 if (!response.ok) throw new Error('Falha ao concluir.');
                 
                 showToast('Manutenção executada e relatada!', 'success');
                 closeMaintenanceExecutionModal();
                 closeRequestModal();
-                setTimeout(() => loadMaintenancePage(), 1500); // <-- LINHA CORRIGIDA
+                setTimeout(() => loadMaintenancePage(), 1500);
 
             } catch(e) { 
                 showToast(e.message, 'danger'); 
@@ -10629,17 +10633,23 @@ async function submitMaintenancePlan(requestId) {
     btn.disabled = true;
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        // CORREÇÃO: Montando o payload de forma explícita antes do fetch para garantir o envio
+        const payload = {
+            request_id: requestId,
+            maintenance_scheduled_at: scheduledAt,
+            approval_notes: notes,
+            changed_by: currentUserProfile.id,
+            changed_by_name: currentUserProfile.full_name, // <-- O dado crucial
+            technician_ids: technicianIds
+        };
+        
         const response = await fetch(N8N_PLAN_MAINTENANCE_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-            body: JSON.stringify({
-                request_id: requestId,
-                maintenance_scheduled_at: scheduledAt,
-                approval_notes: notes,
-                changed_by: currentUserProfile.id,
-                technician_ids: technicianIds // Envia o array de IDs
-            })
+            body: JSON.stringify(payload)
         });
+        
         if (!response.ok) throw new Error('Falha ao planejar a manutenção.');
         showToast('Manutenção planejada e atribuída com sucesso!', 'success');
         closeMaintenancePlanningModal();
