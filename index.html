@@ -5326,7 +5326,6 @@ async function openRequestDetailsModal(requestId) {
         };
         const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
-        // RENDERIZAÇÃO DO HEADER
         let headerHTML = `
             <div style="background: var(--color-background); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--color-border);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -5344,35 +5343,65 @@ async function openRequestDetailsModal(requestId) {
             </div>
         `;
         
-        // RENDERIZAÇÃO DO HISTÓRICO (TIMELINE)
         let timelineHTML = `
             <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
                 <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
             </h4>
             <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
-                
-                <div style="margin-bottom: 2rem; position: relative;">
-                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
-                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
-                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
-                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
-                        Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' })}
-                    </div>
+        `;
+
+        // --- CONSTRUÇÃO DOS DADOS DO FORMULÁRIO (ETAPA 1) ---
+        const translations = { 
+            setor: 'Setor', 
+            equipamento: 'Equipamento', 
+            situacao_maquina: 'Situação Máquina', 
+            descricao_problema: 'Problema', 
+            setor_especificado: 'Setor Especificado',
+            funcao: 'Função',
+            quantidade: 'Vagas'
+        };
+
+        let formDataHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 12px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">`;
+        let hasData = false;
+        for (const key in request.data) {
+            // Ignoramos chaves internas que não devem aparecer na caixa de dados originais
+            if (request.data[key] && !['tecnicos_planejados', 'changed_by_name'].includes(key)) { 
+                hasData = true;
+                const label = translations[key] || key.replace(/_/g, ' ');
+                formDataHTML += `
+                    <div>
+                        <label style="font-size:0.65rem; color: var(--color-text-secondary); display:block; text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">${label}</label>
+                        <span style="font-weight: 600; font-size: 0.85rem; color: var(--color-text-primary);">${request.data[key]}</span>
+                    </div>`;
+            }
+        }
+        formDataHTML += `</div>`;
+        if (!hasData) formDataHTML = ''; // Se não houver dados, não mostra a caixa
+
+        // ETAPA 1: ABERTURA
+        timelineHTML += `
+            <div style="margin-bottom: 2rem; position: relative;">
+                <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
+                <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Etapa 1: Abertura</div>
+                <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
+                    Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                 </div>
+                ${formDataHTML}
+            </div>
         `;
 
         // ETAPA 2: PLANEJAMENTO (Apenas Manutenção)
         if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
             const planHistory = requestHistory.find(h => h.status === 'planned');
             let planDateStr = 'Data indisponível';
-            let planUserStr = 'Usuário desconhecido';
-            let notesLimpos = request.approval_notes || 'Nenhuma observação adicional.';
+            let planUserStr = planHistory?.changed_by_name || 'Usuário desconhecido'; 
+            let notesLimpos = planHistory?.notes || request.approval_notes || 'Nenhuma observação adicional.';
 
             if (planHistory) {
-                 planDateStr = new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
+                 planDateStr = new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
                  const regexPlanejadoPor = /\[Planejado por:\s*(.+?)\]/;
-                 const match = planHistory.notes ? planHistory.notes.match(regexPlanejadoPor) : null;
-                 
+                 const match = notesLimpos.match(regexPlanejadoPor);
                  if (match && match[1]) {
                      planUserStr = match[1];
                      notesLimpos = notesLimpos.replace(match[0], '').trim();
@@ -5390,7 +5419,7 @@ async function openRequestDetailsModal(requestId) {
                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
                         Por: ${planUserStr} • ${planDateStr}
                     </div>
-                    <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 6px; background: var(--color-background); padding: 10px; border-radius: 8px; border: 1px solid var(--color-border);">
+                    <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">
                         <div style="margin-bottom: 4px;"><strong style="color: var(--color-text-secondary);">Previsão:</strong> ${scheduledDate}</div>
                         <div style="margin-bottom: 4px;"><strong style="color: var(--color-text-secondary);">Técnico(s):</strong> ${techsString}</div>
                         <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${notesLimpos}</div>
@@ -5403,17 +5432,15 @@ async function openRequestDetailsModal(requestId) {
         if (request.type === 'maintenance' && request.status === 'executed') {
             const execHistory = requestHistory.find(h => h.status === 'executed');
             if (execHistory) {
-                const executedDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
-                const execNotes = execHistory.notes || 'Sem detalhes fornecidos.';
-                let notasLimpasExecucao = execNotes;
-                let execUserStr = 'Equipe de Manutenção'; // Fallback
+                const executedDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                let execUserStr = execHistory.changed_by_name || 'Equipe de Manutenção'; 
+                let notasLimpasExecucao = execHistory.notes || 'Sem detalhes fornecidos.';
                 
                 const regexExecutadoPor = /\[Executado por:\s*(.+?)\]/;
-                const matchExec = execNotes.match(regexExecutadoPor);
-                 
+                const matchExec = notasLimpasExecucao.match(regexExecutadoPor);
                 if (matchExec && matchExec[1]) {
                      execUserStr = matchExec[1];
-                     notasLimpasExecucao = execNotes.replace(matchExec[0], '').trim();
+                     notasLimpasExecucao = notasLimpasExecucao.replace(matchExec[0], '').trim();
                 }
 
                 timelineHTML += `
@@ -5424,7 +5451,7 @@ async function openRequestDetailsModal(requestId) {
                         <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">
                             Por: ${execUserStr} • ${executedDate}
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 6px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px;">
+                        <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 12px; border-radius: 8px;">
                             <div><strong style="color: var(--color-success);">Relatório:</strong> ${notasLimpasExecucao}</div>
                         </div>
                     </div>
@@ -5433,33 +5460,28 @@ async function openRequestDetailsModal(requestId) {
         }
 
         timelineHTML += `</div>`; // Fecha a div da linha do tempo
-
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}</div>`;
 
-        // LÓGICA DE BOTÕES DO RODAPÉ
+        // --- LÓGICA DE BOTÕES DO RODAPÉ ---
         let footerActionsHTML = '';
+        const p = currentUserProfile.permissions || [];
+        const isAdmin = p.includes('manage_users');
+        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`); 
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
-        const p = currentUserProfile.permissions || [];
-        const isAdmin = p.includes('manage_users');
-        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`); 
-
-        // 1. O usuário pode dar o "check"?
         if (canGiveCheck) {
             footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         }
         
-        // 2. O usuário pode tomar a decisão final?
         if (canManageRequest) {
             if (request.type === 'maintenance') {
                 if (finalStatus === 'pending') {
                     footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
                 } else if (finalStatus === 'planned') {
-                    // NOVO: Adiciona o botão Executar dentro do modal
                     footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar Manutenção</button>`;
                 }
             } else if (request.type !== 'maintenance' && (finalStatus === 'pending' || (isManagerCheckPending && canManageRequest))) {
