@@ -5327,7 +5327,7 @@ async function openRequestDetailsModal(requestId) {
             supabaseClient.from('requests').select('*, requester:profiles!requests_requester_id_fkey(full_name, manager_id)').eq('id', requestId).single(),
             supabaseClient.from('request_manager_checks').select('*, manager:manager_id(full_name)').eq('request_id', requestId).single(),
             supabaseClient.from('request_type_settings').select('*'),
-            supabaseClient.from('request_history').select('*').eq('request_id', requestId).order('created_at', { ascending: false })
+            supabaseClient.from('request_history').select('*').eq('request_id', requestId).order('created_at', { ascending: true })
         ]);
 
         if (reqRes.error) throw reqRes.error;
@@ -5337,24 +5337,13 @@ async function openRequestDetailsModal(requestId) {
         const requestHistory = historyRes.data || [];
 
         let finalStatus = request.status;
-        if (request.status === 'pending_manager_check' && managerCheck) {
-            finalStatus = 'pending';
-        }
+        if (request.status === 'pending_manager_check' && managerCheck) finalStatus = 'pending';
         
-        const statusTranslations = {
-            'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check Gerencial',
-            'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada'
-        };
+        const statusTranslations = { 'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check Gerencial', 'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada' };
         let translatedStatus = statusTranslations[finalStatus] || finalStatus.replace(/_/g, ' ');
-        if (request.type === 'maintenance' && finalStatus === 'pending') {
-            translatedStatus = 'Pendente';
-        }
+        if (request.type === 'maintenance' && finalStatus === 'pending') translatedStatus = 'Pendente';
 
-        const typeTranslations = {
-            'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
-            'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
-            'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção'
-        };
+        const typeTranslations = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem', 'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção' };
         const requestTypeName = typeTranslations[request.type] || request.type.replace(/_/g, ' ');
 
         let headerHTML = `
@@ -5366,30 +5355,22 @@ async function openRequestDetailsModal(requestId) {
                     </div>
                     <span class="status-tag status-${finalStatus}">${translatedStatus}</span>
                 </div>
-                ${managerCheck ? `
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border); display:flex; align-items:center; gap: 8px; color: var(--color-success);">
-                    <span class="material-icons">check_circle</span>
-                    <span style="font-weight: 600; font-size: 0.9rem;">Ciência registrada por ${managerCheck.manager.full_name} em ${new Date(managerCheck.checked_at).toLocaleDateString('pt-BR')}.</span>
-                </div>` : ''}
+                ${managerCheck ? `<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border); display:flex; align-items:center; gap: 8px; color: var(--color-success);"><span class="material-icons">check_circle</span><span style="font-weight: 600; font-size: 0.9rem;">Ciência registrada por ${managerCheck.manager.full_name} em ${new Date(managerCheck.checked_at).toLocaleDateString('pt-BR')}.</span></div>` : ''}
             </div>
         `;
         
         let timelineHTML = `
-            <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
-                <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
-            </h4>
+            <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;"><span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento</h4>
             <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
         `;
 
-        // ETAPA 1: ABERTURA
+        // ETAPA 1: ABERTURA (ORGANIZADA)
         const transForm = { setor: 'Setor', equipamento: 'Equipamento', situacao_maquina: 'Situação Máquina', descricao_problema: 'Problema', setor_especificado: 'Setor Especificado', funcao: 'Função', quantidade: 'Vagas' };
         let formDataHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; margin-top: 12px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">`;
-        let hasData = false;
         for (const key in request.data) {
             if (request.data[key] && !['tecnicos_planejados', 'changed_by_name'].includes(key)) { 
-                hasData = true;
                 const label = transForm[key] || key.replace(/_/g, ' ');
-                formDataHTML += `<div style="margin-bottom: 2px;"><label style="font-size:0.6rem; color: var(--color-text-secondary); display:block; text-transform: uppercase; font-weight: 700;">${label}</label><span style="font-weight: 600; font-size: 0.85rem; color: var(--color-text-primary); line-height: 1.1;">${request.data[key]}</span></div>`;
+                formDataHTML += `<div style="margin-bottom: 2px;"><label style="font-size:0.55rem; color: var(--color-text-secondary); display:block; text-transform: uppercase; font-weight: 700;">${label}</label><span style="font-weight: 600; font-size: 0.8rem; color: var(--color-text-primary); line-height: 1;">${request.data[key]}</span></div>`;
             }
         }
         formDataHTML += `</div>`;
@@ -5404,49 +5385,57 @@ async function openRequestDetailsModal(requestId) {
             </div>
         `;
 
-        // ETAPA 2: PLANEJAMENTO
-        if (request.type === 'maintenance' && (request.status === 'planned' || request.status === 'executed')) {
-            const planHistory = requestHistory.find(h => h.status === 'planned');
-            let planUserStr = planHistory?.changed_by_name || 'Usuário desconhecido'; 
-            let notesLimpos = planHistory?.notes || request.approval_notes || '';
-            const planDate = planHistory ? new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+        // ETAPA 2: PLANEJAMENTO (EXTRAÇÃO E ORGANIZAÇÃO)
+        const planHistory = requestHistory.find(h => h.status === 'planned');
+        if (planHistory) {
+            let rawNotes = planHistory.notes || '';
+            // Extrai o nome de dentro dos colchetes
+            const nameMatch = rawNotes.match(/\[Planejado por:\s*(.+?)\]/);
+            const planUser = nameMatch ? nameMatch[1] : (planHistory.changed_by_name || 'Equipe de Manutenção');
+            // Extrai a observação real vinda após "Obs:"
+            const obsMatch = rawNotes.match(/\|\s*Obs:\s*(.+)$/);
+            const cleanObs = obsMatch ? obsMatch[1] : 'Nenhuma observação.';
+            const planDate = new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
             timelineHTML += `
                 <div style="margin-bottom: 2rem; position: relative;">
                     <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-warning); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-warning);"></div>
                     <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-warning); letter-spacing: 0.05em;">Etapa 2: Planejamento</div>
                     <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Manutenção Agendada</div>
-                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${planUserStr} • ${planDate}</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${planUser} • ${planDate}</div>
                     <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">
+                        <div style="margin-bottom: 4px;"><strong style="color: var(--color-text-secondary);">Previsão:</strong> ${request.maintenance_scheduled_at ? new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}</div>
                         <div style="margin-bottom: 4px;"><strong style="color: var(--color-text-secondary);">Técnico(s):</strong> ${request.data.tecnicos_planejados || 'N/A'}</div>
-                        <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${notesLimpos}</div>
+                        <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${cleanObs}</div>
                     </div>
                 </div>
             `;
         }
 
-        // ETAPA 3: EXECUÇÃO
-        if (request.type === 'maintenance' && request.status === 'executed') {
-            const execHistory = requestHistory.find(h => h.status === 'executed');
-            if (execHistory) {
-                const execUserStr = execHistory.changed_by_name || 'Equipe de Manutenção'; 
-                const execDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                
-                timelineHTML += `
-                    <div style="margin-bottom: 2rem; position: relative;">
-                        <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-success); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-success);"></div>
-                        <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-success); letter-spacing: 0.05em;">Etapa 3: Execução</div>
-                        <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Manutenção Concluída</div>
-                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${execUserStr} • ${execDate}</div>
-                        <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px;">
-                            <div><strong style="color: var(--color-success);">Relatório:</strong> ${execHistory.notes}</div>
-                        </div>
+        // ETAPA 3: EXECUÇÃO (EXTRAÇÃO E ORGANIZAÇÃO)
+        const execHistory = requestHistory.find(h => h.status === 'executed');
+        if (execHistory) {
+            let rawExecNotes = execHistory.notes || '';
+            const nameMatchExec = rawExecNotes.match(/\[Executado por:\s*(.+?)\]/);
+            const execUser = nameMatchExec ? nameMatchExec[1] : (execHistory.changed_by_name || 'Equipe de Manutenção');
+            const detailMatch = rawExecNotes.match(/\|\s*Detalhes:\s*(.+)$/);
+            const cleanDetail = detailMatch ? detailMatch[1] : rawExecNotes;
+            const execDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+            timelineHTML += `
+                <div style="margin-bottom: 2rem; position: relative;">
+                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-success); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-success);"></div>
+                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-success); letter-spacing: 0.05em;">Etapa 3: Execução</div>
+                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Manutenção Concluída</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${execUser} • ${execDate}</div>
+                    <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 6px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px;">
+                        <div><strong style="color: var(--color-success);">Relatório:</strong> ${cleanDetail}</div>
                     </div>
-                `;
-            }
+                </div>
+            `;
         }
 
-        // ETAPA 4: AVALIAÇÃO (NOVO)
+        // ETAPA 4: AVALIAÇÃO
         if (request.feedback_at) {
             timelineHTML += `
                 <div style="margin-bottom: 2rem; position: relative;">
@@ -5464,25 +5453,14 @@ async function openRequestDetailsModal(requestId) {
 
         timelineHTML += `</div>`; 
 
-        // FORMULÁRIO DE FEEDBACK (Se aplicável)
         let feedbackFormHTML = '';
-        const isRequester = request.requester_id === currentUserProfile.id;
-        if (isRequester && request.status === 'executed' && !request.feedback_at) {
-            feedbackFormHTML = `
-                <div style="margin-top: 1rem; padding: 1.5rem; background: var(--color-background); border-radius: 12px; border: 2px dashed var(--color-border);">
-                    <h4 style="margin:0 0 1rem 0; display:flex; align-items:center; gap:8px;"><span class="material-icons" style="color:var(--color-warning);">rate_review</span> Avalie o atendimento</h4>
-                    <div style="display:flex; gap:1rem; margin-bottom:1rem; justify-content:center;">
-                        ${[1,2,3,4,5].map(n => `<label style="cursor:pointer; text-align:center;"><input type="radio" name="fb-rating" value="${n}" style="display:none;"><div class="rating-circle" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-border); display:flex; align-items:center; justify-content:center; font-weight:bold; transition:all 0.2s;" onclick="this.parentElement.parentElement.querySelectorAll('.rating-circle').forEach(el => {el.style.background='none'; el.style.color='inherit'; el.style.borderColor='var(--color-border)'}); this.style.background='var(--color-brand-primary)'; this.style.color='white'; this.style.borderColor='var(--color-brand-primary)';">${n}</div></label>`).join('')}
-                    </div>
-                    <textarea id="fb-comment" class="input-field" rows="2" placeholder="Opcional: Algum comentário sobre o serviço?"></textarea>
-                    <button class="btn btn-danger" style="width:100%; margin-top:1rem;" onclick="submitRequestFeedback('${request.id}')">Enviar Avaliação</button>
-                </div>
-            `;
+        if (request.requester_id === currentUserProfile.id && request.status === 'executed' && !request.feedback_at) {
+            feedbackFormHTML = `<div style="margin-top: 1rem; padding: 1.5rem; background: var(--color-background); border-radius: 12px; border: 2px dashed var(--color-border);"><h4 style="margin:0 0 1rem 0; display:flex; align-items:center; gap:8px;"><span class="material-icons" style="color:var(--color-warning);">rate_review</span> Avalie o atendimento</h4><div style="display:flex; gap:1rem; margin-bottom:1rem; justify-content:center;">${[1,2,3,4,5].map(n => `<label style="cursor:pointer; text-align:center;"><input type="radio" name="fb-rating" value="${n}" style="display:none;"><div class="rating-circle" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--color-border); display:flex; align-items:center; justify-content:center; font-weight:bold; transition:all 0.2s;" onclick="this.parentElement.parentElement.querySelectorAll('.rating-circle').forEach(el => {el.style.background='none'; el.style.color='inherit'; el.style.borderColor='var(--color-border)'}); this.style.background='var(--color-brand-primary)'; this.style.color='white'; this.style.borderColor='var(--color-brand-primary)';">${n}</div></label>`).join('')}</div><textarea id="fb-comment" class="input-field" rows="2" placeholder="Opcional: Algum comentário sobre o serviço?"></textarea><button class="btn btn-danger" style="width:100%; margin-top:1rem;" onclick="submitRequestFeedback('${request.id}')">Enviar Avaliação</button></div>`;
         }
 
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${feedbackFormHTML}</div>`;
 
-        // BOTÕES DO RODAPÉ
+        let footerActionsHTML = '';
         const p = currentUserProfile.permissions || [];
         const isAdmin = p.includes('manage_users');
         const canManage = isAdmin || p.includes(`mgt_${request.type}`);
@@ -5492,7 +5470,6 @@ async function openRequestDetailsModal(requestId) {
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
 
-        let footerActionsHTML = '';
         if (canGiveCheck) footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
         if (canManage) {
             if (request.type === 'maintenance') {
