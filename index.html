@@ -6015,10 +6015,12 @@ async function submitRequest(event) {
             event.preventDefault();
             const btn = event.target;
             const form = document.getElementById('dynamic-request-form');
+            
+            // --- CORREÇÃO: Capturamos o tipo no início da função para não perdê-lo ---
+            const typeToRefresh = currentRequestType;
 
-            // Captura do local via PlaceAutocompleteElement (substituiu o input original)
             let localValue = "";
-            if (currentRequestType === 'travel') {
+            if (typeToRefresh === 'travel') {
                 const hiddenLocal = form.querySelector('input[type="hidden"][name="local"]');
                 if (hiddenLocal && hiddenLocal.value) {
                     localValue = hiddenLocal.value;
@@ -6038,7 +6040,7 @@ async function submitRequest(event) {
                 return;
             }
 
-            if (!currentRequestType) {
+            if (!typeToRefresh) {
                 showToast("Tipo de requisição inválido.", "danger");
                 return;
             }
@@ -6056,11 +6058,11 @@ async function submitRequest(event) {
                 
                 let webhookUrl = N8N_CREATE_REQUEST_URL;
                 let payload = {
-                    type: currentRequestType,
+                    type: typeToRefresh,
                     data: dataObject
                 };
 
-                if (currentRequestType === 'travel') {
+                if (typeToRefresh === 'travel') {
                     if (selectedParticipants.length === 0) {
                         showToast('Selecione pelo menos um participante para a viagem.', 'warning');
                         btn.disabled = false;
@@ -6094,10 +6096,11 @@ async function submitRequest(event) {
                 }
 
                 showToast("Solicitação enviada com sucesso!", "success");
+                
+                // Fecha o modal (isso vai limpar o currentRequestType global, mas já temos o typeToRefresh local)
                 closeRequestModal();
                 
-                // --- CORREÇÃO: Aplica um buffer de tempo para garantir a gravação no banco ---
-                const typeToRefresh = currentRequestType; // Guarda o tipo antes de limpar
+                // Agora o refresh vai funcionar porque usamos a variável segura 'typeToRefresh'
                 setTimeout(() => {
                     if (typeToRefresh === 'maintenance') {
                         loadMaintenancePage();
