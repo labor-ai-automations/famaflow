@@ -7810,7 +7810,7 @@ async function submitRequestActionWithNotes() {
 
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) throw new Error("Sessão expirada.");
+                if (!session) throw new Error("Sessão inválida.");
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -7818,7 +7818,8 @@ async function submitRequestActionWithNotes() {
                     body: JSON.stringify({ 
                         request_id: requestId,
                         approval_notes: notes,
-                        changed_by: currentUserProfile.id
+                        changed_by: currentUserProfile.id,
+                        changed_by_name: currentUserProfile.full_name // <-- ADICIONADO AQUI
                     })
                 });
 
@@ -7827,7 +7828,7 @@ async function submitRequestActionWithNotes() {
                 showToast(`Sucesso! Atualizando painel...`, 'success');
                 
                 document.getElementById('notes-modal').classList.remove('visible');
-                closeRequestModal(); // <-- LINHA ADICIONADA AQUI
+                closeRequestModal();
                 
                 setTimeout(() => {
                     loadRequestManagementPage();
@@ -7838,7 +7839,7 @@ async function submitRequestActionWithNotes() {
                 console.error("Erro técnico:", error);
                 showToast("Erro ao gravar decisão. Tente novamente.", "danger");
                 btn.disabled = false;
-                btn.textContent = originalLabel;
+                btn.innerHTML = originalLabel;
             }
         }
 		
