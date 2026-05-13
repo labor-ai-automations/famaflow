@@ -5501,11 +5501,12 @@ async function openRequestDetailsModal(requestId) {
         // ETAPA 3: EXECUÇÃO (EXTRAÇÃO E ORGANIZAÇÃO)
         const execHistory = requestHistory.find(h => h.status === 'executed');
         if (execHistory) {
-            let rawExecNotes = execHistory.notes || '';
-            const nameMatchExec = rawExecNotes.match(/\[Executado por:\s*(.+?)\]/);
-            const execUser = nameMatchExec ? nameMatchExec[1] : (execHistory.changed_by_name || 'Equipe de Manutenção');
+            const execUser = execHistory.changed_by_name || 'Equipe de Manutenção';
+            const rawExecNotes = execHistory.notes || '';
+            const seguiuPlanoMatch = rawExecNotes.match(/Seguiu o plano:\s*(Sim|Não)/);
+            const seguiuPlano = seguiuPlanoMatch ? seguiuPlanoMatch[1] : 'Não informado';
             const detailMatch = rawExecNotes.match(/\|\s*Detalhes:\s*(.+)$/);
-            const cleanDetail = detailMatch ? detailMatch[1] : rawExecNotes;
+            const cleanDetail = detailMatch ? detailMatch[1] : rawExecNotes.split('|').pop().trim();
             const execDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
             timelineHTML += `
@@ -5514,8 +5515,9 @@ async function openRequestDetailsModal(requestId) {
                     <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-success); letter-spacing: 0.05em;">Etapa 3: Execução</div>
                     <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Manutenção Concluída</div>
                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${execUser} • ${execDate}</div>
-                    <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 6px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px;">
-                        <div><strong style="color: var(--color-success);">Relatório:</strong> ${cleanDetail}</div>
+                    <div style="font-size: 0.85rem; margin-top: 6px; background: var(--color-success-bg); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px;">
+                        <div style="margin-bottom: 4px;"><strong style="color: var(--color-success);">Seguiu o plano?</strong> ${seguiuPlano}</div>
+                        <div><strong style="color: var(--color-success);">Relatório de Serviço (Detalhes):</strong> ${cleanDetail}</div>
                     </div>
                 </div>
             `;
