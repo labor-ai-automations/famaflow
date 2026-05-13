@@ -1913,33 +1913,43 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_SAVE_REQUEST_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-feedback';
         const N8N_GERAR_PDF_MANUTENCAO_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-pdf-manutencao';
 
- async function generateMaintenancePDF(requestId, btnElement) {
+async function generateMaintenancePDF(requestId, btnElement) {
             btnElement.disabled = true;
             btnElement.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
             showToast("Preparando dados e gerando PDF, aguarde...", "info");
 
             try {
-                // Re-busca todos os dados para garantir que estão atualizados
                 const { data: request } = await supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single();
                 const { data: history } = await supabaseClient.from('request_history').select('*').eq('request_id', requestId).order('created_at', { ascending: true });
 
                 const planHistory = history.find(h => h.status === 'planned');
                 const execHistory = history.find(h => h.status === 'executed');
                 
-                const nameMatchPlan = planHistory?.notes.match(/\[Planejado por:\s*(.+?)\]/);
+                // Extração e Limpeza dos dados do Planejamento
+                let rawPlanNotes = planHistory?.notes || '';
+                const nameMatchPlan = rawPlanNotes.match(/\[Planejado por:\s*(.+?)\]/);
                 const planUser = nameMatchPlan ? nameMatchPlan[1] : (planHistory?.changed_by_name || 'N/A');
-                
-                const nameMatchExec = execHistory?.notes.match(/\[Executado por:\s*(.+?)\]/);
+                const obsMatch = rawPlanNotes.match(/\|\s*Obs:\s*(.+)$/);
+                const cleanObs = obsMatch ? obsMatch[1] : rawPlanNotes.replace(/\[.*?\]/g, '').split('|').pop().trim();
+
+                // Extração e Limpeza dos dados da Execução
+                let rawExecNotes = execHistory?.notes || '';
+                const nameMatchExec = rawExecNotes.match(/\[Executado por:\s*(.+?)\]/);
                 const execUser = nameMatchExec ? nameMatchExec[1] : (execHistory?.changed_by_name || 'N/A');
                 
-                const obsMatch = planHistory?.notes.match(/\|\s*Obs:\s*(.+)$/);
-                const cleanObs = obsMatch ? obsMatch[1] : (planHistory?.notes || "").replace(/\[.*?\]/g, '').split('|').pop().trim();
-
-                const detailMatch = execHistory?.notes.match(/\|\s*Detalhes:\s*(.+)$/);
-                const cleanDetail = detailMatch ? detailMatch[1] : (execHistory?.notes || "").replace(/\[.*?\]/g, '').split('|').pop().trim();
+                // CORREÇÃO: Separa a string "Seguiu o plano" dos "Detalhes"
+                let seguiuPlano = 'Não informado';
+                let detalhesExec = rawExecNotes.replace(/\[.*?\]/g, '').trim();
+                
+                const seguiuPlanoMatch = rawExecNotes.match(/Seguiu o plano:\s*(Sim|Não)/);
+                if (seguiuPlanoMatch) {
+                    seguiuPlano = seguiuPlanoMatch[1];
+                    const detailMatch = rawExecNotes.match(/\|\s*Detalhes:\s*(.+)$/);
+                    detalhesExec = detailMatch ? detailMatch[1] : '';
+                }
 
                 const payload = {
-                    data_emissao: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), // <-- NOVO
+                    data_emissao: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
                     protocolo: request.id.substring(0,8).toUpperCase(),
                     abertura_por: request.requester.full_name,
                     abertura_data: new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
@@ -1951,7 +1961,8 @@ body.fullscreen-flow .flowchart-monitor-bar {
                     planejamento_obs: cleanObs,
                     execucao_por: execUser,
                     execucao_data: execHistory ? new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
-                    execucao_relatorio: cleanDetail,
+                    execucao_seguiu_plano: seguiuPlano, // NOVO CAMPO
+                    execucao_detalhes: detalhesExec, // NOVO CAMPO
                     avaliacao_por: request.feedback_at ? request.requester.full_name : null,
                     avaliacao_data: request.feedback_at ? new Date(request.feedback_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : null,
                     avaliacao_nota: request.feedback_rating,
