@@ -5501,12 +5501,18 @@ async function openRequestDetailsModal(requestId) {
         // ETAPA 3: EXECUÇÃO (EXTRAÇÃO E ORGANIZAÇÃO)
         const execHistory = requestHistory.find(h => h.status === 'executed');
         if (execHistory) {
-            const execUser = execHistory.changed_by_name || 'Equipe de Manutenção';
             const rawExecNotes = execHistory.notes || '';
+            
+            // Lógica unificada para pegar o nome
+            const nameMatchExec = rawExecNotes.match(/\[Executado por:\s*(.+?)\]/);
+            const execUser = execHistory.changed_by_name || (nameMatchExec ? nameMatchExec[1] : 'Equipe de Manutenção');
+
             const seguiuPlanoMatch = rawExecNotes.match(/Seguiu o plano:\s*(Sim|Não)/);
             const seguiuPlano = seguiuPlanoMatch ? seguiuPlanoMatch[1] : 'Não informado';
+            
             const detailMatch = rawExecNotes.match(/\|\s*Detalhes:\s*(.+)$/);
-            const cleanDetail = detailMatch ? detailMatch[1] : rawExecNotes.split('|').pop().trim();
+            const cleanDetail = detailMatch ? detailMatch[1] : rawExecNotes.split('|').pop().trim().replace(/Seguiu o plano: (Sim|Não)/, '').trim();
+
             const execDate = new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
             timelineHTML += `
