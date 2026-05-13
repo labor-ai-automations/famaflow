@@ -1913,7 +1913,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_SAVE_REQUEST_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-feedback';
         const N8N_GERAR_PDF_MANUTENCAO_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-pdf-manutencao';
 
-        async function generateMaintenancePDF(requestId, btnElement) {
+ async function generateMaintenancePDF(requestId, btnElement) {
             btnElement.disabled = true;
             btnElement.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
             showToast("Preparando dados e gerando PDF, aguarde...", "info");
@@ -1939,6 +1939,7 @@ body.fullscreen-flow .flowchart-monitor-bar {
                 const cleanDetail = detailMatch ? detailMatch[1] : (execHistory?.notes || "").replace(/\[.*?\]/g, '').split('|').pop().trim();
 
                 const payload = {
+                    data_emissao: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), // <-- NOVO
                     protocolo: request.id.substring(0,8).toUpperCase(),
                     abertura_por: request.requester.full_name,
                     abertura_data: new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
