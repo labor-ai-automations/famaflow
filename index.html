@@ -5580,24 +5580,55 @@ async function openRequestDetailsModal(requestId) {
 
         modalBody.innerHTML = `<div style="padding: 0.5rem;">${headerHTML}${timelineHTML}${feedbackFormHTML}</div>`;
 
+// LÓGICA DE BOTÕES DO RODAPÉ (com fluxo de Horas Extras)
         let footerActionsHTML = '';
         const p = currentUserProfile.permissions || [];
         const isAdmin = p.includes('manage_users');
-        const canManage = isAdmin || p.includes(`mgt_${request.type}`);
+        const canManageRequest = isAdmin || p.includes(`mgt_${request.type}`);
+
+        // CONDIÇÃO PARA MOSTRAR FORMULÁRIO DE CÁLCULO DE HORAS EXTRAS
+        if (request.type === 'overtime' && request.status === 'pending' && canManageRequest) {
+            const rhForm = `
+                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--color-warning-bg); border-radius: 8px; border: 1px solid var(--color-warning);">
+                    <h4 style="margin: 0 0 1rem 0; color: #92400e;">Ação do RH: Inserir Cálculo</h4>
+                    <div class="grid grid-cols-2">
+                        <div class="form-group">
+                            <label>Valor Total (R$)</label>
+                            <input type="number" id="rh-valor-total" class="input-field" step="0.01" placeholder="Ex: 250.75">
+                        </div>
+                        <div class="form-group">
+                            <label>Qtd. Horas</label>
+                            <input type="number" id="rh-qtd-horas" class="input-field" step="0.1" placeholder="Ex: 8">
+                        </div>
+                    </div>
+                    <button class="btn btn-warning" style="width:100%;" onclick="submitOvertimeCalculation('${request.id}')">Salvar Cálculo e Avançar</button>
+                </div>
+            `;
+            modalBody.innerHTML += rhForm; // Adiciona o formulário ao corpo do modal
+        }
+
         const rule = requestTypeSettingsCache.find(r => r.request_type === request.type);
         const isManagerCheckPending = request.status === 'pending_manager_check' && !managerCheck;
         const isCurrentUserTheManager = request.requester?.manager_id === currentUserProfile.id;
         const isCurrentUserTheApprover = rule?.approver_type === 'specific_user' && rule?.specific_approver_id === currentUserProfile.id;
         const canGiveCheck = rule && rule.requires_manager_check && isManagerCheckPending && (isCurrentUserTheManager || isCurrentUserTheApprover);
+        const isFinalApprover = ['Admin', 'Gerente de RH', 'Gerente'].includes(currentUserProfile.role);
 
         if (canGiveCheck) footerActionsHTML += `<button class="btn btn-check-science" onclick="processManagerCheck('${request.id}')">Dar Check de Ciência</button>`;
-        if (canManage) {
+        
+        // CORREÇÃO: Botões de aprovação final para Horas Extras agora aparecem no status 'pending_final_approval'
+        if (canManageRequest && (finalStatus === 'pending' || (isManagerCheckPending && canManageRequest) || finalStatus === 'pending_final_approval')) {
             if (request.type === 'maintenance') {
                 if (finalStatus === 'pending') footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
                 else if (finalStatus === 'planned') footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar Manutenção</button>`;
                 else if (finalStatus === 'executed') footerActionsHTML += `<button class="btn btn-secondary" onclick="generateMaintenancePDF('${request.id}', this)"><span class="material-icons" style="font-size:18px;">picture_as_pdf</span> Exportar PDF</button>`;
-            } else if (request.type !== 'maintenance' && (finalStatus === 'pending' || (isManagerCheckPending && canManage))) {
-                if(!canGiveCheck || canManage) footerActionsHTML += `<button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button><button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>`;
+            } else {
+                 if(!canGiveCheck || canManageRequest || isFinalApprover) {
+                    footerActionsHTML += `
+                        <button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button>
+                        <button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>
+                    `;
+                 }
             }
         }
         
