@@ -6019,17 +6019,14 @@ async function submitRequest(event) {
             // Captura do local via PlaceAutocompleteElement (substituiu o input original)
             let localValue = "";
             if (currentRequestType === 'travel') {
-                // Prioridade 1: input hidden criado pelo evento gmp-placeselect (usuário selecionou sugestão)
                 const hiddenLocal = form.querySelector('input[type="hidden"][name="local"]');
                 if (hiddenLocal && hiddenLocal.value) {
                     localValue = hiddenLocal.value;
                 } else {
-                    // Prioridade 2: lê direto do elemento gmp-place-autocomplete (texto digitado)
                     const autocompleteEl = form.querySelector('gmp-place-autocomplete');
                     if (autocompleteEl) {
                         localValue = autocompleteEl.value || '';
                     }
-                    // Prioridade 3: fallback para o input original (caso o autocomplete não tenha carregado)
                     if (!localValue) {
                         const inputFallback = document.getElementById('req-travel-destination');
                         if (inputFallback) localValue = inputFallback.value || '';
@@ -6099,13 +6096,15 @@ async function submitRequest(event) {
                 showToast("Solicitação enviada com sucesso!", "success");
                 closeRequestModal();
                 
-                // --- CORREÇÃO APLICADA AQUI ---
-                if (currentRequestType === 'maintenance') {
-                    loadMaintenancePage();
-                } else {
-                    loadRequests();
-                }
-                // --- FIM DA CORREÇÃO ---
+                // --- CORREÇÃO: Aplica um buffer de tempo para garantir a gravação no banco ---
+                const typeToRefresh = currentRequestType; // Guarda o tipo antes de limpar
+                setTimeout(() => {
+                    if (typeToRefresh === 'maintenance') {
+                        loadMaintenancePage();
+                    } else {
+                        loadRequests();
+                    }
+                }, 1500);
 
             } catch (error) {
                 console.error("Erro ao enviar requisição:", error);
