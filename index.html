@@ -1911,6 +1911,79 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_EXECUTE_MAINTENANCE_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/execute-maintenance-request';
         const N8N_PROCESS_MANAGER_CHECK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/process-manager-check';
         const N8N_SAVE_REQUEST_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-feedback';
+        const N8N_GERAR_PDF_MANUTENCAO_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-pdf-manutencao';
+
+        async function generateMaintenancePDF(requestId, btnElement) {
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
+            showToast("Preparando dados e gerando PDF, aguarde...", "info");
+
+            try {
+                // Re-busca todos os dados para garantir que estão atualizados
+                const { data: request } = await supabaseClient.from('requests').select('*, requester:profiles(full_name)').eq('id', requestId).single();
+                const { data: history } = await supabaseClient.from('request_history').select('*').eq('request_id', requestId).order('created_at', { ascending: true });
+
+                const planHistory = history.find(h => h.status === 'planned');
+                const execHistory = history.find(h => h.status === 'executed');
+                
+                const nameMatchPlan = planHistory?.notes.match(/\[Planejado por:\s*(.+?)\]/);
+                const planUser = nameMatchPlan ? nameMatchPlan[1] : (planHistory?.changed_by_name || 'N/A');
+                
+                const nameMatchExec = execHistory?.notes.match(/\[Executado por:\s*(.+?)\]/);
+                const execUser = nameMatchExec ? nameMatchExec[1] : (execHistory?.changed_by_name || 'N/A');
+                
+                const obsMatch = planHistory?.notes.match(/\|\s*Obs:\s*(.+)$/);
+                const cleanObs = obsMatch ? obsMatch[1] : (planHistory?.notes || "").replace(/\[.*?\]/g, '').split('|').pop().trim();
+
+                const detailMatch = execHistory?.notes.match(/\|\s*Detalhes:\s*(.+)$/);
+                const cleanDetail = detailMatch ? detailMatch[1] : (execHistory?.notes || "").replace(/\[.*?\]/g, '').split('|').pop().trim();
+
+                const payload = {
+                    protocolo: request.id.substring(0,8).toUpperCase(),
+                    abertura_por: request.requester.full_name,
+                    abertura_data: new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+                    dados: request.data,
+                    planejamento_por: planUser,
+                    planejamento_data: planHistory ? new Date(planHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+                    planejamento_previsao: request.maintenance_scheduled_at ? new Date(request.maintenance_scheduled_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+                    planejamento_tecnicos: request.data.tecnicos_planejados,
+                    planejamento_obs: cleanObs,
+                    execucao_por: execUser,
+                    execucao_data: execHistory ? new Date(execHistory.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+                    execucao_relatorio: cleanDetail,
+                    avaliacao_por: request.feedback_at ? request.requester.full_name : null,
+                    avaliacao_data: request.feedback_at ? new Date(request.feedback_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : null,
+                    avaliacao_nota: request.feedback_rating,
+                    avaliacao_comentario: request.feedback_comment
+                };
+                
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch(N8N_GERAR_PDF_MANUTENCAO_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error('Falha no servidor de relatórios.');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Relatorio_Manutencao_${request.id.substring(0,8)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast("Relatório baixado!", "success");
+
+            } catch(e) {
+                showToast("Erro ao gerar PDF: " + e.message, "danger");
+            } finally {
+                btnElement.disabled = false;
+                btnElement.innerHTML = '<span class="material-icons" style="font-size:18px;">picture_as_pdf</span> Exportar PDF';
+            }
+        }
 
         // NOVA FUNÇÃO: Envia a avaliação do solicitante para o n8n
         async function submitRequestFeedback(requestId) {
@@ -5502,6 +5575,7 @@ async function openRequestDetailsModal(requestId) {
             if (request.type === 'maintenance') {
                 if (finalStatus === 'pending') footerActionsHTML += `<button class="btn btn-warning" onclick="openMaintenancePlanningModal('${request.id}')">Planejar</button>`;
                 else if (finalStatus === 'planned') footerActionsHTML += `<button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${request.id}')">Executar Manutenção</button>`;
+                else if (finalStatus === 'executed') footerActionsHTML += `<button class="btn btn-secondary" onclick="generateMaintenancePDF('${request.id}', this)"><span class="material-icons" style="font-size:18px;">picture_as_pdf</span> Exportar PDF</button>`;
             } else if (request.type !== 'maintenance' && (finalStatus === 'pending' || (isManagerCheckPending && canManage))) {
                 if(!canGiveCheck || canManage) footerActionsHTML += `<button class="btn btn-danger" onclick="openApprovalModal('reject', '${request.id}')">Reprovar</button><button class="btn btn-success" onclick="openApprovalModal('approve', '${request.id}')">Aprovar</button>`;
             }
