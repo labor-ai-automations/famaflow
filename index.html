@@ -11887,17 +11887,33 @@ function switchRequestTab(tabId) {
                 }
                 return currentSteps.map((step, index) => {
                     const approverName = (step.approver && step.approver.full_name) ? step.approver.full_name : 'Selecionar Pessoa...';
+                    
+                    // Adicionamos a lógica para exibir/ocultar os campos corretos
                     return `
                         <div class="step-item" style="background:var(--color-background); padding:1rem; border-radius:8px; border:1px solid var(--color-border); margin-bottom:1rem; position:relative;">
                             <span class="material-icons btn-remove-item" onclick="removeWorkflowStep(${index})" style="position:absolute; top:-10px; right:-10px; cursor:pointer; color:var(--color-danger); background:var(--color-surface); border-radius:50%; box-shadow:var(--shadow);">cancel</span>
                             <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px;">ETAPA ${index + 1}</div>
                             <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Visto do Gerente)" value="${step.step_name || ''}" style="margin-bottom:8px;" oninput="window._tempWorkflowSteps[${index}].step_name = this.value">
-                            <select class="input-field" onchange="window._tempWorkflowSteps[${index}].approver_type = this.value; document.getElementById('specific-user-div-${index}').style.display = this.value === 'specific_user' ? 'flex' : 'none';">
+                            
+                            <select class="input-field" onchange="
+                                window._tempWorkflowSteps[${index}].approver_type = this.value; 
+                                document.getElementById('specific-user-div-${index}').style.display = this.value === 'specific_user' ? 'flex' : 'none';
+                                document.getElementById('role-group-div-${index}').style.display = this.value === 'role_group' ? 'block' : 'none';
+                            ">
                                 <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
                                 <option value="specific_user" ${step.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
+                                <option value="role_group" ${step.approver_type === 'role_group' ? 'selected' : ''}>Qualquer pessoa do Departamento</option>
                             </select>
+                            
+                            <!-- Opção: Usuário Específico -->
                             <div id="specific-user-div-${index}" class="input-field" style="margin-top:8px; cursor:pointer; display:${step.approver_type === 'specific_user' ? 'flex' : 'none'}; align-items:center; justify-content:space-between;" onclick="selectApproverForStep(${index})">
                                 <span id="approver-name-${index}">${approverName}</span><span class="material-icons">person_search</span>
+                            </div>
+
+                            <!-- Opção: Qualquer pessoa do Departamento (Novo) -->
+                            <div id="role-group-div-${index}" style="margin-top:8px; display:${step.approver_type === 'role_group' ? 'block' : 'none'};">
+                                <input type="text" class="input-field" placeholder="Digite o nome do Departamento (Ex: Recursos Humanos)" value="${step.specific_approver_id ? step.specific_approver_id : ''}" oninput="window._tempWorkflowSteps[${index}].specific_approver_id = this.value">
+                                <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 0;">O nome do departamento deve ser igual ao cadastrado no perfil dos usuários.</p>
                             </div>
                         </div>
                     `;
