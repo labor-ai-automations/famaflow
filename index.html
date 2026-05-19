@@ -9127,47 +9127,45 @@ function renderBuilderWorkspace() {
 
         function renderBuilderItems() {
             const fieldsCont = document.getElementById('bp-fields-container');
-            fieldsCont.innerHTML = editingBlueprint.fields.map((f, i) => `
+            if(fieldsCont) fieldsCont.innerHTML = (editingBlueprint.fields || []).map((f, i) => `
                 <div class="field-item">
                     <span class="material-icons btn-remove-item" onclick="editingBlueprint.fields.splice(${i},1); renderBuilderItems(); updateLivePreview();">cancel</span>
                     <div class="grid grid-cols-2" style="gap: 10px; margin-bottom: 8px;">
-                        <input type="text" class="input-field" placeholder="Nome da Pergunta" value="${f.label}" oninput="editingBlueprint.fields[${i}].label = this.value; updateLivePreview();">
-                        <select class="input-field" onchange="editingBlueprint.fields[${i}].type = this.value; renderBuilderItems(); updateLivePreview();">
-                            <option value="text" ${f.type==='text'?'selected':''}>Texto Curto</option>
-                            <option value="textarea" ${f.type==='textarea'?'selected':''}>Parágrafo</option>
-                            <option value="number" ${f.type==='number'?'selected':''}>Número Inteiro</option>
-                            <option value="currency" ${f.type==='currency'?'selected':''}>Moeda (R$)</option>
-                            <option value="date" ${f.type==='date'?'selected':''}>Data</option>
-                            <option value="select" ${f.type==='select'?'selected':''}>Seleção (Dropdown)</option>
-                            <option value="radio" ${f.type==='radio'?'selected':''}>Opções (Bolinhas)</option>
-                            <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Confirmação (Check)</option>
+                        <input type="text" class="input-field" placeholder="Nome da Pergunta" value="${f.label || ''}" oninput="editingBlueprint.fields[${i}].label = this.value; updateLivePreview();">
+                        <select class="input-field" onchange="editingBlueprint.fields[${i}].field_type = this.value; renderBuilderItems(); updateLivePreview();">
+                            <option value="text" ${f.field_type==='text'?'selected':''}>Texto Curto</option>
+                            <option value="textarea" ${f.field_type==='textarea'?'selected':''}>Parágrafo</option>
+                            <option value="number" ${f.field_type==='number'?'selected':''}>Número</option>
+                            <option value="currency" ${f.field_type==='currency'?'selected':''}>Moeda (R$)</option>
+                            <option value="date" ${f.field_type==='date'?'selected':''}>Data</option>
+                            <option value="select" ${f.field_type==='select'?'selected':''}>Seleção</option>
+                            <option value="checkbox" ${f.field_type==='checkbox'?'selected':''}>Confirmação</option>
                         </select>
                     </div>
-                    ${['select', 'radio'].includes(f.type) ? `<input type="text" class="input-field field-options-input" placeholder="Opções separadas por vírgula (ex: RH, TI, Vendas)" value="${f.options ? f.options.join(',') : ''}" oninput="editingBlueprint.fields[${i}].options = this.value.split(','); updateLivePreview();">` : ''}
-                    <label class="custom-checkbox" style="margin-top: 10px;"><input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked; updateLivePreview();"><span class="checkbox-box"><span class="material-icons">check</span></span><span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary);">CAMPO OBRIGATÓRIO</span></label>
+                    ${['select'].includes(f.field_type) ? `<input type="text" class="input-field field-options-input" placeholder="Opções separadas por vírgula" value="${(f.options || []).join(',')}" oninput="editingBlueprint.fields[${i}].options = this.value.split(','); updateLivePreview();">` : ''}
+                    <label class="custom-checkbox" style="margin-top: 10px;"><input type="checkbox" ${f.is_required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].is_required = this.checked; updateLivePreview();"><span class="checkbox-box"><span class="material-icons">check</span></span><span style="font-size: 0.75rem; font-weight: 700;">OBRIGATÓRIO</span></label>
                 </div>
             `).join('');
 
-            // --- INÍCIO DA MUDANÇA ---
             const workflowCont = document.getElementById('bp-workflow-container');
-            workflowCont.innerHTML = editingBlueprint.workflow.map((w, i) => `
+            if(workflowCont) workflowCont.innerHTML = (editingBlueprint.workflow || []).map((w, i) => {
+                const approverName = (w.approver && w.approver.full_name) ? w.approver.full_name : 'Escolher Pessoa...';
+                return `
                 <div class="step-item">
                     <span class="material-icons btn-remove-item" onclick="editingBlueprint.workflow.splice(${i},1); renderBuilderItems();">cancel</span>
-                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">ETAPA DE APROVAÇÃO #${i+1}</div>
+                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px;">ETAPA #${i + 1}</div>
                     <input type="text" class="input-field" placeholder="Ex: Crivo do Diretor" value="${w.step_name || ''}" oninput="editingBlueprint.workflow[${i}].step_name = this.value">
                     <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.workflow[${i}].approver_type = this.value; renderBuilderItems();">
-                        <option value="manager" ${w.approver_type==='manager'?'selected':''}>Gerente Direto do Solicitante</option>
-                        <option value="specific_user" ${w.approver_type==='specific_user'?'selected':''}>Pessoa Específica da Empresa</option>
+                        <option value="manager" ${w.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
+                        <option value="specific_user" ${w.approver_type === 'specific_user' ? 'selected' : ''}>Pessoa Específica</option>
                     </select>
                     ${w.approver_type === 'specific_user' ? `
-                        <div id="bp-step-user-${i}" class="input-field" style="margin-top:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openAssigneeSelectorForBuilder(${i})">
-                            <span id="bp-step-username-${i}">${w.approver?.full_name || 'Escolher Pessoa...'}</span>
-                            <span class="material-icons" style="font-size:18px;">person_search</span>
+                        <div id="bp-step-user-${i}" class="input-field" style="margin-top:5px; cursor:pointer;" onclick="openAssigneeSelectorForBuilder(${i})">
+                            <span id="bp-step-username-${i}">${approverName}</span>
                         </div>
                     ` : ''}
                 </div>
-            `).join('');
-            // --- FIM DA MUDANÇA ---
+            `}).join('');
             
             updateLivePreview();
         }
@@ -9197,15 +9195,15 @@ function renderBuilderWorkspace() {
             if(!editingBlueprint.name) { showToast("Dê um nome ao molde.", "warning"); return; }
             showToast("Publicando molde...", "info");
 
-            // Organiza os dados para enviar para o n8n
             const payload = {
                 blueprintData: {
-                    id: editingBlueprint.id,
+                    id: editingBlueprint.id || null,
                     name: editingBlueprint.name,
-                    description: editingBlueprint.description
+                    description: editingBlueprint.description,
+                    is_active: true
                 },
-                fieldsData: editingBlueprint.fields.map((f, i) => ({ ...f, field_order: i + 1 })),
-                workflowData: editingBlueprint.workflow.map((w, i) => ({ 
+                fieldsData: (editingBlueprint.fields || []).map((f, i) => ({ ...f, field_order: i + 1 })),
+                workflowData: (editingBlueprint.workflow || []).map((w, i) => ({ 
                     step_order: i + 1,
                     step_name: w.step_name,
                     approver_type: w.approver_type,
@@ -9269,19 +9267,16 @@ function renderBuilderWorkspace() {
             const { data: bp, error: bpError } = await supabaseClient.from('request_blueprints').select('*').eq('id', id).single();
             if (bpError) { showToast("Erro ao carregar molde.", "danger"); return; }
 
-            // CORREÇÃO: Busca da nova tabela de workflows que criamos
             const { data: workflow, error: wfError } = await supabaseClient
                 .from('request_blueprint_workflows')
-                .select('*, approver:specific_approver_id(full_name)') // Usando o join do Supabase
+                .select('*, approver:specific_approver_id(full_name)')
                 .eq('blueprint_id', id)
                 .order('step_order');
             
             if (wfError) { showToast("Erro ao carregar fluxo de aprovação.", "danger"); return; }
             
-            // A busca de 'fields' continua igual
             const { data: fields } = await supabaseClient.from('request_blueprint_fields').select('*').eq('blueprint_id', id).order('field_order');
 
-            // Monta o objeto final com os dados corrigidos
             editingBlueprint = { ...bp, fields: fields || [], workflow: workflow || [] };
             renderBuilderWorkspace();
             switchBuilderTab('form');
