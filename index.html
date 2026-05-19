@@ -2260,8 +2260,23 @@ const appHTML = `<div id="app-container">
     </div>
 
     <!-- CONTEÚDO DA ABA 2: CONFIGURAÇÕES (NOVA) -->
-<div id="request-tab-settings" class="request-tab-content" style="display:none;"><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Tipo de Requisição</th><th>Fluxo de Aprovação</th><th style="width: 20%;">Ações</th></tr></thead><tbody id="request-settings-table-body"></tbody></table></div></div>
-</div>                <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
+<!-- CONTEÚDO DA ABA 2: CONFIGURAÇÕES (NOVA - COM WORKFLOW) -->
+                    <div id="request-tab-settings" class="request-tab-content" style="display:none;">
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo de Requisição</th>
+                                        <th>Fluxo de Aprovação</th>
+                                        <th style="width: 20%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="request-settings-table-body">
+                                    <!-- O JavaScript preencherá isso -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div></div>                <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
                 <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div><div class="card team-filters"><div class="form-group" style="margin:0;"><label for="team-search-name">Buscar por Nome</label><input type="text" id="team-search-name" class="input-field" placeholder="Digite um nome..."></div><div class="form-group" style="margin:0;"><label for="team-filter-dept">Filtrar por Setor</label><select id="team-filter-dept" class="input-field"></select></div><div class="form-group" style="margin:0;"><label for="team-filter-role">Filtrar por Cargo</label><select id="team-filter-role" class="input-field"></select></div></div><div id="team-list-content">Carregando equipe...</div></div>
                 <div id="organograma-page" class="page-content"><div class="page-header organograma-header"><div><h1>Organograma Vivo</h1><p>Estrutura hierárquica da empresa</p></div></div><div class="card organograma-actions-bar" style="margin-bottom: 2rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 1rem; flex: 1;"><label for="org-filter-dept" style="font-weight: 600; font-size: 0.9rem; color: var(--color-text-secondary); white-space: nowrap;">Visualizar Área:</label><select id="org-filter-dept" class="input-field" onchange="loadOrganogramaPage(this.value)" style="max-width: 300px; flex-grow: 1;"></select></div><button class="btn btn-danger" onclick="openUserModal(null)"><span class="material-icons">person_add</span> Novo Colaborador</button></div><div class="card organograma-tree-card" id="organograma-tree-container" style="overflow-x: auto; position: relative;"><div class="zoom-controls" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; gap: 0.5rem;"><button onclick="zoomOrganograma(-0.1)" class="btn-icon-secondary" title="Diminuir Zoom"><span class="material-icons">zoom_out</span></button><span id="zoom-level" style="padding: 0.5rem 1rem; background: var(--color-surface); border-radius: 6px; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">100%</span><button onclick="zoomOrganograma(0.1)" class="btn-icon-secondary" title="Aumentar Zoom"><span class="material-icons">zoom_in</span></button><button onclick="resetZoomOrganograma()" class="btn-icon-secondary" title="Resetar Zoom"><span class="material-icons">restart_alt</span></button></div><div class="empty-state">Carregando organograma...</div></div></div>
                 <div id="channels-page" class="page-content"><div class="page-header"><h1>Canais</h1></div><div class="empty-state">Funcionalidade em desenvolvimento.</div></div>
@@ -11833,6 +11848,7 @@ function switchRequestTab(tabId) {
 }
 
 // Carrega os dados da aba de Configurações (Nova versão com Workflows)
+       // Carrega os dados da aba de Configurações (Nova versão com Workflows)
         async function loadRequestSettingsData() {
             const tableBody = document.getElementById('request-settings-table-body');
             tableBody.innerHTML = `<tr><td colspan="3" class="empty-state">Carregando configurações...</td></tr>`;
@@ -11864,7 +11880,7 @@ function switchRequestTab(tabId) {
 
             tableBody.innerHTML = Object.keys(typeLabels).map(typeKey => {
                 const steps = workflows[typeKey] || [];
-                let workflowDisplay = '<span style="color:var(--color-text-secondary); font-style:italic;">Aprovação Única (Padrão)</span>';
+                let workflowDisplay = '<span style="color:var(--color-text-secondary); font-style:italic;">Aprovação Simples (Padrão)</span>';
                 
                 if (steps.length > 0) {
                     workflowDisplay = steps
@@ -11913,7 +11929,6 @@ function switchRequestTab(tabId) {
                 return currentSteps.map((step, index) => {
                     const approverName = (step.approver && step.approver.full_name) ? step.approver.full_name : 'Selecionar Pessoa...';
                     
-                    // Adicionamos a lógica para exibir/ocultar os campos corretos
                     return `
                         <div class="step-item" style="background:var(--color-background); padding:1rem; border-radius:8px; border:1px solid var(--color-border); margin-bottom:1rem; position:relative;">
                             <span class="material-icons btn-remove-item" onclick="removeWorkflowStep(${index})" style="position:absolute; top:-10px; right:-10px; cursor:pointer; color:var(--color-danger); background:var(--color-surface); border-radius:50%; box-shadow:var(--shadow);">cancel</span>
@@ -11937,7 +11952,7 @@ function switchRequestTab(tabId) {
 
                             <!-- Opção: Qualquer pessoa do Departamento (Novo) -->
                             <div id="role-group-div-${index}" style="margin-top:8px; display:${step.approver_type === 'role_group' ? 'block' : 'none'};">
-                                <input type="text" class="input-field" placeholder="Digite o nome do Departamento (Ex: Recursos Humanos)" value="${step.specific_approver_id ? step.specific_approver_id : ''}" oninput="window._tempWorkflowSteps[${index}].specific_approver_id = this.value">
+                                <input type="text" class="input-field" placeholder="Digite o nome do Departamento (Ex: Recursos Humanos)" value="${step.approver_type === 'role_group' ? (step.specific_approver_id || '') : ''}" oninput="window._tempWorkflowSteps[${index}].specific_approver_id = this.value">
                                 <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 0;">O nome do departamento deve ser igual ao cadastrado no perfil dos usuários.</p>
                             </div>
                         </div>
@@ -11962,6 +11977,7 @@ function switchRequestTab(tabId) {
                 <button class="btn btn-danger" onclick="saveWorkflow('${requestType}')">Salvar Fluxo</button>
             `;
             
+            // Anexa as funções de manipulação à janela global para que os 'onclick' funcionem
             window.addWorkflowStepUI = () => {
                 window._tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', specific_approver_id: null, approver: null });
                 updateModalBody();
@@ -11971,7 +11987,6 @@ function switchRequestTab(tabId) {
                 updateModalBody();
             };
             window.selectApproverForStep = (index) => {
-                currentSelectionTarget = null;
                 openUserSelectorModal({
                     title: 'Selecionar Aprovador Específico',
                     targetArray: [],
@@ -11980,7 +11995,7 @@ function switchRequestTab(tabId) {
                         if (tempArray && tempArray.length > 0) {
                             const user = tempArray[0];
                             window._tempWorkflowSteps[index].specific_approver_id = user.id;
-                            window._tempWorkflowSteps[index].approver = { full_name: user.full_name };
+                            window._tempWorkflowSteps[index].approver = { full_name: user.full_name }; // Atualiza o objeto para renderização
                             document.getElementById(`approver-name-${index}`).textContent = user.full_name;
                         }
                         closeRecipientModal();
@@ -11989,53 +12004,68 @@ function switchRequestTab(tabId) {
             };
         }
 
-        // NOVA FUNÇÃO: Salva o workflow desenhado no banco
+        // NOVA FUNÇÃO: Salva o workflow desenhado no banco de dados
         async function saveWorkflow(requestType) {
             const steps = window._tempWorkflowSteps;
             const btn = event.target;
+            const workflowData = [];
 
             for (let i = 0; i < steps.length; i++) {
-                if (steps[i].approver_type === 'specific_user' && !steps[i].specific_approver_id) {
+                const approverType = steps[i].approver_type;
+                const approverId = steps[i].specific_approver_id || null;
+
+                if (approverType === 'specific_user' && !approverId) {
                     showToast(`Selecione um aprovador para a Etapa ${i + 1}`, 'warning');
-                    return;
+                    return; // Para a execução
                 }
-                if (!steps[i].step_name) {
-                    steps[i].step_name = `Etapa ${i + 1}`;
+                
+                if (approverType === 'role_group' && !approverId) {
+                    showToast(`Digite o nome do departamento para a Etapa ${i + 1}`, 'warning');
+                    return; // Para a execução
                 }
+                
+                workflowData.push({
+                    request_type: requestType,
+                    step_order: i + 1,
+                    step_name: steps[i].step_name || `Etapa ${i + 1}`,
+                    approver_type: approverType,
+                    specific_approver_id: approverId
+                });
             }
 
             btn.disabled = true;
+            const originalHTML = btn.innerHTML;
             btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
 
             try {
-                // Delete e Insert
-                const { error: delError } = await supabaseClient.from('request_approval_steps').delete().eq('request_type', requestType);
+                // 1. Apaga as etapas antigas deste tipo de requisição
+                const { error: delError } = await supabaseClient
+                    .from('request_approval_steps')
+                    .delete()
+                    .eq('request_type', requestType);
+
                 if (delError) throw delError;
 
-                if (steps.length > 0) {
-                    const insertData = steps.map((s, index) => ({
-                        request_type: requestType,
-                        step_order: index + 1,
-                        step_name: s.step_name,
-                        approver_type: s.approver_type,
-                        specific_approver_id: s.specific_approver_id
-                    }));
+                // 2. Insere as novas etapas (se houver)
+                if (workflowData.length > 0) {
+                    const { error: insError } = await supabaseClient
+                        .from('request_approval_steps')
+                        .insert(workflowData);
 
-                    const { error: insError } = await supabaseClient.from('request_approval_steps').insert(insertData);
                     if (insError) throw insError;
                 }
                 
                 showToast('Fluxo de aprovação salvo com sucesso!', 'success');
                 closeRequestModal();
-                loadRequestSettingsData();
+                loadRequestSettingsData(); // Recarrega a tabela principal
             } catch(e) {
                 console.error(e);
                 showToast('Erro ao salvar o fluxo.', 'danger');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Salvar Fluxo';
+                btn.innerHTML = originalHTML;
             }
-        }
+        } 
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
 // ===================================================================
