@@ -9143,40 +9143,31 @@ function renderBuilderWorkspace() {
                             <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Confirmação (Check)</option>
                         </select>
                     </div>
-
-                    ${['select', 'radio'].includes(f.type) ? `
-                        <input type="text" class="input-field field-options-input" 
-                               placeholder="Opções separadas por vírgula (ex: RH, TI, Vendas)" 
-                               value="${f.options ? f.options.join(',') : ''}"
-                               oninput="editingBlueprint.fields[${i}].options = this.value.split(','); updateLivePreview();">
-                    ` : ''}
-
-                    <label class="custom-checkbox" style="margin-top: 10px;">
-                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked; updateLivePreview();">
-                        <span class="checkbox-box"><span class="material-icons">check</span></span>
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary);">CAMPO OBRIGATÓRIO</span>
-                    </label>
+                    ${['select', 'radio'].includes(f.type) ? `<input type="text" class="input-field field-options-input" placeholder="Opções separadas por vírgula (ex: RH, TI, Vendas)" value="${f.options ? f.options.join(',') : ''}" oninput="editingBlueprint.fields[${i}].options = this.value.split(','); updateLivePreview();">` : ''}
+                    <label class="custom-checkbox" style="margin-top: 10px;"><input type="checkbox" ${f.required ? 'checked' : ''} onchange="editingBlueprint.fields[${i}].required = this.checked; updateLivePreview();"><span class="checkbox-box"><span class="material-icons">check</span></span><span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary);">CAMPO OBRIGATÓRIO</span></label>
                 </div>
             `).join('');
 
+            // --- INÍCIO DA MUDANÇA ---
             const workflowCont = document.getElementById('bp-workflow-container');
             workflowCont.innerHTML = editingBlueprint.workflow.map((w, i) => `
                 <div class="step-item">
                     <span class="material-icons btn-remove-item" onclick="editingBlueprint.workflow.splice(${i},1); renderBuilderItems();">cancel</span>
-                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Ping #${i+1}</div>
-                    <input type="text" class="input-field" placeholder="Ex: Crivo do Diretor" value="${w.name}" oninput="editingBlueprint.workflow[${i}].name = this.value">
-                    <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.workflow[${i}].type = this.value; renderBuilderItems();">
-                        <option value="manager" ${w.type==='manager'?'selected':''}>Gerente Direto do Solicitante</option>
-                        <option value="specific_user" ${w.type==='specific_user'?'selected':''}>Pessoa Específica da Empresa</option>
+                    <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">ETAPA DE APROVAÇÃO #${i+1}</div>
+                    <input type="text" class="input-field" placeholder="Ex: Crivo do Diretor" value="${w.step_name || ''}" oninput="editingBlueprint.workflow[${i}].step_name = this.value">
+                    <select class="input-field" style="margin-top:5px;" onchange="editingBlueprint.workflow[${i}].approver_type = this.value; renderBuilderItems();">
+                        <option value="manager" ${w.approver_type==='manager'?'selected':''}>Gerente Direto do Solicitante</option>
+                        <option value="specific_user" ${w.approver_type==='specific_user'?'selected':''}>Pessoa Específica da Empresa</option>
                     </select>
-                    ${w.type === 'specific_user' ? `
+                    ${w.approver_type === 'specific_user' ? `
                         <div id="bp-step-user-${i}" class="input-field" style="margin-top:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;" onclick="openAssigneeSelectorForBuilder(${i})">
-                            <span id="bp-step-username-${i}">${w.approver_name || 'Escolher Pessoa...'}</span>
+                            <span id="bp-step-username-${i}">${w.approver?.full_name || 'Escolher Pessoa...'}</span>
                             <span class="material-icons" style="font-size:18px;">person_search</span>
                         </div>
                     ` : ''}
                 </div>
             `).join('');
+            // --- FIM DA MUDANÇA ---
             
             updateLivePreview();
         }
@@ -9184,33 +9175,18 @@ function renderBuilderWorkspace() {
         function updateLivePreview() {
             const container = document.getElementById('live-preview-container');
             if(!container) return;
-
-            let html = `<div style="pointer-events: auto;"><h2 style="margin-bottom:0.5rem; font-size: 1.5rem;">${document.getElementById('bp-name').value || 'Nova Requisição'}</h2>
-                        <p style="color:var(--color-text-secondary); font-size:0.9rem; margin-bottom:2rem;">${document.getElementById('bp-desc').value || 'Instruções para preenchimento.'}</p>
-                        <form onsubmit="event.preventDefault();">`;
-
+            let html = `<div style="pointer-events: auto;"><h2 style="margin-bottom:0.5rem; font-size: 1.5rem;">${document.getElementById('bp-name').value || 'Nova Requisição'}</h2><p style="color:var(--color-text-secondary); font-size:0.9rem; margin-bottom:2rem;">${document.getElementById('bp-desc').value || 'Instruções para preenchimento.'}</p><form onsubmit="event.preventDefault();">`;
             editingBlueprint.fields.forEach(f => {
                 const asterisk = f.required ? '<span style="color:var(--color-brand-primary);">*</span>' : '';
                 html += `<div class="form-group"><label class="dynamic-field-label">${f.label || 'Nome da Pergunta'} ${asterisk}</label>`;
-                
-                if(f.type === 'select') {
-                    html += `<select class="input-field"><option>-- Selecione --</option>${(f.options || []).map(opt => `<option value="${opt.trim()}">${opt.trim()}</option>`).join('')}</select>`;
-                } else if(f.type === 'radio') {
-                    html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">${(f.options || []).map(opt => `
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="radio" name="prev_${f.label}"> ${opt.trim()}</label>
-                    `).join('')}</div>`;
-                } else if(f.type === 'checkbox') {
-                    html += `<label class="custom-checkbox"><input type="checkbox"><span class="checkbox-box"><span class="material-icons">check</span></span> Confirmar informação</label>`;
-                } else if(f.type === 'currency') {
-                    html += `<div style="position:relative;"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span><input type="text" class="input-field" style="padding-left:40px;" placeholder="0,00" readonly></div>`;
-                } else if(f.type === 'textarea') {
-                    html += `<textarea class="input-field" rows="2" placeholder="Resposta detalhada..." readonly></textarea>`;
-                } else {
-                    html += `<input type="text" class="input-field" placeholder="Resposta curta..." readonly>`;
-                }
+                if(f.type === 'select') { html += `<select class="input-field"><option>-- Selecione --</option>${(f.options || []).map(opt => `<option value="${opt.trim()}">${opt.trim()}</option>`).join('')}</select>`; }
+                else if(f.type === 'radio') { html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">${(f.options || []).map(opt => `<label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="radio" name="prev_${f.label}"> ${opt.trim()}</label>`).join('')}</div>`; }
+                else if(f.type === 'checkbox') { html += `<label class="custom-checkbox"><input type="checkbox"><span class="checkbox-box"><span class="material-icons">check</span></span> Confirmar informação</label>`; }
+                else if(f.type === 'currency') { html += `<div style="position:relative;"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-weight:700; color:var(--color-text-secondary);">R$</span><input type="text" class="input-field" style="padding-left:40px;" placeholder="0,00" readonly></div>`; }
+                else if(f.type === 'textarea') { html += `<textarea class="input-field" rows="2" placeholder="Resposta detalhada..." readonly></textarea>`; }
+                else { html += `<input type="text" class="input-field" placeholder="Resposta curta..." readonly>`; }
                 html += `</div>`;
             });
-
             html += `<button type="button" class="btn btn-danger" style="width:100%; margin-top:1rem; opacity:0.6; cursor:not-allowed;">Enviar (Modo Preview)</button></form></div>`;
             container.innerHTML = html;
         }
@@ -9219,14 +9195,29 @@ function renderBuilderWorkspace() {
             editingBlueprint.name = document.getElementById('bp-name').value;
             editingBlueprint.description = document.getElementById('bp-desc').value;
             if(!editingBlueprint.name) { showToast("Dê um nome ao molde.", "warning"); return; }
-
             showToast("Publicando molde...", "info");
+
+            // Organiza os dados para enviar para o n8n
+            const payload = {
+                blueprintData: {
+                    id: editingBlueprint.id,
+                    name: editingBlueprint.name,
+                    description: editingBlueprint.description
+                },
+                fieldsData: editingBlueprint.fields.map((f, i) => ({ ...f, field_order: i + 1 })),
+                workflowData: editingBlueprint.workflow.map((w, i) => ({ 
+                    step_order: i + 1,
+                    step_name: w.step_name,
+                    approver_type: w.approver_type,
+                    specific_approver_id: w.specific_approver_id || null
+                }))
+            };
 
             const { data: { session } } = await supabaseClient.auth.getSession();
             const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/fama-builder-save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                body: JSON.stringify({ ...editingBlueprint, admin_id: currentUserProfile.id })
+                body: JSON.stringify(payload)
             });
 
             if(response.ok) {
