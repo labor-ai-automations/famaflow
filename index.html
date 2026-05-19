@@ -11913,7 +11913,7 @@ function switchRequestTab(tabId) {
             // Busca as etapas salvas no banco
             const { data: steps, error } = await supabaseClient
                 .from('request_approval_steps')
-                .select('*') // <--- BUSCA CORRIGIDA
+                .select('*') 
                 .eq('request_type', requestType)
                 .order('step_order');
 
@@ -11929,12 +11929,11 @@ function switchRequestTab(tabId) {
                 }
                 
                 return currentSteps.map((step, index) => {
-                    // Lógica para exibir os nomes das pessoas selecionadas
                     let approverDisplay = 'Selecionar Pessoas...';
                     let countBadge = '';
                     
                     if (step.approver_type === 'specific_user' && step.specific_approver_id && step.specific_approver_id.length > 0) {
-                        const users = step.specific_approver_id; // Agora é um array JSONB
+                        const users = step.specific_approver_id; 
                         approverDisplay = users.map(u => u.full_name).join(', ');
                         countBadge = `<span class="tag-fino" style="background:var(--color-brand-primary); color:white; font-size:0.6rem; padding: 2px 6px;">${users.length}</span>`;
                     }
@@ -12030,13 +12029,12 @@ function switchRequestTab(tabId) {
                             displayDiv.textContent = 'Selecionar Pessoas...';
                             countDiv.innerHTML = '';
                         }
-                        closeRecipientModal();
                     }
                 });
             };
         }
 
-        // Salva o workflow desenhado no banco via Insert e Delete diretos
+        // Salva o workflow desenhado no banco
         async function saveWorkflow(requestType) {
             const steps = window._tempWorkflowSteps;
             const btn = event.target;
@@ -12067,22 +12065,13 @@ function switchRequestTab(tabId) {
             btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
 
             try {
-                // 1. Apaga as etapas antigas deste tipo de requisição
-                const { error: delError } = await supabaseClient
-                    .from('request_approval_steps')
-                    .delete()
-                    .eq('request_type', requestType);
-
-                if (delError) throw delError;
-
-                // 2. Insere as novas etapas (se houver)
-                if (workflowData.length > 0) {
-                    const { error: insError } = await supabaseClient
-                        .from('request_approval_steps')
-                        .insert(workflowData);
-
-                    if (insError) throw insError;
-                }
+                // COMO NÃO TEMOS WEBHOOK PARA ISSO, VAMOS USAR A RPC SEGURA QUE CRIAMOS NA FASE 1
+                const { error } = await supabaseClient.rpc('save_workflow_steps', {
+                    p_request_type: requestType,
+                    p_steps: workflowData
+                });
+                
+                if (error) throw error;
                 
                 showToast('Fluxo de aprovação salvo com sucesso!', 'success');
                 closeRequestModal();
@@ -12094,7 +12083,7 @@ function switchRequestTab(tabId) {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
             }
-        }        
+        }               
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
 // ===================================================================
