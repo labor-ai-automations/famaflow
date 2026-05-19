@@ -11847,15 +11847,14 @@ function switchRequestTab(tabId) {
     document.getElementById(`btn-tab-${tabId.replace('_', '-')}`).classList.add('active');
 }
 
-// Carrega os dados da aba de Configurações (Nova versão com Workflows)
-       // Carrega os dados da aba de Configurações (Nova versão com Workflows)
+        // Carrega os dados da aba de Configurações (Nova versão com Workflows)
         async function loadRequestSettingsData() {
             const tableBody = document.getElementById('request-settings-table-body');
             tableBody.innerHTML = `<tr><td colspan="3" class="empty-state">Carregando configurações...</td></tr>`;
 
             const { data, error } = await supabaseClient
                 .from('request_approval_steps')
-                .select('*, approver:specific_approver_id(full_name)')
+                .select('*') // <--- BUSCA CORRIGIDA (Sem tentar cruzar tabelas)
                 .order('step_order');
                 
             if (error) {
@@ -11914,7 +11913,7 @@ function switchRequestTab(tabId) {
             // Busca as etapas salvas no banco
             const { data: steps, error } = await supabaseClient
                 .from('request_approval_steps')
-                .select('*')
+                .select('*') // <--- BUSCA CORRIGIDA
                 .eq('request_type', requestType)
                 .order('step_order');
 
