@@ -11955,11 +11955,11 @@ function switchRequestTab(tabId) {
 
             for (let i = 0; i < steps.length; i++) {
                 if (steps[i].approver_type === 'specific_user' && !steps[i].specific_approver_id) {
-                    showToast(\`Selecione um aprovador para a Etapa \${i + 1}\`, 'warning');
+                    showToast(`Selecione um aprovador para a Etapa ${i + 1}`, 'warning');
                     return;
                 }
                 if (!steps[i].step_name) {
-                    steps[i].step_name = \`Etapa \${i + 1}\`;
+                    steps[i].step_name = `Etapa ${i + 1}`;
                 }
             }
 
