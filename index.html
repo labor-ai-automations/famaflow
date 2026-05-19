@@ -2324,26 +2324,33 @@ const appHTML = `<div id="app-container">
                 <div id="profile-page" class="page-content"><div id="user-profile-content"></div><div id="user-history-content"></div></div>
                 <div id="request-management-page" class="page-content">
                     <div class="page-header">
-                        <div>
-                            <h1>Gerenciamento de Requisições</h1>
-                            <p>Aprovação de pendências e extração de relatórios analíticos.</p>
+                        <div><h1>Gerenciamento de Requisições</h1><p>Aprovação de pendências em fluxo.</p></div>
+                        <div class="page-header-actions">
+                            <button class="btn btn-secondary" onclick="toggleMgtView('report')" id="btn-toggle-report"><span class="material-icons" style="font-size: 18px; margin-right: 5px;">picture_as_pdf</span> Relatórios (BI)</button>
                         </div>
                     </div>
-
-                    <div class="mgt-tabs">
-                        <button class="mgt-tab-btn active" id="btn-mgt-list" onclick="toggleMgtView('list')">Pendências de Aprovação</button>
-                        <button class="mgt-tab-btn" id="btn-mgt-report" onclick="toggleMgtView('report')">Relatórios PDF (BI)</button>
-                    </div>
-
-                    <!-- VISÃO 1: LISTA DE GESTÃO -->
+                    
                     <div id="mgt-view-list">
+                        <div class="card" style="margin-bottom: 1.5rem; padding: 1rem; display: flex; gap: 1rem; align-items: center; background: var(--color-background);">
+                            <span class="material-icons" style="color: var(--color-text-secondary);">filter_alt</span>
+                            <div style="flex-grow: 1;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Visão da Fila</label>
+                                <select id="mgt-status-filter" class="input-field" style="border: none; background: transparent; padding: 0; font-size: 1rem; font-weight: 600; cursor: pointer; color: var(--color-brand-primary);" onchange="loadRequestManagementPage()">
+                                    <option value="my_action" selected>⏳ Aguardando Minha Ação</option>
+                                    <option value="others">👁️ Paradas com Outros (Acompanhamento)</option>
+                                    <option value="all_pending">📋 Todas as Pendentes (Visão Geral)</option>
+                                    <option value="finished">✅ Finalizadas (Aprovadas/Recusadas)</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="card" style="padding:0;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th style="width: 20%;">Solicitante</th>
                                         <th style="width: 25%;">Tipo</th>
-                                        <th style="width: 20%;">Data</th>
+                                        <th style="width: 15%;">Etapa Atual</th>
                                         <th style="width: 15%;">Status</th>
                                         <th style="width: 20%;">Ações</th>
                                     </tr>
@@ -2355,50 +2362,8 @@ const appHTML = `<div id="app-container">
                         </div>
                     </div>
 
-                    <!-- VISÃO 2: GERADOR DE RELATÓRIOS -->
-                    <div id="mgt-view-report" style="display: none;">
-                        <div class="report-form-wrapper">
-                            <div class="report-header-ui">
-                                <span class="material-icons" style="font-size: 32px; color: var(--color-brand-primary);">analytics</span>
-                                <div>
-                                    <h3 style="margin:0;">Gerador de Relatórios Executivos</h3>
-                                    <p style="margin:0; font-size: 0.85rem; color: var(--color-text-secondary);">Filtre os dados para gerar o documento PDF oficial.</p>
-                                </div>
-                            </div>
-
-                            <div class="report-grid">
-                                <div class="report-selector-box">
-                                    <label>Período de Análise</label>
-                                    <div style="display:flex; gap: 10px;">
-                                        <input type="date" id="rep-start-date" class="input-field">
-                                        <input type="date" id="rep-end-date" class="input-field">
-                                    </div>
-                                </div>
-                                <div class="report-selector-box">
-                                    <label>Tipos de Requisição</label>
-                                    <div id="rep-allowed-types" class="report-check-grid">
-                                        <!-- Injetado via JS -->
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="report-selector-box" style="margin-bottom: 2rem;">
-                                <label>Status das Solicitações</label>
-                                <div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);">
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label>
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label>
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="approved" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Aprovadas</label>
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label>
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="rejected"><span class="checkbox-box"><span class="material-icons">check</span></span> Recusadas</label>
-                                    <label class="custom-checkbox"><input type="checkbox" name="rep-status" value="cancelled_by_requester"><span class="checkbox-box"><span class="material-icons">check</span></span> Canceladas</label>
-                                </div>
-                            </div>
-
-                            <button class="btn-generate-report" id="btn-execute-report" onclick="runExecutiveReport()">
-                                <span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO
-                            </button>
-                        </div>
-                    </div>
+                    <!-- MANTÉM O GERADOR DE RELATÓRIOS INTACTO -->
+                    <div id="mgt-view-report" style="display: none;"><div class="report-form-wrapper"><div class="report-header-ui"><span class="material-icons" style="font-size: 32px; color: var(--color-brand-primary);">analytics</span><div><h3 style="margin:0;">Gerador de Relatórios Executivos</h3><p style="margin:0; font-size: 0.85rem; color: var(--color-text-secondary);">Filtre os dados para gerar o documento PDF oficial.</p></div></div><div class="report-grid"><div class="report-selector-box"><label>Período de Análise</label><div style="display:flex; gap: 10px;"><input type="date" id="rep-start-date" class="input-field"><input type="date" id="rep-end-date" class="input-field"></div></div><div class="report-selector-box"><label>Tipos de Requisição</label><div id="rep-allowed-types" class="report-check-grid"></div></div></div><div class="report-selector-box" style="margin-bottom: 2rem;"><label>Status das Solicitações</label><div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);"><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="approved" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Aprovadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="rejected"><span class="checkbox-box"><span class="material-icons">check</span></span> Recusadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="cancelled_by_requester"><span class="checkbox-box"><span class="material-icons">check</span></span> Canceladas</label></div></div><button class="btn-generate-report" id="btn-execute-report" onclick="runExecutiveReport()"><span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO</button><div style="text-align: center; margin-top: 1rem;"><button class="btn btn-secondary" onclick="toggleMgtView('list')">Voltar para Fila</button></div></div></div>
                 </div>
                 <div id="travel-request-management-page" class="page-content">
                     <div class="page-header">
@@ -8938,89 +8903,149 @@ function toggleMgtView(view) {
         }
 
 async function loadRequestManagementPage() {
-    const tableBody = document.getElementById('request-management-table-body');
-    if(!tableBody) return;
-    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando requisições...</td></tr>`;
+            const tableBody = document.getElementById('request-management-table-body');
+            if(!tableBody) return;
+            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    const { data, error } = await supabaseClient.rpc('get_all_requests_for_viewing');
-    if (error) { 
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`;
-        console.error("Erro na RPC get_all_requests_for_viewing:", error);
-        return;
-    }
+            // 1. Busca todas as Requisições Gerais (excluindo Manutenção)
+            const { data: allReqs, error: reqError } = await supabaseClient.rpc('get_all_requests_for_viewing');
+            if (reqError) { 
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`;
+                return;
+            }
+            const generalReqs = (allReqs || []).filter(req => req.type !== 'maintenance');
 
-    // FILTRO ADICIONADO: Remove requisições de manutenção desta visualização
-    const filteredData = (data || []).filter(req => req.type !== 'maintenance');
+            // 2. Busca o Mapa (Workflows) e os Perfis (para checar hierarquia)
+            const [workflowsRes, profilesRes] = await Promise.all([
+                supabaseClient.from('request_approval_steps').select('*').order('step_order'),
+                supabaseClient.from('profiles').select('id, manager_id, department')
+            ]);
+            
+            const workflows = workflowsRes.data || [];
+            const profiles = profilesRes.data || [];
+            const myProfile = profiles.find(p => p.id === currentUserProfile.id);
 
-    if (filteredData.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição para gerenciar no momento.</td></tr>`;
-        return;
-    }
+            const p = currentUserProfile.permissions || [];
+            const isAdmin = p.includes('manage_users');
+            const viewFilter = document.getElementById('mgt-status-filter').value;
 
-    const { data: allChecks } = await supabaseClient.from('request_manager_checks').select('request_id');
-    const checkedRequestIds = new Set((allChecks || []).map(c => c.request_id));
-    
-    const p = currentUserProfile.permissions || [];
-    const isAdmin = p.includes('manage_users');
+            const processedRequests = [];
 
-    const typeTranslations = {
-        'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção',
-        'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
-        'disciplinary_action': 'Medida Disciplinar', 'maintenance': 'Manutenção'
-    };
+            // 3. O MOTOR DE WORKFLOW: Analisa quem precisa agir em cada requisição
+            generalReqs.forEach(req => {
+                const isFinished = req.status.includes('approved') || req.status.includes('rejected') || req.status === 'executed' || req.status === 'planned';
+                
+                let myActionRequired = false;
+                let currentStepName = "Concluído";
+                
+                if (!isFinished) {
+                    // Busca a "receita" desta requisição específica
+                    const reqSteps = workflows.filter(w => w.request_type === req.type);
+                    
+                    if (reqSteps.length === 0) {
+                        // FALLBACK (Lógica Antiga): Se não tem fluxo desenhado, cai na regra padrão
+                        currentStepName = "Aprovação Padrão";
+                        const canManage = isAdmin || p.includes(`mgt_${req.type}`);
+                        
+                        // Lógica antiga do Check Gerencial (Apenas para manter compatibilidade)
+                        const rule = requestTypeSettingsCache.find(r => r.request_type === req.type);
+                        if (rule && rule.requires_manager_check && req.status === 'pending_manager_check') {
+                            const reqProfile = profiles.find(p => p.id === req.requester_id);
+                            if (reqProfile && reqProfile.manager_id === currentUserProfile.id) {
+                                myActionRequired = true; // Eu sou o gerente
+                            }
+                        } else if (canManage && req.status !== 'pending_manager_check') {
+                            myActionRequired = true; // Eu sou o RH/Aprovador final
+                        }
+                    } else {
+                        // LÓGICA NOVA: A Esteira
+                        const currentStep = reqSteps.find(s => s.step_order === (req.current_approval_step || 1));
+                        
+                        if (currentStep) {
+                            currentStepName = currentStep.step_name || `Etapa ${currentStep.step_order}`;
+                            
+                            // Quem é o dono desta etapa? Sou eu?
+                            if (currentStep.approver_type === 'manager') {
+                                const reqProfile = profiles.find(p => p.id === req.requester_id);
+                                if (reqProfile && reqProfile.manager_id === currentUserProfile.id) {
+                                    myActionRequired = true;
+                                }
+                            } else if (currentStep.approver_type === 'specific_user') {
+                                if (currentStep.specific_approver_id === currentUserProfile.id) {
+                                    myActionRequired = true;
+                                }
+                            } else if (currentStep.approver_type === 'role_group') {
+                                // O campo specific_approver_id guarda o nome do setor neste caso
+                                if (myProfile && myProfile.department === currentStep.specific_approver_id) {
+                                    myActionRequired = true;
+                                }
+                            }
+                        } else {
+                            // Se não achou a etapa atual, mas não está finalizado, significa que o fluxo quebrou ou chegou no fim esperando aprovação final
+                            currentStepName = "Aprovação Final";
+                            if (isAdmin) myActionRequired = true;
+                        }
+                    }
+                }
 
-    const statusTranslations = {
-        'pending': 'Pendente (RH)',
-        'pending_manager_check': 'Com Gerente',
-        'pending_final_approval': 'Aprovação Final Pendente',
-        'approved': 'Aprovada', 'rejected': 'Recusada',
-        'planned': 'Planejada', 'executed': 'Executada'
-    };
+                // 4. Aplica os filtros da interface
+                let shouldShow = false;
+                if (viewFilter === 'my_action' && myActionRequired && !isFinished) shouldShow = true;
+                if (viewFilter === 'others' && !myActionRequired && !isFinished) shouldShow = true;
+                if (viewFilter === 'all_pending' && !isFinished) shouldShow = true;
+                if (viewFilter === 'finished' && isFinished) shouldShow = true;
+                
+                // Admin sempre pode ver "Aguardando Outros"
+                if (viewFilter === 'others' && !isFinished && isAdmin) shouldShow = true;
 
-    tableBody.innerHTML = filteredData.map(req => {
-        const statusLabel = statusTranslations[req.status] || req.status;
-        let statusClass = 'status-pending'; // Cor padrão amarela
-        if (req.status.includes('approved') || req.status === 'executed' || req.status === 'planned') {
-            statusClass = 'status-approved';
-        } else if (req.status.includes('rejected')) {
-            statusClass = 'status-rejected';
-        }
+                if (shouldShow) {
+                    processedRequests.push({ ...req, myActionRequired, currentStepName, isFinished });
+                }
+            });
 
-        const date = new Date(req.created_at).toLocaleDateString('pt-BR');
-        const rowClass = req.status === 'pending_manager_check' ? 'row-pending-check' : '';
+            // 5. Renderiza a Tabela
+            if (processedRequests.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada nesta visão.</td></tr>`;
+                return;
+            }
 
-        let managerCheckHTML = '';
-        const rule = requestTypeSettingsCache.find(r => r.request_type === req.type);
-        if (rule && rule.requires_manager_check) {
-            managerCheckHTML = checkedRequestIds.has(req.id)
-                ? '<span class="material-icons" style="color:var(--color-success); vertical-align: middle; margin-left: 5px;" title="Check do Gerente OK">check_circle</span>'
-                : '<span class="material-icons" style="color:var(--color-warning); vertical-align: middle; margin-left: 5px;" title="Aguardando Check do Gerente">hourglass_empty</span>';
-        }
-        
-        let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>`;
-        const canManageRequest = isAdmin || p.includes(`mgt_${req.type}`);
-        const finalStatus = (req.status === 'pending_manager_check' && checkedRequestIds.has(req.id)) ? 'pending' : req.status;
+            const typeTranslations = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem', 'disciplinary_action': 'Medida Disciplinar' };
+            const statusTranslations = { 'pending': 'Na Esteira', 'pending_manager_check': 'Na Esteira', 'pending_final_approval': 'Aprovação Final', 'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada' };
 
-        if (canManageRequest && (finalStatus === 'pending' || finalStatus === 'pending_manager_check' || finalStatus === 'pending_final_approval')) {
-             if (req.type !== 'maintenance') {
-                actionsHTML += `
-                    <button class="btn btn-icon" title="Reprovar Requisição" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">thumb_down</span></button>
-                    <button class="btn btn-icon" title="Aprovar Requisição" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">thumb_up</span></button>
+            tableBody.innerHTML = processedRequests.map(req => {
+                const statusLabel = statusTranslations[req.status] || req.status;
+                let statusClass = 'status-pending'; 
+                if (req.isFinished) {
+                    statusClass = req.status.includes('rejected') ? 'status-rejected' : 'status-approved';
+                }
+
+                const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+                const rowClass = req.myActionRequired ? 'row-pending-check' : ''; // Destaca a linha se for a vez do usuário
+                
+                // Botões
+                let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Detalhes</button>`;
+                
+                if (req.myActionRequired) {
+                    // SE É A VEZ DO USUÁRIO NA ESTEIRA, MOSTRA OS BOTÕES
+                    actionsHTML += `
+                        <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">thumb_down</span></button>
+                        <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">thumb_up</span></button>
+                    `;
+                } else if (!req.isFinished) {
+                    actionsHTML += `<span style="font-size:0.75rem; color:var(--color-text-secondary); margin-left: 10px; font-style: italic;">Aguardando outro setor</span>`;
+                }
+
+                return `
+                    <tr class="${rowClass}">
+                        <td>${req.requester_name || 'N/A'}</td>
+                        <td><strong>${typeTranslations[req.type] || req.type}</strong></td>
+                        <td><span class="user-tag role">${req.currentStepName}</span></td>
+                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+                    </tr>
                 `;
-             }
+            }).join('');
         }
-
-        return `
-            <tr class="${rowClass}">
-                <td>${req.requester_name || 'N/A'}</td>
-                <td><strong>${typeTranslations[req.type] || req.type}</strong>${managerCheckHTML}</td>
-                <td>${date}</td>
-                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
-            </tr>
-        `;
-    }).join('');
-}
 		
 // --- LÓGICA DO BUILDER (ADM) ---
         function createNewBlueprint() {
