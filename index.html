@@ -2260,21 +2260,7 @@ const appHTML = `<div id="app-container">
     </div>
 
     <!-- CONTEÚDO DA ABA 2: CONFIGURAÇÕES (NOVA) -->
-    <div id="request-tab-settings" class="request-tab-content" style="display:none;">
-        <div class="card" style="padding:0;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Tipo de Requisição</th>
-                        <th style="text-align: center;">Exige "Check" do Gerente?</th>
-                        <th>Aprovador Designado</th>
-                        <th style="width: 10%;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="request-settings-table-body"></tbody>
-            </table>
-        </div>
-    </div>
+<div id="request-tab-settings" class="request-tab-content" style="display:none;"><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Tipo de Requisição</th><th>Fluxo de Aprovação</th><th style="width: 20%;">Ações</th></tr></thead><tbody id="request-settings-table-body"></tbody></table></div></div>
 </div>                <div id="conversation-view-page" class="page-content"><div class="page-header" id="conversation-header"></div><div class="card"><div id="conversation-messages">Carregando conversa...</div><div id="reply-form-wrapper"><div id="reply-attachment-preview"></div><form id="reply-form" data-conversation-id=""><input type="file" id="reply-attachment-input" style="display: none;"><button type="button" class="btn btn-icon" onclick="document.getElementById('reply-attachment-input').click()" title="Anexar arquivo"><span class="material-icons">attachment</span></button><input type="text" id="reply-input" class="input-field" placeholder="Digite sua resposta..." required><button type="submit" class="btn btn-danger">Enviar</button></form></div></div></div>
                 <div id="team-page" class="page-content"><div class="page-header"><h1>Equipe</h1><p>Veja os perfis e performance dos seus colegas.</p></div><div class="card team-filters"><div class="form-group" style="margin:0;"><label for="team-search-name">Buscar por Nome</label><input type="text" id="team-search-name" class="input-field" placeholder="Digite um nome..."></div><div class="form-group" style="margin:0;"><label for="team-filter-dept">Filtrar por Setor</label><select id="team-filter-dept" class="input-field"></select></div><div class="form-group" style="margin:0;"><label for="team-filter-role">Filtrar por Cargo</label><select id="team-filter-role" class="input-field"></select></div></div><div id="team-list-content">Carregando equipe...</div></div>
                 <div id="organograma-page" class="page-content"><div class="page-header organograma-header"><div><h1>Organograma Vivo</h1><p>Estrutura hierárquica da empresa</p></div></div><div class="card organograma-actions-bar" style="margin-bottom: 2rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 1rem; flex: 1;"><label for="org-filter-dept" style="font-weight: 600; font-size: 0.9rem; color: var(--color-text-secondary); white-space: nowrap;">Visualizar Área:</label><select id="org-filter-dept" class="input-field" onchange="loadOrganogramaPage(this.value)" style="max-width: 300px; flex-grow: 1;"></select></div><button class="btn btn-danger" onclick="openUserModal(null)"><span class="material-icons">person_add</span> Novo Colaborador</button></div><div class="card organograma-tree-card" id="organograma-tree-container" style="overflow-x: auto; position: relative;"><div class="zoom-controls" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; gap: 0.5rem;"><button onclick="zoomOrganograma(-0.1)" class="btn-icon-secondary" title="Diminuir Zoom"><span class="material-icons">zoom_out</span></button><span id="zoom-level" style="padding: 0.5rem 1rem; background: var(--color-surface); border-radius: 6px; font-size: 0.9rem; font-weight: 600; min-width: 60px; text-align: center;">100%</span><button onclick="zoomOrganograma(0.1)" class="btn-icon-secondary" title="Aumentar Zoom"><span class="material-icons">zoom_in</span></button><button onclick="resetZoomOrganograma()" class="btn-icon-secondary" title="Resetar Zoom"><span class="material-icons">restart_alt</span></button></div><div class="empty-state">Carregando organograma...</div></div></div>
@@ -11821,164 +11807,194 @@ function switchRequestTab(tabId) {
     document.getElementById(`btn-tab-${tabId.replace('_', '-')}`).classList.add('active');
 }
 
-// Carrega os dados da aba de Configurações
-async function loadRequestSettingsData() {
-    const tableBody = document.getElementById('request-settings-table-body');
-    tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Carregando configurações...</td></tr>`;
+// Carrega os dados da aba de Configurações (Nova versão com Workflows)
+        async function loadRequestSettingsData() {
+            const tableBody = document.getElementById('request-settings-table-body');
+            tableBody.innerHTML = `<tr><td colspan="3" class="empty-state">Carregando configurações...</td></tr>`;
 
-    // CONSULTA CORRIGIDA: Agora inclui '*, approver:specific_approver_id(full_name)'
-    // para buscar o nome do perfil relacionado ao specific_approver_id.
-    const { data, error } = await supabaseClient
-        .from('request_type_settings')
-        .select('*, approver:specific_approver_id(full_name)');
-        
-    if (error) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">Erro ao carregar.</td></tr>`;
-        console.error(error);
-        return;
-    }
-    requestTypeSettingsCache = data || [];
-    renderRequestSettingsTable(requestTypeSettingsCache);
-}
-
-// Renderiza a tabela de configurações
-function renderRequestSettingsTable(settings) {
-    const tableBody = document.getElementById('request-settings-table-body');
-    const typeLabels = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar', 'travel': 'Viagem', 'maintenance': 'Manutenção' };
-
-    tableBody.innerHTML = settings.map(s => {
-        let approverDisplay = 'N/A'; // Padrão
-        
-        // LÓGICA DE EXIBIÇÃO CORRIGIDA
-        if (s.approver_type === 'manager') {
-            approverDisplay = 'Gerente Direto';
-        } else if (s.approver_type === 'specific_user') {
-            // Usa o nome do aprovador que veio do JOIN, ou um placeholder se não houver
-            approverDisplay = s.approver ? s.approver.full_name : '<span style="color:var(--color-danger);">Selecione...</span>';
-        }
-        
-        return `
-            <tr>
-                <td><strong>${typeLabels[s.request_type] || s.request_type}</strong></td>
-                <td style="text-align: center;">
-                    <label class="custom-checkbox" style="justify-content: center;">
-                        <input type="checkbox" id="check-${s.request_type}" onchange="toggleApproverSection('${s.request_type}')" ${s.requires_manager_check ? 'checked' : ''}>
-                        <span class="checkbox-box"><span class="material-icons">check</span></span>
-                    </label>
-                </td>
-                <td>
-                    <div id="approver-section-${s.request_type}" style="display:${s.requires_manager_check ? 'flex' : 'none'}; gap:10px; align-items:center;">
-                        <select id="type-${s.request_type}" class="input-field" style="max-width: 200px;">
-                            <option value="manager" ${s.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto</option>
-                            <option value="specific_user" ${s.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
-                        </select>
-                        <div id="specific-approver-controls-${s.request_type}" style="display:${s.approver_type === 'specific_user' ? 'flex' : 'none'}; gap: 10px; align-items: center;">
-                            <button class="btn btn-secondary" id="btn-select-${s.request_type}" onclick="selectSpecificApprover('${s.request_type}')">Selecionar</button>
-                            <span id="name-${s.request_type}">${approverDisplay}</span>
-                            <input type="hidden" id="id-${s.request_type}" value="${s.specific_approver_id || ''}">
-                        </div>
-                        <span id="manager-approver-label-${s.request_type}" style="display:${s.approver_type === 'manager' ? 'block' : 'none'};">N/A</span>
-                    </div>
-                </td>
-                <td><button class="btn btn-success" onclick="saveRequestSetting('${s.request_type}')">Salvar</button></td>
-            </tr>
-        `;
-    }).join('');
-
-    // Adiciona a lógica para mostrar/esconder os controles dinamicamente
-    settings.forEach(s => {
-        document.getElementById(`type-${s.request_type}`).onchange = () => {
-            toggleApproverTypeControls(s.request_type);
-        };
-    });
-}
-
-// NOVA FUNÇÃO AUXILIAR para controlar a visibilidade
-function toggleApproverSection(requestType) {
-    const isChecked = document.getElementById(`check-${requestType}`).checked;
-    document.getElementById(`approver-section-${requestType}`).style.display = isChecked ? 'flex' : 'none';
-}
-
-function toggleApproverTypeControls(requestType) {
-    const isSpecific = document.getElementById(`type-${requestType}`).value === 'specific_user';
-    document.getElementById(`specific-approver-controls-${requestType}`).style.display = isSpecific ? 'flex' : 'none';
-    document.getElementById(`manager-approver-label-${requestType}`).style.display = isSpecific ? 'none' : 'block';
-    if (!isSpecific) {
-        // Limpa a seleção de usuário específico se mudar para "Gerente Direto"
-        document.getElementById(`name-${requestType}`).textContent = 'N/A';
-        document.getElementById(`id-${requestType}`).value = '';
-    }
-}
-
-// Abre o modal para selecionar um aprovador específico
-function selectSpecificApprover(requestType) {
-    // Abre o modal de seleção de usuários que já existe no sistema
-    openUserSelectorModal({
-        title: 'Selecionar Aprovador Específico',
-        targetArray: [], // Usa um array temporário para não interferir em outras seleções
-        // A mágica acontece na função onComplete:
-        onComplete: () => {
-            const tempArray = _selectorConfig.targetArray; // Pega o usuário selecionado
-            if (tempArray && tempArray.length > 0) {
-                const user = tempArray[0]; // Pega o primeiro usuário selecionado
+            const { data, error } = await supabaseClient
+                .from('request_approval_steps')
+                .select('*, approver:specific_approver_id(full_name)')
+                .order('step_order');
                 
-                // ATUALIZA O CAMPO OCULTO E O TEXTO NA TELA
-                document.getElementById(`id-${requestType}`).value = user.id;
-                document.getElementById(`name-${requestType}`).textContent = user.full_name;
+            if (error) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="empty-state">Erro ao carregar.</td></tr>`;
+                console.error(error);
+                return;
             }
-            closeRecipientModal(); // Fecha o modal de seleção
-        }
-    });
-}
-
-// Salva a configuração de uma linha no banco
-async function saveRequestSetting(requestType) {
-    const btn = event.target;
-    btn.disabled = true;
-    
-    const requiresCheck = document.getElementById(`check-${requestType}`).checked;
-    const approverType = document.getElementById(`type-${requestType}`).value;
-    const specificId = document.getElementById(`id-${requestType}`).value;
-
-    if (requiresCheck && approverType === 'specific_user' && !specificId) {
-        showToast('Para "Usuário Específico", você deve selecionar um aprovador.', 'warning');
-        btn.disabled = false;
-        return;
-    }
-
-    // URL do novo workflow
-    const N8N_SAVE_REQUEST_SETTING_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-setting';
-
-    try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const response = await fetch(N8N_SAVE_REQUEST_SETTING_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({
-                request_type: requestType,
-                requires_manager_check: requiresCheck,
-                approver_type: requiresCheck ? approverType : null,
-                specific_approver_id: (requiresCheck && approverType === 'specific_user') ? specificId : null
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Falha ao salvar configuração. Verifique suas permissões.');
+            renderRequestSettingsTable(data || []);
         }
 
-        showToast('Configuração salva com sucesso!', 'success');
-        await loadRequestSettingsData(); // Recarrega a tabela para garantir consistência
+        // Renderiza a nova tabela de configurações com foco no Workflow
+        function renderRequestSettingsTable(settings) {
+            const tableBody = document.getElementById('request-settings-table-body');
+            const typeLabels = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar', 'travel': 'Viagem', 'maintenance': 'Manutenção' };
 
-    } catch (error) {
-        showToast(error.message, 'danger');
-        console.error(error);
-    } finally {
-        btn.disabled = false;
-    }
-}
+            // Agrupa os passos por tipo de requisição
+            const workflows = settings.reduce((acc, step) => {
+                if (!acc[step.request_type]) acc[step.request_type] = [];
+                acc[step.request_type].push(step);
+                return acc;
+            }, {});
+
+            tableBody.innerHTML = Object.keys(typeLabels).map(typeKey => {
+                const steps = workflows[typeKey] || [];
+                let workflowDisplay = '<span style="color:var(--color-text-secondary); font-style:italic;">Aprovação Única (Padrão)</span>';
+                
+                if (steps.length > 0) {
+                    workflowDisplay = steps
+                        .sort((a, b) => a.step_order - b.step_order)
+                        .map(s => `<span class="user-tag role" style="margin-right: 5px;">${s.step_name || `Etapa ${s.step_order}`}</span>`)
+                        .join('<span class="material-icons" style="font-size:16px; vertical-align:middle; color:var(--color-text-secondary);">arrow_right_alt</span>');
+                }
+
+                return `
+                    <tr>
+                        <td><strong>${typeLabels[typeKey]}</strong></td>
+                        <td>${workflowDisplay}</td>
+                        <td><button class="btn btn-secondary" onclick="openWorkflowEditor('${typeKey}')">Configurar Fluxo</button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // NOVA FUNÇÃO: Abre o modal para editar o fluxo de um tipo de requisição
+        async function openWorkflowEditor(requestType) {
+            const typeLabels = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'disciplinary_action': 'Medida Disciplinar', 'travel': 'Viagem', 'maintenance': 'Manutenção' };
+            const modal = document.getElementById('request-modal');
+            const modalTitle = document.getElementById('request-modal-title');
+            const modalBody = document.getElementById('request-modal-body');
+            const modalFooter = document.getElementById('request-modal-footer');
+
+            modalTitle.textContent = `Editor de Fluxo: ${typeLabels[requestType]}`;
+            modalBody.innerHTML = `<div class="empty-state">Carregando fluxo...</div>`;
+            modal.classList.add('visible');
+
+            const { data: steps, error } = await supabaseClient
+                .from('request_approval_steps')
+                .select('*, approver:specific_approver_id(full_name)')
+                .eq('request_type', requestType)
+                .order('step_order');
+
+            if (error) {
+                modalBody.innerHTML = `<div class="empty-state">Erro ao carregar.</div>`;
+                return;
+            }
+
+            const renderSteps = (currentSteps) => {
+                if (currentSteps.length === 0) {
+                    return `<div class="empty-state" style="padding: 1rem;">Nenhum fluxo configurado. Clique em Adicionar Etapa.</div>`;
+                }
+                return currentSteps.map((step, index) => {
+                    const approverName = (step.approver && step.approver.full_name) ? step.approver.full_name : 'Selecionar Pessoa...';
+                    return `
+                        <div class="step-item" style="background:var(--color-background); padding:1rem; border-radius:8px; border:1px solid var(--color-border); margin-bottom:1rem; position:relative;">
+                            <span class="material-icons btn-remove-item" onclick="removeWorkflowStep(${index})" style="position:absolute; top:-10px; right:-10px; cursor:pointer; color:var(--color-danger); background:var(--color-surface); border-radius:50%; box-shadow:var(--shadow);">cancel</span>
+                            <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px;">ETAPA ${index + 1}</div>
+                            <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Visto do Gerente)" value="${step.step_name || ''}" style="margin-bottom:8px;" oninput="window._tempWorkflowSteps[${index}].step_name = this.value">
+                            <select class="input-field" onchange="window._tempWorkflowSteps[${index}].approver_type = this.value; document.getElementById('specific-user-div-${index}').style.display = this.value === 'specific_user' ? 'flex' : 'none';">
+                                <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
+                                <option value="specific_user" ${step.approver_type === 'specific_user' ? 'selected' : ''}>Usuário Específico</option>
+                            </select>
+                            <div id="specific-user-div-${index}" class="input-field" style="margin-top:8px; cursor:pointer; display:${step.approver_type === 'specific_user' ? 'flex' : 'none'}; align-items:center; justify-content:space-between;" onclick="selectApproverForStep(${index})">
+                                <span id="approver-name-${index}">${approverName}</span><span class="material-icons">person_search</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            // Guarda os passos temporariamente para edição
+            window._tempWorkflowSteps = steps || [];
+
+            const updateModalBody = () => {
+                modalBody.innerHTML = `
+                    <div id="workflow-steps-container">${renderSteps(window._tempWorkflowSteps)}</div>
+                    <button class="btn btn-secondary" onclick="addWorkflowStepUI()" style="margin-top: 1rem; width: 100%;"><span class="material-icons">add</span> Adicionar Etapa</button>
+                `;
+            };
+
+            updateModalBody();
+
+            modalFooter.innerHTML = `
+                <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="saveWorkflow('${requestType}')">Salvar Fluxo</button>
+            `;
+            
+            window.addWorkflowStepUI = () => {
+                window._tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', specific_approver_id: null, approver: null });
+                updateModalBody();
+            };
+            window.removeWorkflowStep = (index) => {
+                window._tempWorkflowSteps.splice(index, 1);
+                updateModalBody();
+            };
+            window.selectApproverForStep = (index) => {
+                currentSelectionTarget = null;
+                openUserSelectorModal({
+                    title: 'Selecionar Aprovador Específico',
+                    targetArray: [],
+                    onComplete: () => {
+                        const tempArray = _selectorConfig.targetArray;
+                        if (tempArray && tempArray.length > 0) {
+                            const user = tempArray[0];
+                            window._tempWorkflowSteps[index].specific_approver_id = user.id;
+                            window._tempWorkflowSteps[index].approver = { full_name: user.full_name };
+                            document.getElementById(`approver-name-${index}`).textContent = user.full_name;
+                        }
+                        closeRecipientModal();
+                    }
+                });
+            };
+        }
+
+        // NOVA FUNÇÃO: Salva o workflow desenhado no banco
+        async function saveWorkflow(requestType) {
+            const steps = window._tempWorkflowSteps;
+            const btn = event.target;
+
+            for (let i = 0; i < steps.length; i++) {
+                if (steps[i].approver_type === 'specific_user' && !steps[i].specific_approver_id) {
+                    showToast(\`Selecione um aprovador para a Etapa \${i + 1}\`, 'warning');
+                    return;
+                }
+                if (!steps[i].step_name) {
+                    steps[i].step_name = \`Etapa \${i + 1}\`;
+                }
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
+
+            try {
+                // Delete e Insert
+                const { error: delError } = await supabaseClient.from('request_approval_steps').delete().eq('request_type', requestType);
+                if (delError) throw delError;
+
+                if (steps.length > 0) {
+                    const insertData = steps.map((s, index) => ({
+                        request_type: requestType,
+                        step_order: index + 1,
+                        step_name: s.step_name,
+                        approver_type: s.approver_type,
+                        specific_approver_id: s.specific_approver_id
+                    }));
+
+                    const { error: insError } = await supabaseClient.from('request_approval_steps').insert(insertData);
+                    if (insError) throw insError;
+                }
+                
+                showToast('Fluxo de aprovação salvo com sucesso!', 'success');
+                closeRequestModal();
+                loadRequestSettingsData();
+            } catch(e) {
+                console.error(e);
+                showToast('Erro ao salvar o fluxo.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Salvar Fluxo';
+            }
+        }
 // ===================================================================
 // FIM: NOVAS FUNÇÕES PARA PRÉ-APROVAÇÃO DE REQUISIÇÕES
 // ===================================================================
