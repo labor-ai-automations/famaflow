@@ -2586,11 +2586,11 @@ const appHTML = `<div id="app-container">
                         <div id="workflow-editor-workspace" class="builder-workspace" style="display: none;">
                             <div class="builder-header-card" style="margin: 1.5rem; margin-bottom: 1rem; border-left: 6px solid var(--color-info);">
                                 <h2 id="workflow-editor-title" style="margin: 0; font-size: 1.5rem;"></h2>
-                                <p id="workflow-editor-desc" style="color:var(--color-text-secondary); font-size: 0.9rem; margin: 4px 0 0 0;">Arraste as etapas para reordenar. Adicione ou remova etapas para customizar o fluxo.</p>
+                                <p id="workflow-editor-desc" style="color:var(--color-text-secondary); font-size: 0.9rem; margin: 4px 0 0 0;">Defina as etapas para customizar o fluxo de aprovação.</p>
                             </div>
 
                             <div class="builder-editor-side" style="padding: 0 1.5rem 1.5rem 1.5rem;">
-                               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
                                     <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase;">Cadeia de Pings (Aprovação)</h3>
                                     <button class="btn btn-secondary" onclick="addWorkflowStepUI()"><span class="material-icons">add</span> Adicionar Etapa</button>
                                 </div>
@@ -2966,7 +2966,7 @@ const appHTML = `<div id="app-container">
             else { console.error("Perfil não encontrado:", error); currentUserProfile = { id: user.id, email: user.email, full_name: 'Usuário' }; }
         }
 
-async function showApp() {
+        async function showApp() {
     const appContainer = document.getElementById('app-container');
     if (!appContainer) return;
     appContainer.classList.add('visible');
@@ -3026,7 +3026,7 @@ async function showApp() {
         adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
     }
 
-    // 4. ATRIBUIÇÃO DE EVENTOS DA SIDEBAR (Forma correta usando showPage)
+    // 4. ATRIBUIÇÃO DE EVENTOS DA SIDEBAR
     document.getElementById('main-sidebar').addEventListener('click', (e) => {
         const link = e.target.closest('.nav-link[data-page]');
         if (link) {
@@ -3066,6 +3066,71 @@ async function showApp() {
     }
 
     loadAllDynamicData();
+}
+
+function showPage(pageId, targetUserId = null) { 
+    const appContainer = document.getElementById('app-container'); 
+    if (!appContainer) return;
+
+    // 1. Esconde todas as páginas e mostra a selecionada
+    appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
+    const targetPage = appContainer.querySelector(`#${pageId}`); 
+    if (targetPage) targetPage.classList.add('active'); 
+    
+    // 2. Atualiza a Sidebar
+    appContainer.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active')); 
+    const profileShortcut = document.getElementById('profile-shortcut');
+    if (profileShortcut) profileShortcut.classList.remove('active');
+
+    if (pageId === 'profile-page' && (!targetUserId || targetUserId === currentUserProfile.id)) {
+         if (profileShortcut) profileShortcut.classList.add('active');
+         appContainer.querySelector('.nav-link.active')?.classList.remove('active');
+    } else {
+        const activeLink = appContainer.querySelector(`.nav-link[data-page="${pageId}"]`); 
+        if (activeLink) activeLink.classList.add('active');
+    }
+    
+    // 3. Lógica dos Botões Flutuantes (FABs)
+    const fabMessage = document.getElementById('fab-new-message');
+    const fabPost = document.getElementById('fab-new-post');
+    if (fabMessage) fabMessage.classList.add('hidden');
+    if (fabPost) fabPost.classList.add('hidden');
+
+    const p = currentUserProfile?.permissions || [];
+    const isAdmin = p.includes('manage_users');
+    const canViewMessages = p.includes('view_messages') || isAdmin;
+    
+    if (pageId === 'mural-page' && isAdmin && fabPost) {
+        fabPost.classList.remove('hidden');
+    } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page', 'workflow-builder-page'].includes(pageId) && canViewMessages && fabMessage) {
+        fabMessage.classList.remove('hidden');
+    }
+
+    // 4. CARREGAMENTO DE DADOS UNIFICADO
+    if (pageId === 'messages-page') loadMessages();
+    if (pageId === 'requests-page') loadRequests();
+    if (pageId === 'team-page') {
+        document.getElementById('team-search-name').value = '';
+        document.getElementById('team-filter-dept').value = '';
+        document.getElementById('team-filter-role').value = '';
+        loadTeamPage();
+    }
+    if (pageId === 'profile-page') loadUserProfileData(targetUserId);
+    if (pageId === 'mural-page') loadMuralPage();
+    if (pageId === 'rankings-page') loadRankingsPage();
+    if (pageId === 'request-management-page') loadRequestManagementPage();
+    if (pageId === 'travel-request-management-page') loadTravelRequestManagementPage();
+    if (pageId === 'my-routines-page') loadMyRoutinesPage();
+    if (pageId === 'organograma-page') loadOrganogramaPage();
+    if (pageId === 'manage-processes-page') {
+        loadManageProcessesPage(); 
+        switchProcessTab('recurrent'); 
+    }
+    if (pageId === 'kb-page') loadKBPage();
+    if (pageId === 'users-page') loadUsersForAdmin(); 
+    if (pageId === 'maintenance-page') loadMaintenancePage();
+    if (pageId === 'workflow-builder-page') loadWorkflowBuilderPage(); 
+    if (pageId === 'feedback-page') loadFeedbackPage();
 }
         
 
