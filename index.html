@@ -1959,6 +1959,9 @@ body.fullscreen-flow .flowchart-monitor-bar {
         const N8N_SAVE_REQUEST_FEEDBACK_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-request-feedback';
         const N8N_GERAR_PDF_MANUTENCAO_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-pdf-manutencao';
         const N8N_SAVE_OVERTIME_CALCULATION_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save-overtime-calculation';
+        const N8N_SUBMIT_RH_REQUEST_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/submit_rh_request';
+        const N8N_PROCESS_RH_APPROVAL_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/process_rh_request_approval';
+        const N8N_SAVE_WORKFLOW_URL = 'https://n8n-n8n.znxk1t.easypanel.host/webhook/save_request_workflow';
 
 async function generateMaintenancePDF(requestId, btnElement) {
             btnElement.disabled = true;
@@ -2654,6 +2657,60 @@ const appHTML = `<div id="app-container">
     </div>
 </div>
                 
+                <!-- NOVA PÁGINA DO CONSTRUTOR DE FLUXOS -->
+                <div id="workflow-builder-page" class="page-content">
+                    <div class="page-header">
+                        <div>
+                            <h1>Editor de Fluxos de Aprovação</h1>
+                            <p>Desenhe a esteira de aprovação para cada tipo de requisição de RH.</p>
+                        </div>
+                    </div>
+
+                    <div class="builder-grid">
+                        <!-- Coluna de Navegação (Tipos de Requisição) -->
+                        <div class="builder-sidebar">
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 1.5rem;">
+                                <span class="material-icons" style="color:var(--color-text-secondary);">folder_open</span>
+                                <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); margin:0;">Tipos de Requisição</h3>
+                            </div>
+                            <div id="workflow-types-list">
+                                <!-- A lista de requisições será renderizada aqui pelo JS -->
+                            </div>
+                        </div>
+
+                        <!-- Área de Trabalho Principal -->
+                        <div id="workflow-editor-workspace" class="builder-workspace" style="display: none;">
+                            <div class="builder-header-card" style="margin: 1.5rem; margin-bottom: 1rem; border-left: 6px solid var(--color-info);">
+                                <h2 id="workflow-editor-title" style="margin: 0; font-size: 1.5rem;"></h2>
+                                <p id="workflow-editor-desc" style="color:var(--color-text-secondary); font-size: 0.9rem; margin: 4px 0 0 0;">Arraste as etapas para reordenar. Adicione ou remova etapas para customizar o fluxo.</p>
+                            </div>
+
+                            <div class="builder-editor-side" style="padding: 0 1.5rem 1.5rem 1.5rem;">
+                               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                                    <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase;">Cadeia de Pings (Aprovação)</h3>
+                                    <button class="btn btn-secondary" onclick="addWorkflowStepUI()"><span class="material-icons">add</span> Adicionar Etapa</button>
+                                </div>
+                                <div id="workflow-steps-container">
+                                    <!-- Os cards das etapas serão renderizados aqui pelo JS -->
+                                </div>
+                            </div>
+                            
+                            <div class="modal-footer" style="margin-top: auto;">
+                                <button class="btn btn-danger" onclick="saveWorkflow()"><span class="material-icons">save</span> Salvar Alterações no Fluxo</button>
+                            </div>
+                        </div>
+
+                        <!-- Estado Inicial Vazio -->
+                        <div id="workflow-builder-empty-state" class="card" style="display: flex; flex-direction: column; align-items:center; justify-content:center; text-align:center; height: 500px; border-style: dashed;">
+                            <div style="background:var(--color-background); width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom: 1.5rem;">
+                                <span class="material-icons" style="font-size:40px; color:var(--color-border);">account_tree</span>
+                            </div>
+                            <h2 style="margin:0; color:var(--color-text-secondary);">Editor de Fluxos</h2>
+                            <p style="color: var(--color-text-secondary); max-width: 300px;">Selecione um tipo de requisição na lista à esquerda para começar a editar sua esteira de aprovação.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <button class="fab" id="fab-new-message" title="Nova Mensagem"><span class="material-icons">add</span></button>
             </main>
 
@@ -3075,6 +3132,7 @@ const pageToKeyMap = {
                 }
         if (isAdmin) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="users-page"><span class="material-icons">group_add</span> Usuários</a></li>`;
+            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="workflow-builder-page"><span class="material-icons">account_tree</span> Editor de Fluxos</a></li>`;
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="builder-page"><span class="material-icons">architecture</span> Construtor de Requisições</a></li>`;
         }
                 
@@ -3190,6 +3248,7 @@ function showPage(pageId, targetUserId = null) {
             if (pageId === 'kb-page') loadKBPage();
             if (pageId === 'users-page') loadUsersForAdmin(); 
             if (pageId === 'maintenance-page') loadMaintenancePage();
+            if (pageId === 'workflow-builder-page') loadWorkflowBuilderPage();
 			if (pageId === 'feedback-page') loadFeedbackPage();
         }
 		
@@ -5231,76 +5290,53 @@ function initOrgZoomPan() {
         // --- REQUESTS MODULE LOGIC ---
 
 async function loadRequests() {
-    // Controla a visibilidade da aba de Configurações para Admins
-    const settingsTabBtn = document.getElementById('btn-tab-request-settings');
-    if (currentUserProfile.permissions.includes('manage_users')) {
-        settingsTabBtn.style.display = 'block';
-        loadRequestSettingsData(); // Carrega os dados da aba de configurações em segundo plano
-    } else {
-        settingsTabBtn.style.display = 'none';
-    }
-
-    // Garante que a aba inicial seja sempre a de "Minhas Requisições"
-    switchRequestTab('my_requests');
-
+    // Esta função agora carrega apenas as requisições de RH do usuário logado.
     const tableBody = document.getElementById('request-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-    // Busca as requisições do usuário logado
-    const { data, error } = await supabaseClient.rpc('get_my_requests');
-    
+    const { data, error } = await supabaseClient
+        .from('rh_requests')
+        .select('*')
+        .eq('requester_id', currentUserProfile.id)
+        .order('created_at', { ascending: false });
+
     if (error) {
-        console.error("Erro ao buscar requisições:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar requisições.</td></tr>`;
+        console.error("Erro ao buscar requisições de RH:", error);
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar.</td></tr>`;
         return;
     }
 
-    // CORREÇÃO APLICADA AQUI: Filtra os dados para excluir requisições de 'maintenance'
-    const filteredRequests = (data || []).filter(req => req.type !== 'maintenance');
-
-    if (filteredRequests.length === 0) {
+    if (!data || data.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada.</td></tr>`;
         return;
     }
     
-    const requestTypeLabels = {
-        'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção Interna',
-        'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem',
-        'disciplinary_action': 'Medida Disciplinar'
-        // 'maintenance' removido intencionalmente
+    const statusTranslations = {
+        'pending_approval': 'Em Análise',
+        'in_progress': 'Em Processamento',
+        'approved': 'Aprovada',
+        'rejected': 'Rejeitada',
+        'completed': 'Concluída',
+        'cancelled': 'Cancelada'
     };
 
-    const statusLabels = {
-        'pending': 'Pendente (RH)', 'pending_manager_check': 'Aguardando Check Gerencial', 'approved': 'Aprovada', 
-        'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada',
-        'pending_review': 'Aguardando Análise', 'approved_by_director': 'Aprovado (Diretor)',
-        'rejected_by_director': 'Recusado (Diretor)', 'pending_final_approval': 'Aprovação Final Pendente',
-        'approved_definitively': 'Aprovada', 'rejected_definitively': 'Recusada',
-        'cancelled_by_requester': 'Cancelada'
-    };
-
-    tableBody.innerHTML = filteredRequests.map(req => {
-        let statusLabel = statusLabels[req.status] || req.status.replace(/_/g, ' ');
-        let statusClass = `status-${req.status}`;
-
-        // Lógica de cores específica para o novo status
-        if (req.status === 'pending_manager_check') {
-            statusClass = 'status-pending'; // Usa a cor amarela de pendente
-        }
+    tableBody.innerHTML = data.map(req => {
+        const statusLabel = statusTranslations[req.status] || 'Desconhecido';
+        let statusClass = 'status-pending';
+        if (req.status === 'approved' || req.status === 'completed') statusClass = 'status-approved';
+        if (req.status === 'rejected' || req.status === 'cancelled') statusClass = 'status-rejected';
         
-        const typeLabel = requestTypeLabels[req.type] || req.type;
+        const typeLabel = RH_REQUEST_TYPES[req.request_type] || req.request_type;
         const date = new Date(req.created_at).toLocaleDateString('pt-BR');
 
         return `
             <tr>
-                <td style="width: 18%;"><strong>${typeLabel}</strong></td>
-                <td style="width: 25%;">${currentUserProfile.full_name}</td>
-                <td style="width: 14%;">${date}</td>
-                <td style="width: 20%;"><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                <td style="width: 23%;">
-                    <div style="display: flex; gap: 0.4rem; justify-content: flex-start;">
-                        <button class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.9rem; white-space: nowrap;" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button>
-                    </div>
+                <td><strong>${typeLabel}</strong></td>
+                <td>${currentUserProfile.full_name}</td>
+                <td>${date}</td>
+                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="openRhRequestDetailsModal('${req.id}')">Ver Detalhes</button>
                 </td>
             </tr>
         `;
@@ -6377,13 +6413,25 @@ async function submitRequest(event) {
                     selectedParticipants = [];
                 }
 
-                const response = await fetch(webhookUrl, {
+                const isRhRequest = Object.keys(RH_REQUEST_TYPES).includes(typeToRefresh);
+                let finalWebhookUrl = webhookUrl;
+                let finalPayload = payload;
+
+                if (isRhRequest) {
+                    finalWebhookUrl = N8N_SUBMIT_RH_REQUEST_URL;
+                    finalPayload = {
+                        request_type: typeToRefresh,
+                        data: dataObject
+                    };
+                }
+
+                const response = await fetch(finalWebhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${session.access_token}`
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(finalPayload)
                 });
 
                 if (!response.ok) {
@@ -6393,15 +6441,14 @@ async function submitRequest(event) {
 
                 showToast("Solicitação enviada com sucesso!", "success");
                 
-                // Fecha o modal (isso vai limpar o currentRequestType global, mas já temos o typeToRefresh local)
                 closeRequestModal();
                 
-                // Agora o refresh vai funcionar porque usamos a variável segura 'typeToRefresh'
                 setTimeout(() => {
                     if (typeToRefresh === 'maintenance') {
                         loadMaintenancePage();
                     } else {
-                        loadRequests();
+                        // Agora a função loadRequests será refatorada para buscar na nova tabela
+                        loadRequests(); 
                     }
                 }, 1500);
 
@@ -7060,6 +7107,175 @@ function toggleRecipientSelection(user) {
         function closeConfirmationModal() {
             document.getElementById('confirmation-modal').classList.remove('visible');
         }
+
+        // ===================================================================
+        // INÍCIO: NOVAS FUNÇÕES DO EDITOR DE FLUXOS DE RH
+        // ===================================================================
+
+        let _tempWorkflowSteps = [];
+        let _currentEditingWorkflowType = null;
+        const RH_REQUEST_TYPES = {
+            'overtime': 'Requisição de Horas Extras',
+            'new_hire': 'Requisição de Contratação',
+            'termination': 'Solicitação de Desligamento',
+            'promotion': 'Requisição de Promoção',
+            'disciplinary_action': 'Registro de Medida Disciplinar',
+            'travel': 'Requisição de Viagem',
+            'training': 'Requisição de Treinamento'
+        };
+
+        function loadWorkflowBuilderPage() {
+            document.getElementById('workflow-editor-workspace').style.display = 'none';
+            document.getElementById('workflow-builder-empty-state').style.display = 'flex';
+            renderWorkflowTypeList();
+        }
+
+        function renderWorkflowTypeList() {
+            const listContainer = document.getElementById('workflow-types-list');
+            listContainer.innerHTML = Object.entries(RH_REQUEST_TYPES).map(([key, value]) => `
+                <div class="blueprint-card" id="wf-type-${key}" onclick="selectWorkflowToEdit('${key}')">
+                    <span class="material-icons">article</span>
+                    <div style="font-weight:700; font-size: 0.9rem;">${value}</div>
+                </div>
+            `).join('');
+        }
+
+        async function selectWorkflowToEdit(requestType) {
+            _currentEditingWorkflowType = requestType;
+            document.querySelectorAll('#workflow-types-list .blueprint-card').forEach(c => c.classList.remove('active'));
+            document.getElementById(`wf-type-${requestType}`).classList.add('active');
+
+            document.getElementById('workflow-builder-empty-state').style.display = 'none';
+            const workspace = document.getElementById('workflow-editor-workspace');
+            workspace.style.display = 'flex';
+            
+            document.getElementById('workflow-editor-title').textContent = RH_REQUEST_TYPES[requestType];
+            const stepsContainer = document.getElementById('workflow-steps-container');
+            stepsContainer.innerHTML = '<div class="empty-state">Carregando fluxo...</div>';
+
+            const { data, error } = await supabaseClient
+                .from('request_approval_workflows')
+                .select('*, approvers:approver_ids(*)')
+                .eq('request_type', requestType)
+                .order('step_order');
+
+            if (error) {
+                stepsContainer.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar fluxo.</div>';
+                return;
+            }
+
+            _tempWorkflowSteps = data || [];
+            renderWorkflowSteps();
+        }
+
+        function renderWorkflowSteps() {
+            const stepsContainer = document.getElementById('workflow-steps-container');
+            if (_tempWorkflowSteps.length === 0) {
+                stepsContainer.innerHTML = `<div class="empty-state" style="padding: 2rem; border: 1px dashed var(--color-border); border-radius: 8px;">Nenhuma etapa configurada. Clique em "Adicionar Etapa" para começar.</div>`;
+                return;
+            }
+
+            stepsContainer.innerHTML = _tempWorkflowSteps.map((step, index) => {
+                let approverDisplay = 'Selecionar...';
+                let countBadge = '';
+                if (step.approver_type === 'specific_users' && step.approvers && step.approvers.length > 0) {
+                    approverDisplay = step.approvers.map(u => u.full_name).join(', ');
+                    countBadge = `<span class="tag-fino" style="background:var(--color-brand-primary); color:white; font-size:0.6rem; padding: 2px 6px;">${step.approvers.length}</span>`;
+                }
+
+                return `
+                    <div class="step-item" style="padding:1.25rem; margin-bottom:1rem;">
+                        <span class="material-icons btn-remove-item" onclick="removeWorkflowStepUI(${index})">cancel</span>
+                        <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px;">ETAPA #${index + 1}</div>
+                        
+                        <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Visto do Gerente)" value="${step.step_name || ''}" style="margin-bottom:8px;" oninput="window._tempWorkflowSteps[${index}].step_name = this.value">
+                        
+                        <select class="input-field" onchange="window._tempWorkflowSteps[${index}].approver_type = this.value; renderWorkflowSteps();">
+                            <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
+                            <option value="specific_users" ${step.approver_type === 'specific_users' ? 'selected' : ''}>Usuários Específicos</option>
+                        </select>
+                        
+                        <div style="display:${step.approver_type === 'specific_users' ? 'block' : 'none'}; margin-top:8px;">
+                            <div class="input-field" style="cursor:pointer; display:flex; align-items:center; gap: 8px;" onclick="openApproverSelector(${index})">
+                                <div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem;" id="approver-name-${index}">
+                                    ${approverDisplay}
+                                </div>
+                                <div id="approver-count-${index}">${countBadge}</div>
+                                <span class="material-icons" style="color:var(--color-text-secondary);">group_add</span>
+                            </div>
+                            <div class="radio-group" style="margin-top: 1rem;">
+                                <label><input type="radio" name="policy-${index}" value="any" ${step.approval_policy !== 'all' ? 'checked' : ''} onchange="window._tempWorkflowSteps[${index}].approval_policy = this.value;"> Qualquer um aprova (OU)</label>
+                                <label><input type="radio" name="policy-${index}" value="all" ${step.approval_policy === 'all' ? 'checked' : ''} onchange="window._tempWorkflowSteps[${index}].approval_policy = this.value;"> Todos devem aprovar (E)</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function addWorkflowStepUI() {
+            _tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', approver_ids: [], approval_policy: 'any' });
+            renderWorkflowSteps();
+        }
+
+        function removeWorkflowStepUI(index) {
+            _tempWorkflowSteps.splice(index, 1);
+            renderWorkflowSteps();
+        }
+        
+        function openApproverSelector(stepIndex) {
+            currentSelectionTarget = null;
+            const currentApprovers = _tempWorkflowSteps[stepIndex].approvers || [];
+            
+            openUserSelectorModal({
+                title: `Selecionar Aprovadores para Etapa #${stepIndex + 1}`,
+                targetArray: [...currentApprovers],
+                onComplete: () => {
+                    const finalSelection = _selectorConfig.targetArray;
+                    _tempWorkflowSteps[stepIndex].approvers = finalSelection;
+                    _tempWorkflowSteps[stepIndex].approver_ids = finalSelection.map(u => u.id);
+                    renderWorkflowSteps();
+                }
+            });
+        }
+
+        async function saveWorkflow() {
+            if (!_currentEditingWorkflowType) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
+
+            const payload = {
+                request_type: _currentEditingWorkflowType,
+                steps: _tempWorkflowSteps.map((step, index) => ({
+                    step_order: index + 1,
+                    step_name: step.step_name || `Etapa ${index + 1}`,
+                    approver_type: step.approver_type,
+                    approver_ids: step.approver_ids || null,
+                    approval_policy: step.approval_policy || 'any'
+                }))
+            };
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch(N8N_SAVE_WORKFLOW_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error("Falha ao salvar fluxo no servidor.");
+                showToast("Fluxo de aprovação salvo com sucesso!", "success");
+            } catch(e) {
+                showToast(e.message, "danger");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons">save</span> Salvar Alterações no Fluxo';
+            }
+        }
+
+        // ===================================================================
+        // FIM: NOVAS FUNÇÕES DO EDITOR DE FLUXOS DE RH
+        // ===================================================================
 		
 
 async function loadUserProfileData(userId) {
@@ -8780,7 +8996,7 @@ function openMaintenanceExecutionModal(requestId) {
             document.getElementById('maintenance-execution-modal').classList.remove('visible');
         }
 
-async function submitMaintenanceExecution(requestId) {
+        async function submitMaintenanceExecution(requestId) {
             const followedPlanRadio = document.querySelector('input[name="execution-followed-plan"]:checked');
             if (!followedPlanRadio) {
                 showToast("Por favor, confirme se o plano foi seguido.", "warning");
@@ -8828,6 +9044,202 @@ async function submitMaintenanceExecution(requestId) {
                 btn.disabled = false;
             }
         }
+
+        async function openRhRequestDetailsModal(requestId) {
+            // Esta será a função central para exibir detalhes e ações de requisições de RH
+            const modal = document.getElementById('request-modal');
+            const modalTitle = document.getElementById('request-modal-title');
+            const modalBody = document.getElementById('request-modal-body');
+            const modalFooter = document.getElementById('request-modal-footer');
+
+            modalTitle.textContent = 'Análise de Requisição';
+            modalBody.innerHTML = '<div class="empty-state">Carregando detalhes...</div>';
+            modalFooter.innerHTML = '';
+            modal.classList.add('visible');
+
+            try {
+                // Aqui virá a lógica para buscar os dados, o histórico, a etapa atual
+                // e renderizar o modal com os blocos de ação condicionais.
+                // Por enquanto, deixamos um placeholder.
+                modalBody.innerHTML = `<div class="empty-state">Funcionalidade em desenvolvimento.<br>ID: ${requestId}</div>`;
+                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+
+            } catch (error) {
+                modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
+                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+            }
+        }
+
+        async function openRhRequestDetailsModal(requestId) {
+            const modal = document.getElementById('request-modal');
+            const modalTitle = document.getElementById('request-modal-title');
+            const modalBody = document.getElementById('request-modal-body');
+            const modalFooter = document.getElementById('request-modal-footer');
+
+            modalTitle.textContent = 'Análise de Requisição';
+            modalBody.innerHTML = '<div class="empty-state">Carregando detalhes do fluxo...</div>';
+            modalFooter.innerHTML = '';
+            modal.classList.add('visible');
+
+            try {
+                // 1. Buscar todos os dados necessários em paralelo
+                const [requestRes, historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
+                    supabaseClient.from('rh_requests').select('*, requester:requester_id(full_name)').eq('id', requestId).single(),
+                    supabaseClient.from('rh_request_history').select('*').eq('request_id', requestId).order('created_at'),
+                    supabaseClient.from('request_approval_workflows').select('*'),
+                    supabaseClient.from('rh_request_step_approvals').select('*, approver:approver_id(full_name)').eq('request_id', requestId)
+                ]);
+
+                if (requestRes.error) throw requestRes.error;
+                const request = requestRes.data;
+                const history = historyRes.data || [];
+                const workflows = workflowRes.data || [];
+                const stepApprovals = stepApprovalsRes.data || [];
+
+                const requestWorkflow = workflows.filter(w => w.request_type === request.request_type).sort((a,b) => a.step_order - b.step_order);
+                const currentStepInfo = requestWorkflow.find(w => w.step_order === request.current_approval_step);
+                
+                // 2. Montar a Seção de Dados da Requisição (Output Inicial)
+                let dataHtml = '<h4 class="form-section-title" style="margin-top:0;">Dados da Solicitação</h4><div class="read-only-box" style="margin-bottom: 2rem;">';
+                for (const [key, value] of Object.entries(request.data)) {
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    dataHtml += `<p style="margin: 0.5rem 0;"><strong>${label}:</strong> ${value}</p>`;
+                }
+                dataHtml += '</div>';
+
+                // 3. Montar a Linha do Tempo do Histórico
+                let historyHtml = '<h4 class="form-section-title">Histórico de Processamento</h4>';
+                history.forEach(h => {
+                    historyHtml += `
+                        <div class="history-item">
+                            <div class="icon-wrapper"><span class="material-icons">check_circle</span></div>
+                            <div class="info-wrapper">
+                                <div class="action-text"><strong>${h.step_name || `Etapa ${h.step}`} concluída por ${h.changed_by_name}</strong></div>
+                                ${h.notes ? `<p style="font-size:0.85rem; margin:0; font-style:italic;">"${h.notes}"</p>` : ''}
+                                <div class="timestamp">${new Date(h.created_at).toLocaleString('pt-BR')}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Adiciona a etapa atual como "pendente" no histórico
+                if (currentStepInfo) {
+                    let stepStatusHtml = '';
+                    if (currentStepInfo.approval_policy === 'all') {
+                        const neededApprovers = new Set(currentStepInfo.approver_ids || []);
+                        const currentApprovals = stepApprovals.filter(sa => sa.step === currentStepInfo.step_order);
+                        currentApprovals.forEach(sa => {
+                            stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-success);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">check</span> Aprovado por ${sa.approver.full_name}</p>`;
+                            neededApprovers.delete(sa.approver_id);
+                        });
+                        if(neededApprovers.has(currentUserProfile.id)) {
+                             stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-warning);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">pending</span> Aguardando sua ação</p>`;
+                        }
+                    }
+
+                    historyHtml += `
+                        <div class="history-item">
+                            <div class="icon-wrapper" style="color:var(--color-warning);"><span class="material-icons">pending</span></div>
+                            <div class="info-wrapper">
+                                <div class="action-text"><strong>${currentStepInfo.step_name || `Etapa ${currentStepInfo.step_order}`} (Pendente)</strong></div>
+                                ${stepStatusHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+
+
+                // 4. Montar o Bloco de Ação Condicional
+                let actionHtml = '';
+                const myActionRequired = currentStepInfo && (
+                    (currentStepInfo.approver_type === 'manager' && (request.requester.manager_id === currentUserProfile.id)) ||
+                    (currentStepInfo.approver_type === 'specific_users' && currentStepInfo.approver_ids.includes(currentUserProfile.id))
+                );
+
+                if (myActionRequired) {
+                    actionHtml = '<h4 class="form-section-title">Sua Ação Nesta Etapa</h4>';
+                    
+                    // Caso especial: Cálculo de Hora Extra
+                    if (request.request_type === 'overtime' && (request.status === 'pending_approval' || request.status === 'in_progress')) {
+                         actionHtml += `
+                            <div class="form-group">
+                                <label>Valor Total (R$)</label>
+                                <input type="number" id="rh-valor-total" class="input-field" step="0.01" placeholder="Ex: 250.75">
+                            </div>
+                            <div class="form-group">
+                                <label>Qtd. Horas</label>
+                                <input type="number" id="rh-qtd-horas" class="input-field" step="0.1" placeholder="Ex: 8">
+                            </div>
+                             <div class="form-group">
+                                <label>Observações do Cálculo (Opcional)</label>
+                                <textarea id="rh-observacoes" class="input-field" rows="2"></textarea>
+                            </div>
+                        `;
+                        modalFooter.innerHTML = `
+                            <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="submitOvertimeCalculation('${requestId}')">Salvar Cálculo e Avançar</button>
+                        `;
+                    } else {
+                    // Caso geral: Aprovação/Rejeição
+                        actionHtml += `
+                            <div class="form-group">
+                                <label for="decision-notes">Observações da Decisão (Obrigatório ao Rejeitar)</label>
+                                <textarea id="decision-notes" class="input-field" rows="3"></textarea>
+                            </div>
+                        `;
+                        modalFooter.innerHTML = `
+                            <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="submitRhRequestDecision('${requestId}', 'rejected')">Rejeitar</button>
+                            <button class="btn btn-success" onclick="submitRhRequestDecision('${requestId}', 'approved')">Aprovar</button>
+                        `;
+                    }
+                } else {
+                     modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+                }
+
+                modalBody.innerHTML = dataHtml + historyHtml + actionHtml;
+
+            } catch (error) {
+                console.error("Erro ao abrir detalhes da requisição de RH:", error);
+                modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
+                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+            }
+        }
+
+        async function submitRhRequestDecision(requestId, decision) {
+            const notes = document.getElementById('decision-notes').value.trim();
+            if (decision === 'rejected' && !notes) {
+                showToast("A observação é obrigatória para rejeitar uma requisição.", "warning");
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const response = await fetch(N8N_PROCESS_RH_APPROVAL_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({
+                        request_id: requestId,
+                        decision: decision,
+                        notes: notes
+                    })
+                });
+                if (!response.ok) throw new Error("Falha ao processar a decisão.");
+
+                showToast("Decisão registrada com sucesso!", "success");
+                closeRequestModal();
+                setTimeout(() => loadRequestManagementPage(), 1000);
+
+            } catch(e) {
+                showToast(e.message, "danger");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
 
 function toggleMgtView(view) {
             document.getElementById('mgt-view-list').style.display = view === 'list' ? 'block' : 'none';
@@ -8917,150 +9329,61 @@ function toggleMgtView(view) {
             }
         }
 
-async function loadRequestManagementPage() {
-            const tableBody = document.getElementById('request-management-table-body');
-            if(!tableBody) return;
-            tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
+  async function loadRequestManagementPage() {
+    const tableBody = document.getElementById('request-management-table-body');
+    if(!tableBody) return;
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-            // 1. Busca todas as Requisições Gerais (excluindo Manutenção)
-            const { data: allReqs, error: reqError } = await supabaseClient.rpc('get_all_requests_for_viewing');
-            if (reqError) { 
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro ao carregar dados.</td></tr>`;
-                return;
-            }
-            const generalReqs = (allReqs || []).filter(req => req.type !== 'maintenance');
+    // 1. Chamar a nova RPC que faz todo o trabalho pesado no backend.
+    const { data: processedRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
-            // 2. Busca o Mapa (Workflows) e os Perfis (para checar hierarquia)
-            const [workflowsRes, profilesRes] = await Promise.all([
-                supabaseClient.from('request_approval_steps').select('*').order('step_order'),
-                supabaseClient.from('profiles').select('id, manager_id, department')
-            ]);
-            
-            const workflows = workflowsRes.data || [];
-            const profiles = profilesRes.data || [];
-            const myProfile = profiles.find(p => p.id === currentUserProfile.id);
+    if (error) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
+        return;
+    }
+    
+    // 2. Aplicar os filtros do frontend
+    const viewFilter = document.getElementById('mgt-status-filter').value;
+    const finalRequests = (processedRequests || []).filter(req => {
+        if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
+        if (viewFilter === 'others') return !req.my_action_required && !req.is_finished;
+        if (viewFilter === 'all_pending') return !req.is_finished;
+        if (viewFilter === 'finished') return req.is_finished;
+        return true;
+    });
 
-            const p = currentUserProfile.permissions || [];
-            const isAdmin = p.includes('manage_users');
-            const viewFilter = document.getElementById('mgt-status-filter').value;
+    if (finalRequests.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada nesta visão.</td></tr>`;
+        return;
+    }
 
-            const processedRequests = [];
+    const statusTranslations = {
+        'pending_approval': 'Em Análise', 'in_progress': 'Em Processamento',
+        'approved': 'Aprovada', 'rejected': 'Rejeitada'
+    };
 
-            // 3. O MOTOR DE WORKFLOW: Analisa quem precisa agir em cada requisição
-            generalReqs.forEach(req => {
-                const isFinished = req.status.includes('approved') || req.status.includes('rejected') || req.status === 'executed' || req.status === 'planned';
-                
-                let myActionRequired = false;
-                let currentStepName = "Concluído";
-                
-                if (!isFinished) {
-                    // Busca a "receita" desta requisição específica
-                    const reqSteps = workflows.filter(w => w.request_type === req.type);
-                    
-                    if (reqSteps.length === 0) {
-                        // FALLBACK (Lógica Antiga): Se não tem fluxo desenhado, cai na regra padrão
-                        currentStepName = "Aprovação Padrão";
-                        const canManage = isAdmin || p.includes(`mgt_${req.type}`);
-                        
-                        // Lógica antiga do Check Gerencial (Apenas para manter compatibilidade)
-                        const rule = requestTypeSettingsCache.find(r => r.request_type === req.type);
-                        if (rule && rule.requires_manager_check && req.status === 'pending_manager_check') {
-                            const reqProfile = profiles.find(p => p.id === req.requester_id);
-                            if (reqProfile && reqProfile.manager_id === currentUserProfile.id) {
-                                myActionRequired = true; // Eu sou o gerente
-                            }
-                        } else if (canManage && req.status !== 'pending_manager_check') {
-                            myActionRequired = true; // Eu sou o RH/Aprovador final
-                        }
-                    } else {
-                        // LÓGICA NOVA: A Esteira
-                        const currentStep = reqSteps.find(s => s.step_order === (req.current_approval_step || 1));
-                        
-                        if (currentStep) {
-                            currentStepName = currentStep.step_name || `Etapa ${currentStep.step_order}`;
-                            
-                            // Quem é o dono desta etapa? Sou eu?
-                            if (currentStep.approver_type === 'manager') {
-                                const reqProfile = profiles.find(p => p.id === req.requester_id);
-                                if (reqProfile && reqProfile.manager_id === currentUserProfile.id) {
-                                    myActionRequired = true;
-                                }
-                            } else if (currentStep.approver_type === 'specific_user') {
-                                if (currentStep.specific_approver_id === currentUserProfile.id) {
-                                    myActionRequired = true;
-                                }
-                            } else if (currentStep.approver_type === 'role_group') {
-                                // O campo specific_approver_id guarda o nome do setor neste caso
-                                if (myProfile && myProfile.department === currentStep.specific_approver_id) {
-                                    myActionRequired = true;
-                                }
-                            }
-                        } else {
-                            // Se não achou a etapa atual, mas não está finalizado, significa que o fluxo quebrou ou chegou no fim esperando aprovação final
-                            currentStepName = "Aprovação Final";
-                            if (isAdmin) myActionRequired = true;
-                        }
-                    }
-                }
+    tableBody.innerHTML = finalRequests.map(req => {
+        const statusLabel = statusTranslations[req.status] || req.status;
+        let statusClass = 'status-pending';
+        if (req.status.includes('approved')) statusClass = 'status-approved';
+        if (req.status.includes('rejected')) statusClass = 'status-rejected';
 
-                // 4. Aplica os filtros da interface
-                let shouldShow = false;
-                if (viewFilter === 'my_action' && myActionRequired && !isFinished) shouldShow = true;
-                if (viewFilter === 'others' && !myActionRequired && !isFinished) shouldShow = true;
-                if (viewFilter === 'all_pending' && !isFinished) shouldShow = true;
-                if (viewFilter === 'finished' && isFinished) shouldShow = true;
-                
-                // Admin sempre pode ver "Aguardando Outros"
-                if (viewFilter === 'others' && !isFinished && isAdmin) shouldShow = true;
+        const date = new Date(req.created_at).toLocaleDateString('pt-BR');
+        const rowClass = req.my_action_required ? 'row-pending-check' : '';
+        
+        let actionsHTML = `<button class="btn btn-secondary" onclick="openRhRequestDetailsModal('${req.id}')">Analisar</button>`;
 
-                if (shouldShow) {
-                    processedRequests.push({ ...req, myActionRequired, currentStepName, isFinished });
-                }
-            });
-
-            // 5. Renderiza a Tabela
-            if (processedRequests.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada nesta visão.</td></tr>`;
-                return;
-            }
-
-            const typeTranslations = { 'new_hire': 'Contratação', 'termination': 'Desligamento', 'promotion': 'Promoção', 'overtime': 'Horas Extras', 'training': 'Treinamento', 'travel': 'Viagem', 'disciplinary_action': 'Medida Disciplinar' };
-            const statusTranslations = { 'pending': 'Na Esteira', 'pending_manager_check': 'Na Esteira', 'pending_final_approval': 'Aprovação Final', 'approved': 'Aprovada', 'rejected': 'Recusada', 'planned': 'Planejada', 'executed': 'Executada' };
-
-            tableBody.innerHTML = processedRequests.map(req => {
-                const statusLabel = statusTranslations[req.status] || req.status;
-                let statusClass = 'status-pending'; 
-                if (req.isFinished) {
-                    statusClass = req.status.includes('rejected') ? 'status-rejected' : 'status-approved';
-                }
-
-                const date = new Date(req.created_at).toLocaleDateString('pt-BR');
-                const rowClass = req.myActionRequired ? 'row-pending-check' : ''; // Destaca a linha se for a vez do usuário
-                
-                // Botões
-                let actionsHTML = `<button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Detalhes</button>`;
-                
-                if (req.myActionRequired) {
-                    // SE É A VEZ DO USUÁRIO NA ESTEIRA, MOSTRA OS BOTÕES
-                    actionsHTML += `
-                        <button class="btn btn-icon" title="Reprovar" onclick="openApprovalModal('reject', '${req.id}')"><span class="material-icons" style="color:var(--color-danger);">thumb_down</span></button>
-                        <button class="btn btn-icon" title="Aprovar" onclick="openApprovalModal('approve', '${req.id}')"><span class="material-icons" style="color:var(--color-success);">thumb_up</span></button>
-                    `;
-                } else if (!req.isFinished) {
-                    actionsHTML += `<span style="font-size:0.75rem; color:var(--color-text-secondary); margin-left: 10px; font-style: italic;">Aguardando outro setor</span>`;
-                }
-
-                return `
-                    <tr class="${rowClass}">
-                        <td>${req.requester_name || 'N/A'}</td>
-                        <td><strong>${typeTranslations[req.type] || req.type}</strong></td>
-                        <td><span class="user-tag role">${req.currentStepName}</span></td>
-                        <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
-                        <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        return `
+            <tr class="${rowClass}">
+                <td>${req.requester_name || 'N/A'}</td>
+                <td><strong>${RH_REQUEST_TYPES[req.request_type] || req.request_type}</strong></td>
+                <td><span class="user-tag role">${req.current_step_name || 'N/A'}</span></td>
+                <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+                <td><div style="display:flex; align-items:center; gap:0.5rem;">${actionsHTML}</div></td>
+            </tr>
+        `;
+    }).join('');
+}
 		
 // --- LÓGICA DO BUILDER (ADM) ---
         function createNewBlueprint() {
