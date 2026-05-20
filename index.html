@@ -12231,6 +12231,225 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
         if(btn) btn.disabled = false;
     }
 }
+
+// ===================================================================
+        // INJEÇÃO SEGURA: FUNÇÕES DO EDITOR DE FLUXOS DE RH
+        // (Colado no final para garantir escopo global)
+        // ===================================================================
+        
+        let tempWorkflowSteps = [];
+        let currentEditingWorkflowType = null;
+
+        const RH_REQUEST_TYPES = {
+            'new_hire': 'Contratação de Pessoal',
+            'termination': 'Desligamento',
+            'promotion': 'Promoção Interna',
+            'overtime': 'Horas Extras',
+            'training': 'Treinamento',
+            'disciplinary_action': 'Medida Disciplinar',
+            'travel': 'Requisição de Viagem'
+        };
+
+        window.loadWorkflowBuilderPage = function() {
+            const workspace = document.getElementById('workflow-editor-workspace');
+            const emptyState = document.getElementById('workflow-builder-empty-state');
+            
+            if(workspace) workspace.style.display = 'none';
+            if(emptyState) emptyState.style.display = 'flex';
+            
+            window.renderWorkflowTypeList();
+        };
+
+        window.renderWorkflowTypeList = function() {
+            const listContainer = document.getElementById('workflow-types-list');
+            if(!listContainer) return;
+            
+            listContainer.innerHTML = Object.entries(RH_REQUEST_TYPES).map(([key, value]) => `
+                <div class="blueprint-card" id="wf-type-${key}" onclick="selectWorkflowToEdit('${key}')">
+                    <span class="material-icons">account_tree</span>
+                    <div style="font-weight:700; font-size: 0.9rem;">${value}</div>
+                </div>
+            `).join('');
+        };
+
+        window.selectWorkflowToEdit = async function(requestType) {
+            currentEditingWorkflowType = requestType;
+            
+            document.querySelectorAll('#workflow-types-list .blueprint-card').forEach(c => c.classList.remove('active'));
+            const selectedType = document.getElementById(`wf-type-${requestType}`);
+            if(selectedType) selectedType.classList.add('active');
+
+            const emptyState = document.getElementById('workflow-builder-empty-state');
+            const workspace = document.getElementById('workflow-editor-workspace');
+            
+            if(emptyState) emptyState.style.display = 'none';
+            if(workspace) workspace.style.display = 'flex';
+            
+            const titleEl = document.getElementById('workflow-editor-title');
+            if(titleEl) titleEl.textContent = `Fluxo: ${RH_REQUEST_TYPES[requestType]}`;
+            
+            const stepsContainer = document.getElementById('workflow-steps-container');
+            if(!stepsContainer) return;
+            stepsContainer.innerHTML = '<div class="empty-state">Carregando fluxo do banco de dados...</div>';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('request_approval_workflows')
+                    .select('*')
+                    .eq('request_type', requestType)
+                    .order('step_order');
+
+                if (error) throw error;
+
+                tempWorkflowSteps = data || [];
+                
+                for (let i = 0; i < tempWorkflowSteps.length; i++) {
+                    if (tempWorkflowSteps[i].approver_type === 'specific_users' && tempWorkflowSteps[i].approver_ids && tempWorkflowSteps[i].approver_ids.length > 0) {
+                        const { data: userData } = await supabaseClient
+                            .from('profiles')
+                            .select('id, full_name')
+                            .in('id', tempWorkflowSteps[i].approver_ids);
+                        tempWorkflowSteps[i].approvers = userData || [];
+                    } else {
+                        tempWorkflowSteps[i].approvers = [];
+                    }
+                }
+                
+                window.renderWorkflowSteps();
+            } catch (error) {
+                console.error("Erro ao carregar fluxo:", error);
+                stepsContainer.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar fluxo. Verifique sua conexão.</div>';
+            }
+        };
+
+        window.renderWorkflowSteps = function() {
+            const stepsContainer = document.getElementById('workflow-steps-container');
+            if(!stepsContainer) return;
+
+            if (tempWorkflowSteps.length === 0) {
+                stepsContainer.innerHTML = `<div class="empty-state" style="padding: 2rem; border: 1px dashed var(--color-border); border-radius: 8px;">Nenhuma etapa configurada para este fluxo.</div>`;
+                return;
+            }
+
+            stepsContainer.innerHTML = tempWorkflowSteps.map((step, index) => {
+                let approverDisplay = 'Selecionar Usuários...';
+                let countBadge = '';
+                
+                if (step.approver_type === 'specific_users' && step.approvers && step.approvers.length > 0) {
+                    approverDisplay = step.approvers.map(u => u.full_name).join(', ');
+                    countBadge = `<span class="tag-fino" style="background:var(--color-brand-primary); color:white; font-size:0.6rem; padding: 2px 6px;">${step.approvers.length}</span>`;
+                }
+
+                return `
+                    <div class="step-item" style="padding:1.25rem; margin-bottom:1rem; position:relative;">
+                        <span class="material-icons btn-remove-item" onclick="removeWorkflowStepUI(${index})" style="position:absolute; top:-10px; right:-10px;">cancel</span>
+                        
+                        <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.75rem; margin-bottom: 8px;">ETAPA #${index + 1}</div>
+                        
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.8rem;">Nome da Etapa</label>
+                            <input type="text" class="input-field" placeholder="Ex: Visto do Gerente" value="${step.step_name || ''}" oninput="tempWorkflowSteps[${index}].step_name = this.value">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.8rem;">Tipo de Aprovador</label>
+                            <select class="input-field" onchange="tempWorkflowSteps[${index}].approver_type = this.value; renderWorkflowSteps();">
+                                <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
+                                <option value="specific_users" ${step.approver_type === 'specific_users' ? 'selected' : ''}>Usuários Específicos</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display:${step.approver_type === 'specific_users' ? 'block' : 'none'}; padding-top:0.5rem; border-top:1px dashed var(--color-border);">
+                            <label style="font-size: 0.8rem;">Selecione quem pode aprovar:</label>
+                            <div class="input-field" style="cursor:pointer; display:flex; align-items:center; gap: 8px; margin-bottom: 0.5rem;" onclick="openApproverSelector(${index})">
+                                <div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem;" id="approver-name-${index}">
+                                    ${approverDisplay}
+                                </div>
+                                <div id="approver-count-${index}">${countBadge}</div>
+                                <span class="material-icons" style="color:var(--color-text-secondary);">group_add</span>
+                            </div>
+                            
+                            <label style="font-size: 0.8rem; margin-top: 1rem; display: block;">Política de Aprovação do Grupo:</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="policy-${index}" value="any" ${step.approval_policy !== 'all' ? 'checked' : ''} onchange="tempWorkflowSteps[${index}].approval_policy = this.value;"> Qualquer um do grupo aprova (1 de N)</label>
+                                <label><input type="radio" name="policy-${index}" value="all" ${step.approval_policy === 'all' ? 'checked' : ''} onchange="tempWorkflowSteps[${index}].approval_policy = this.value;"> TODOS do grupo devem aprovar (N de N)</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+        
+        window.addWorkflowStepUI = function() {
+            if(!currentEditingWorkflowType) {
+                showToast("Selecione um tipo de requisição primeiro.", "warning");
+                return;
+            }
+            tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', approver_ids: [], approvers: [], approval_policy: 'any' });
+            window.renderWorkflowSteps();
+        };
+
+        window.removeWorkflowStepUI = function(index) {
+            tempWorkflowSteps.splice(index, 1);
+            window.renderWorkflowSteps();
+        };
+        
+        window.openApproverSelector = function(stepIndex) {
+            currentSelectionTarget = null;
+            const currentApprovers = tempWorkflowSteps[stepIndex].approvers || [];
+            
+            openUserSelectorModal({
+                title: `Selecionar Aprovadores (Etapa #${stepIndex + 1})`,
+                targetArray: [...currentApprovers],
+                onComplete: () => {
+                    const finalSelection = _selectorConfig.targetArray;
+                    tempWorkflowSteps[stepIndex].approvers = finalSelection;
+                    tempWorkflowSteps[stepIndex].approver_ids = finalSelection.map(u => u.id);
+                    window.renderWorkflowSteps();
+                }
+            });
+        };
+
+        window.saveWorkflow = async function() {
+            if (!currentEditingWorkflowType) return;
+            // Evita erro se event target não existir (chamada direta)
+            const btn = document.querySelector('#workflow-editor-workspace .btn-danger');
+            if(btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
+            }
+
+            const stepsData = tempWorkflowSteps.map((step, index) => ({
+                request_type: currentEditingWorkflowType,
+                step_order: index + 1,
+                step_name: step.step_name || `Etapa ${index + 1}`,
+                approver_type: step.approver_type,
+                approver_ids: (step.approver_type === 'specific_users' && step.approver_ids && step.approver_ids.length > 0) ? step.approver_ids : null,
+                approval_policy: step.approval_policy || 'any'
+            }));
+
+            try {
+                await supabaseClient.from('request_approval_workflows').delete().eq('request_type', currentEditingWorkflowType);
+                if(stepsData.length > 0) {
+                    const { error } = await supabaseClient.from('request_approval_workflows').insert(stepsData);
+                    if (error) throw error;
+                }
+                showToast("Fluxo de aprovação salvo com sucesso!", "success");
+            } catch(e) {
+                console.error("Erro ao salvar fluxo:", e);
+                showToast("Erro ao salvar fluxo no servidor.", "danger");
+            } finally {
+                if(btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-icons">save</span> Salvar Alterações no Fluxo';
+                }
+            }
+        };
+        // ================= FIM DA INJEÇÃO SEGURA ===========================
+		
+    </script>
+</body>
+</html>
 		
     </script>
 
