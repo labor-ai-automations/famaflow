@@ -3122,66 +3122,12 @@ async function showApp() {
         adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
     }
 
-    // 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE GLOBAL PARA A SIDEBAR (CORRIGIDO)
+    // 4. ATRIBUIÇÃO DE EVENTOS DA SIDEBAR (Forma correta usando showPage)
     document.getElementById('main-sidebar').addEventListener('click', (e) => {
         const link = e.target.closest('.nav-link[data-page]');
         if (link) {
             e.preventDefault();
-            const targetPageId = link.dataset.page;
-
-            // Remove a classe 'active' de todas as páginas
-            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
-            // Adiciona a classe 'active' apenas à página alvo
-            const targetPage = document.getElementById(targetPageId);
-            if (targetPage) targetPage.classList.add('active');
-
-            // Remove a classe 'active' de todos os links
-            document.querySelectorAll('.nav-link').forEach(navLink => navLink.classList.remove('active'));
-            // Adiciona a classe 'active' ao link clicado
-            link.classList.add('active');
-
-            // Gerencia atalho de perfil
-            document.getElementById('profile-shortcut').classList.remove('active');
-
-            // Lógica de FABs
-            const fabMessage = document.getElementById('fab-new-message');
-            const fabPost = document.getElementById('fab-new-post');
-            if (fabMessage) fabMessage.classList.add('hidden');
-            if (fabPost) fabPost.classList.add('hidden');
-
-            const canViewMessages = p.includes('view_messages') || isAdmin;
-            if (targetPageId === 'mural-page' && isAdmin && fabPost) {
-                fabPost.classList.remove('hidden');
-            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page', 'workflow-builder-page'].includes(targetPageId) && canViewMessages && fabMessage) {
-                fabMessage.classList.remove('hidden');
-            }
-
-            // Carregamento de dados sob demanda
-            if (targetPageId === 'messages-page') loadMessages();
-            if (targetPageId === 'requests-page') loadRequests();
-            if (targetPageId === 'team-page') {
-                document.getElementById('team-search-name').value = '';
-                document.getElementById('team-filter-dept').value = '';
-                document.getElementById('team-filter-role').value = '';
-                loadTeamPage();
-            }
-            if (targetPageId === 'profile-page') loadUserProfileData(null);
-            if (targetPageId === 'mural-page') loadMuralPage();
-            if (targetPageId === 'rankings-page') loadRankingsPage();
-            if (targetPageId === 'request-management-page') loadRequestManagementPage();
-            if (targetPageId === 'travel-request-management-page') loadTravelRequestManagementPage();
-            if (targetPageId === 'my-routines-page') loadMyRoutinesPage();
-            if (targetPageId === 'organograma-page') loadOrganogramaPage();
-            if (targetPageId === 'manage-processes-page') {
-                loadManageProcessesPage();
-                switchProcessTab('recurrent');
-            }
-            if (targetPageId === 'kb-page') loadKBPage();
-            if (targetPageId === 'users-page') loadUsersForAdmin(); 
-            if (targetPageId === 'maintenance-page') loadMaintenancePage();
-            if (targetPageId === 'workflow-builder-page') loadWorkflowBuilderPage();
-			if (targetPageId === 'feedback-page') loadFeedbackPage();
-
+            showPage(link.dataset.page);
             if (window.innerWidth <= 768) {
                 document.getElementById('main-sidebar').classList.remove('open');
             }
@@ -3200,17 +3146,15 @@ async function showApp() {
     // 5. Redirecionamento Inicial
     const hasAnyPerm = p.length > 0;
     if (isAdmin || hasAnyPerm) {
-        // Redireciona para a primeira página visível da lista
         const firstVisibleLink = document.querySelector('.sidebar-scroll-area .nav-menu:not(#admin-menu-list) li:not([style*="display: none"]) .nav-link');
         if (firstVisibleLink) {
             showPage(firstVisibleLink.dataset.page);
         } else {
-            // Se nenhuma página principal for visível, tenta a primeira página de admin
             const firstAdminLink = document.querySelector('#admin-menu-list li:not([style*="display: none"]) .nav-link');
             if (firstAdminLink) {
                  showPage(firstAdminLink.dataset.page);
             } else {
-                 showPage('profile-page'); // Fallback final
+                 showPage('profile-page');
             }
         }
     } else {
@@ -7076,6 +7020,74 @@ function toggleRecipientSelection(user) {
 
         function closeConfirmationModal() {
             document.getElementById('confirmation-modal').classList.remove('visible');
+        }
+
+        // ==========================================
+        // MOTOR DE NAVEGAÇÃO PRINCIPAL (RESTAURADO)
+        // ==========================================
+        function showPage(pageId, targetUserId = null) { 
+            const appContainer = document.getElementById('app-container'); 
+            if (!appContainer) return;
+
+            // 1. Esconde todas as páginas e mostra a selecionada
+            appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
+            const targetPage = appContainer.querySelector(`#${pageId}`); 
+            if (targetPage) targetPage.classList.add('active'); 
+            
+            // 2. Atualiza a Sidebar
+            appContainer.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active')); 
+            const profileShortcut = document.getElementById('profile-shortcut');
+            if (profileShortcut) profileShortcut.classList.remove('active');
+
+            if (pageId === 'profile-page' && (!targetUserId || targetUserId === currentUserProfile.id)) {
+                 if (profileShortcut) profileShortcut.classList.add('active');
+                 appContainer.querySelector('.nav-link.active')?.classList.remove('active');
+            } else {
+                const activeLink = appContainer.querySelector(`.nav-link[data-page="${pageId}"]`); 
+                if (activeLink) activeLink.classList.add('active');
+            }
+            
+            // 3. Lógica dos Botões Flutuantes (FABs)
+            const fabMessage = document.getElementById('fab-new-message');
+            const fabPost = document.getElementById('fab-new-post');
+            if (fabMessage) fabMessage.classList.add('hidden');
+            if (fabPost) fabPost.classList.add('hidden');
+
+            const p = currentUserProfile?.permissions || [];
+            const isAdmin = p.includes('manage_users');
+            const canViewMessages = p.includes('view_messages') || isAdmin;
+            
+            if (pageId === 'mural-page' && isAdmin && fabPost) {
+                fabPost.classList.remove('hidden');
+            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page', 'workflow-builder-page'].includes(pageId) && canViewMessages && fabMessage) {
+                fabMessage.classList.remove('hidden');
+            }
+
+            // 4. CARREGAMENTO DE DADOS UNIFICADO (Aqui a página é ativada de fato)
+            if (pageId === 'messages-page') loadMessages();
+            if (pageId === 'requests-page') loadRequests();
+            if (pageId === 'team-page') {
+                document.getElementById('team-search-name').value = '';
+                document.getElementById('team-filter-dept').value = '';
+                document.getElementById('team-filter-role').value = '';
+                loadTeamPage();
+            }
+            if (pageId === 'profile-page') loadUserProfileData(targetUserId);
+            if (pageId === 'mural-page') loadMuralPage();
+            if (pageId === 'rankings-page') loadRankingsPage();
+            if (pageId === 'request-management-page') loadRequestManagementPage();
+            if (pageId === 'travel-request-management-page') loadTravelRequestManagementPage();
+            if (pageId === 'my-routines-page') loadMyRoutinesPage();
+            if (pageId === 'organograma-page') loadOrganogramaPage();
+            if (pageId === 'manage-processes-page') {
+                loadManageProcessesPage(); 
+                switchProcessTab('recurrent'); 
+            }
+            if (pageId === 'kb-page') loadKBPage();
+            if (pageId === 'users-page') loadUsersForAdmin(); 
+            if (pageId === 'maintenance-page') loadMaintenancePage();
+            if (pageId === 'workflow-builder-page') loadWorkflowBuilderPage(); // <--- NOSSO NOVO EDITOR
+            if (pageId === 'feedback-page') loadFeedbackPage();
         }
 
         // ===================================================================
