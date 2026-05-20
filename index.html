@@ -7079,103 +7079,148 @@ function toggleRecipientSelection(user) {
         }
 
         // ===================================================================
-        // INÍCIO: NOVAS FUNÇÕES DO EDITOR DE FLUXOS DE RH
+        // INÍCIO: FUNÇÕES DO EDITOR DE FLUXOS (CORRIGIDAS)
         // ===================================================================
+        let tempWorkflowSteps = [];
+        let currentEditingWorkflowType = null;
 
-        let _tempWorkflowSteps = [];
-        let _currentEditingWorkflowType = null;
+        // Mapeamento dos tipos de requisição de RH que podem ter fluxos customizados
         const RH_REQUEST_TYPES = {
-            'overtime': 'Requisição de Horas Extras',
-            'new_hire': 'Requisição de Contratação',
-            'termination': 'Solicitação de Desligamento',
-            'promotion': 'Requisição de Promoção',
-            'disciplinary_action': 'Registro de Medida Disciplinar',
-            'travel': 'Requisição de Viagem',
-            'training': 'Requisição de Treinamento'
+            'new_hire': 'Contratação de Pessoal',
+            'termination': 'Desligamento',
+            'promotion': 'Promoção Interna',
+            'overtime': 'Horas Extras',
+            'training': 'Treinamento',
+            'disciplinary_action': 'Medida Disciplinar',
+            'travel': 'Requisição de Viagem'
         };
 
         function loadWorkflowBuilderPage() {
-            document.getElementById('workflow-editor-workspace').style.display = 'none';
-            document.getElementById('workflow-builder-empty-state').style.display = 'flex';
+            const workspace = document.getElementById('workflow-editor-workspace');
+            const emptyState = document.getElementById('workflow-builder-empty-state');
+            
+            if(workspace) workspace.style.display = 'none';
+            if(emptyState) emptyState.style.display = 'flex';
+            
             renderWorkflowTypeList();
         }
 
         function renderWorkflowTypeList() {
             const listContainer = document.getElementById('workflow-types-list');
+            if(!listContainer) return;
+            
             listContainer.innerHTML = Object.entries(RH_REQUEST_TYPES).map(([key, value]) => `
                 <div class="blueprint-card" id="wf-type-${key}" onclick="selectWorkflowToEdit('${key}')">
-                    <span class="material-icons">article</span>
+                    <span class="material-icons">account_tree</span>
                     <div style="font-weight:700; font-size: 0.9rem;">${value}</div>
                 </div>
             `).join('');
         }
 
         async function selectWorkflowToEdit(requestType) {
-            _currentEditingWorkflowType = requestType;
+            currentEditingWorkflowType = requestType;
             document.querySelectorAll('#workflow-types-list .blueprint-card').forEach(c => c.classList.remove('active'));
-            document.getElementById(`wf-type-${requestType}`).classList.add('active');
+            const selectedType = document.getElementById(`wf-type-${requestType}`);
+            if(selectedType) selectedType.classList.add('active');
 
-            document.getElementById('workflow-builder-empty-state').style.display = 'none';
+            const emptyState = document.getElementById('workflow-builder-empty-state');
             const workspace = document.getElementById('workflow-editor-workspace');
-            workspace.style.display = 'flex';
             
-            document.getElementById('workflow-editor-title').textContent = RH_REQUEST_TYPES[requestType];
+            if(emptyState) emptyState.style.display = 'none';
+            if(workspace) workspace.style.display = 'flex';
+            
+            const titleEl = document.getElementById('workflow-editor-title');
+            if(titleEl) titleEl.textContent = `Fluxo: ${RH_REQUEST_TYPES[requestType]}`;
+            
             const stepsContainer = document.getElementById('workflow-steps-container');
+            if(!stepsContainer) return;
             stepsContainer.innerHTML = '<div class="empty-state">Carregando fluxo...</div>';
 
-            const { data, error } = await supabaseClient
-                .from('request_approval_workflows')
-                .select('*, approvers:approver_ids(*)')
-                .eq('request_type', requestType)
-                .order('step_order');
+            try {
+                // Busca os dados do Supabase
+                const { data, error } = await supabaseClient
+                    .from('request_approval_workflows')
+                    .select('*')
+                    .eq('request_type', requestType)
+                    .order('step_order');
 
-            if (error) {
+                if (error) throw error;
+
+                // Garante que é um array, mesmo se vazio
+                tempWorkflowSteps = data || [];
+                
+                // Processamento extra para 'specific_users'
+                for (let i = 0; i < tempWorkflowSteps.length; i++) {
+                    if (tempWorkflowSteps[i].approver_type === 'specific_users' && tempWorkflowSteps[i].approver_ids && tempWorkflowSteps[i].approver_ids.length > 0) {
+                        // Se for um grupo específico, precisamos buscar os nomes para exibir na tela
+                        const { data: userData } = await supabaseClient
+                            .from('profiles')
+                            .select('id, full_name')
+                            .in('id', tempWorkflowSteps[i].approver_ids);
+                        tempWorkflowSteps[i].approvers = userData || [];
+                    } else {
+                        tempWorkflowSteps[i].approvers = [];
+                    }
+                }
+                
+                renderWorkflowSteps();
+            } catch (error) {
+                console.error("Erro ao carregar fluxo:", error);
                 stepsContainer.innerHTML = '<div class="empty-state" style="color:var(--color-danger);">Erro ao carregar fluxo.</div>';
-                return;
             }
-
-            _tempWorkflowSteps = data || [];
-            renderWorkflowSteps();
         }
 
         function renderWorkflowSteps() {
             const stepsContainer = document.getElementById('workflow-steps-container');
-            if (_tempWorkflowSteps.length === 0) {
-                stepsContainer.innerHTML = `<div class="empty-state" style="padding: 2rem; border: 1px dashed var(--color-border); border-radius: 8px;">Nenhuma etapa configurada. Clique em "Adicionar Etapa" para começar.</div>`;
+            if(!stepsContainer) return;
+
+            if (tempWorkflowSteps.length === 0) {
+                stepsContainer.innerHTML = `<div class="empty-state" style="padding: 2rem; border: 1px dashed var(--color-border); border-radius: 8px;">Nenhuma etapa configurada para este fluxo.</div>`;
                 return;
             }
 
-            stepsContainer.innerHTML = _tempWorkflowSteps.map((step, index) => {
-                let approverDisplay = 'Selecionar...';
+            stepsContainer.innerHTML = tempWorkflowSteps.map((step, index) => {
+                let approverDisplay = 'Selecionar Usuários...';
                 let countBadge = '';
+                
                 if (step.approver_type === 'specific_users' && step.approvers && step.approvers.length > 0) {
                     approverDisplay = step.approvers.map(u => u.full_name).join(', ');
                     countBadge = `<span class="tag-fino" style="background:var(--color-brand-primary); color:white; font-size:0.6rem; padding: 2px 6px;">${step.approvers.length}</span>`;
                 }
 
                 return `
-                    <div class="step-item" style="padding:1.25rem; margin-bottom:1rem;">
-                        <span class="material-icons btn-remove-item" onclick="removeWorkflowStepUI(${index})">cancel</span>
-                        <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.7rem; margin-bottom: 8px;">ETAPA #${index + 1}</div>
+                    <div class="step-item" style="padding:1.25rem; margin-bottom:1rem; position:relative;">
+                        <span class="material-icons btn-remove-item" onclick="removeWorkflowStepUI(${index})" style="position:absolute; top:-10px; right:-10px;">cancel</span>
                         
-                        <input type="text" class="input-field" placeholder="Nome da Etapa (ex: Visto do Gerente)" value="${step.step_name || ''}" style="margin-bottom:8px;" oninput="window._tempWorkflowSteps[${index}].step_name = this.value">
+                        <div style="font-weight:800; color:var(--color-brand-primary); font-size: 0.75rem; margin-bottom: 8px;">ETAPA #${index + 1}</div>
                         
-                        <select class="input-field" onchange="window._tempWorkflowSteps[${index}].approver_type = this.value; renderWorkflowSteps();">
-                            <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
-                            <option value="specific_users" ${step.approver_type === 'specific_users' ? 'selected' : ''}>Usuários Específicos</option>
-                        </select>
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.8rem;">Nome da Etapa</label>
+                            <input type="text" class="input-field" placeholder="Ex: Visto do Gerente" value="${step.step_name || ''}" oninput="tempWorkflowSteps[${index}].step_name = this.value">
+                        </div>
                         
-                        <div style="display:${step.approver_type === 'specific_users' ? 'block' : 'none'}; margin-top:8px;">
-                            <div class="input-field" style="cursor:pointer; display:flex; align-items:center; gap: 8px;" onclick="openApproverSelector(${index})">
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.8rem;">Tipo de Aprovador</label>
+                            <select class="input-field" onchange="tempWorkflowSteps[${index}].approver_type = this.value; renderWorkflowSteps();">
+                                <option value="manager" ${step.approver_type === 'manager' ? 'selected' : ''}>Gerente Direto do Solicitante</option>
+                                <option value="specific_users" ${step.approver_type === 'specific_users' ? 'selected' : ''}>Usuários Específicos</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display:${step.approver_type === 'specific_users' ? 'block' : 'none'}; padding-top:0.5rem; border-top:1px dashed var(--color-border);">
+                            <label style="font-size: 0.8rem;">Selecione quem pode aprovar:</label>
+                            <div class="input-field" style="cursor:pointer; display:flex; align-items:center; gap: 8px; margin-bottom: 0.5rem;" onclick="openApproverSelector(${index})">
                                 <div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem;" id="approver-name-${index}">
                                     ${approverDisplay}
                                 </div>
                                 <div id="approver-count-${index}">${countBadge}</div>
                                 <span class="material-icons" style="color:var(--color-text-secondary);">group_add</span>
                             </div>
-                            <div class="radio-group" style="margin-top: 1rem;">
-                                <label><input type="radio" name="policy-${index}" value="any" ${step.approval_policy !== 'all' ? 'checked' : ''} onchange="window._tempWorkflowSteps[${index}].approval_policy = this.value;"> Qualquer um aprova (OU)</label>
-                                <label><input type="radio" name="policy-${index}" value="all" ${step.approval_policy === 'all' ? 'checked' : ''} onchange="window._tempWorkflowSteps[${index}].approval_policy = this.value;"> Todos devem aprovar (E)</label>
+                            
+                            <label style="font-size: 0.8rem; margin-top: 1rem; display: block;">Política de Aprovação do Grupo:</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="policy-${index}" value="any" ${step.approval_policy !== 'all' ? 'checked' : ''} onchange="tempWorkflowSteps[${index}].approval_policy = this.value;"> Qualquer um do grupo aprova (1 de N)</label>
+                                <label><input type="radio" name="policy-${index}" value="all" ${step.approval_policy === 'all' ? 'checked' : ''} onchange="tempWorkflowSteps[${index}].approval_policy = this.value;"> TODOS do grupo devem aprovar (N de N)</label>
                             </div>
                         </div>
                     </div>
@@ -7184,69 +7229,85 @@ function toggleRecipientSelection(user) {
         }
         
         function addWorkflowStepUI() {
-            _tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', approver_ids: [], approval_policy: 'any' });
+            if(!currentEditingWorkflowType) {
+                showToast("Selecione um tipo de requisição primeiro.", "warning");
+                return;
+            }
+            tempWorkflowSteps.push({ step_name: '', approver_type: 'manager', approver_ids: [], approvers: [], approval_policy: 'any' });
             renderWorkflowSteps();
         }
 
         function removeWorkflowStepUI(index) {
-            _tempWorkflowSteps.splice(index, 1);
+            tempWorkflowSteps.splice(index, 1);
             renderWorkflowSteps();
         }
         
         function openApproverSelector(stepIndex) {
             currentSelectionTarget = null;
-            const currentApprovers = _tempWorkflowSteps[stepIndex].approvers || [];
+            const currentApprovers = tempWorkflowSteps[stepIndex].approvers || [];
             
+            // Reutiliza o modal de destinatários que já temos
             openUserSelectorModal({
-                title: `Selecionar Aprovadores para Etapa #${stepIndex + 1}`,
+                title: `Selecionar Aprovadores (Etapa #${stepIndex + 1})`,
                 targetArray: [...currentApprovers],
                 onComplete: () => {
                     const finalSelection = _selectorConfig.targetArray;
-                    _tempWorkflowSteps[stepIndex].approvers = finalSelection;
-                    _tempWorkflowSteps[stepIndex].approver_ids = finalSelection.map(u => u.id);
+                    tempWorkflowSteps[stepIndex].approvers = finalSelection;
+                    tempWorkflowSteps[stepIndex].approver_ids = finalSelection.map(u => u.id);
                     renderWorkflowSteps();
                 }
             });
         }
 
         async function saveWorkflow() {
-            if (!_currentEditingWorkflowType) return;
+            if (!currentEditingWorkflowType) return;
             const btn = event.target;
             btn.disabled = true;
             btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
 
-            const payload = {
-                request_type: _currentEditingWorkflowType,
-                steps: _tempWorkflowSteps.map((step, index) => ({
-                    step_order: index + 1,
-                    step_name: step.step_name || `Etapa ${index + 1}`,
-                    approver_type: step.approver_type,
-                    approver_ids: step.approver_ids || null,
-                    approval_policy: step.approval_policy || 'any'
-                }))
-            };
+            // Preparar payload limpando dados desnecessários
+            const stepsData = tempWorkflowSteps.map((step, index) => ({
+                request_type: currentEditingWorkflowType,
+                step_order: index + 1,
+                step_name: step.step_name || `Etapa ${index + 1}`,
+                approver_type: step.approver_type,
+                approver_ids: (step.approver_type === 'specific_users' && step.approver_ids && step.approver_ids.length > 0) ? step.approver_ids : null,
+                approval_policy: step.approval_policy || 'any'
+            }));
 
             try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                const response = await fetch(N8N_SAVE_WORKFLOW_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error("Falha ao salvar fluxo no servidor.");
+                // Ao invés de usar o n8n para isso (que precisaria de um webhook extra),
+                // usamos uma operação segura diretamente no Supabase.
+                
+                // 1. Apagar fluxo antigo
+                await supabaseClient
+                    .from('request_approval_workflows')
+                    .delete()
+                    .eq('request_type', currentEditingWorkflowType);
+
+                // 2. Inserir fluxo novo se houver etapas
+                if(stepsData.length > 0) {
+                    const { error } = await supabaseClient
+                        .from('request_approval_workflows')
+                        .insert(stepsData);
+                    
+                    if (error) throw error;
+                }
+
                 showToast("Fluxo de aprovação salvo com sucesso!", "success");
             } catch(e) {
-                showToast(e.message, "danger");
+                console.error("Erro ao salvar fluxo:", e);
+                showToast("Erro ao salvar fluxo. Verifique o console.", "danger");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<span class="material-icons">save</span> Salvar Alterações no Fluxo';
             }
         }
+        // ===================================================================
+        // FIM: FUNÇÕES DO EDITOR DE FLUXOS
+        // ===================================================================
 
-        // ===================================================================
-        // FIM: NOVAS FUNÇÕES DO EDITOR DE FLUXOS DE RH
-        // ===================================================================
-		
+        
 
 async function loadUserProfileData(userId) {
             const container = document.getElementById('user-profile-content');
