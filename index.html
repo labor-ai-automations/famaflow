@@ -2984,16 +2984,7 @@ const appHTML = `<div id="app-container">
                 });
             }
 
-            document.querySelectorAll('.nav-link[data-page]').forEach(link => { 
-                link.addEventListener('click', (e) => { 
-                    e.preventDefault(); 
-                    showPage(e.currentTarget.dataset.page); 
-                    
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('open');
-                    }
-                }); 
-            });
+            // O loop que estava aqui foi removido. A função showApp agora gerencia todos os cliques da sidebar.
 
             const replyForm = document.getElementById('reply-form');
             if (replyForm) {
