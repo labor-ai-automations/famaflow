@@ -3122,12 +3122,66 @@ async function showApp() {
         adminSection.style.display = adminMenuHTML !== '' ? 'block' : 'none';
     }
 
-    // 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE GLOBAL PARA A SIDEBAR (MAIS ROBUSTO)
+    // 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE GLOBAL PARA A SIDEBAR (CORRIGIDO)
     document.getElementById('main-sidebar').addEventListener('click', (e) => {
         const link = e.target.closest('.nav-link[data-page]');
         if (link) {
             e.preventDefault();
-            showPage(link.dataset.page);
+            const targetPageId = link.dataset.page;
+
+            // Remove a classe 'active' de todas as páginas
+            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+            // Adiciona a classe 'active' apenas à página alvo
+            const targetPage = document.getElementById(targetPageId);
+            if (targetPage) targetPage.classList.add('active');
+
+            // Remove a classe 'active' de todos os links
+            document.querySelectorAll('.nav-link').forEach(navLink => navLink.classList.remove('active'));
+            // Adiciona a classe 'active' ao link clicado
+            link.classList.add('active');
+
+            // Gerencia atalho de perfil
+            document.getElementById('profile-shortcut').classList.remove('active');
+
+            // Lógica de FABs
+            const fabMessage = document.getElementById('fab-new-message');
+            const fabPost = document.getElementById('fab-new-post');
+            if (fabMessage) fabMessage.classList.add('hidden');
+            if (fabPost) fabPost.classList.add('hidden');
+
+            const canViewMessages = p.includes('view_messages') || isAdmin;
+            if (targetPageId === 'mural-page' && isAdmin && fabPost) {
+                fabPost.classList.remove('hidden');
+            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page', 'workflow-builder-page'].includes(targetPageId) && canViewMessages && fabMessage) {
+                fabMessage.classList.remove('hidden');
+            }
+
+            // Carregamento de dados sob demanda
+            if (targetPageId === 'messages-page') loadMessages();
+            if (targetPageId === 'requests-page') loadRequests();
+            if (targetPageId === 'team-page') {
+                document.getElementById('team-search-name').value = '';
+                document.getElementById('team-filter-dept').value = '';
+                document.getElementById('team-filter-role').value = '';
+                loadTeamPage();
+            }
+            if (targetPageId === 'profile-page') loadUserProfileData(null);
+            if (targetPageId === 'mural-page') loadMuralPage();
+            if (targetPageId === 'rankings-page') loadRankingsPage();
+            if (targetPageId === 'request-management-page') loadRequestManagementPage();
+            if (targetPageId === 'travel-request-management-page') loadTravelRequestManagementPage();
+            if (targetPageId === 'my-routines-page') loadMyRoutinesPage();
+            if (targetPageId === 'organograma-page') loadOrganogramaPage();
+            if (targetPageId === 'manage-processes-page') {
+                loadManageProcessesPage();
+                switchProcessTab('recurrent');
+            }
+            if (targetPageId === 'kb-page') loadKBPage();
+            if (targetPageId === 'users-page') loadUsersForAdmin(); 
+            if (targetPageId === 'maintenance-page') loadMaintenancePage();
+            if (targetPageId === 'workflow-builder-page') loadWorkflowBuilderPage();
+			if (targetPageId === 'feedback-page') loadFeedbackPage();
+
             if (window.innerWidth <= 768) {
                 document.getElementById('main-sidebar').classList.remove('open');
             }
@@ -3166,70 +3220,7 @@ async function showApp() {
     loadAllDynamicData();
 }
         
-function showPage(pageId, targetUserId = null) { 
-            const appContainer = document.getElementById('app-container'); 
-            if (!appContainer) return;
 
-            appContainer.querySelectorAll('.page-content').forEach(page => page.classList.remove('active')); 
-            const targetPage = appContainer.querySelector(`#${pageId}`); 
-            if (targetPage) targetPage.classList.add('active'); 
-            
-            appContainer.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active')); 
-
-            const profileShortcut = document.getElementById('profile-shortcut');
-            profileShortcut.classList.remove('active');
-
-            if (pageId === 'profile-page' && (!targetUserId || targetUserId === currentUserProfile.id)) {
-                 profileShortcut.classList.add('active');
-                 appContainer.querySelector('.nav-link.active')?.classList.remove('active');
-            } else {
-                const activeLink = appContainer.querySelector(`.nav-link[data-page="${pageId}"]`); 
-                if (activeLink) activeLink.classList.add('active');
-            }
-            
-            const fabMessage = document.getElementById('fab-new-message');
-            const fabPost = document.getElementById('fab-new-post');
-            
-            fabMessage.classList.add('hidden');
-            fabPost.classList.add('hidden');
-
-            const p = currentUserProfile.permissions || [];
-            const isAdmin = p.includes('manage_users');
-            const canViewMessages = p.includes('view_messages') || isAdmin;
-            
-            if (pageId === 'mural-page' && isAdmin) {
-                fabPost.classList.remove('hidden');
-            } else if (!['conversation-view-page', 'mural-page', 'requests-page', 'organograma-page', 'kb-page'].includes(pageId) && canViewMessages) {
-                fabMessage.classList.remove('hidden');
-            }
-
-            // --- CARREGAMENTO DE DADOS UNIFICADO ---
-            if (pageId === 'messages-page') loadMessages();
-            if (pageId === 'requests-page') loadRequests();
-            if (pageId === 'team-page') {
-                document.getElementById('team-search-name').value = '';
-                document.getElementById('team-filter-dept').value = '';
-                document.getElementById('team-filter-role').value = '';
-                loadTeamPage();
-            }
-            if (pageId === 'profile-page') loadUserProfileData(targetUserId);
-            if (pageId === 'mural-page') loadMuralPage();
-            if (pageId === 'rankings-page') loadRankingsPage();
-            if (pageId === 'request-management-page') loadRequestManagementPage();
-            if (pageId === 'travel-request-management-page') loadTravelRequestManagementPage();
-            if (pageId === 'my-routines-page') loadMyRoutinesPage();
-            // A página manage-routines-page foi removida, a lógica foi movida para manage-processes-page
-            if (pageId === 'organograma-page') loadOrganogramaPage();
-            if (pageId === 'manage-processes-page') {
-                loadManageProcessesPage(); // Carrega a aba padrão (Recorrentes)
-                switchProcessTab('recurrent'); // Garante que a UI inicie no estado correto
-            }
-            if (pageId === 'kb-page') loadKBPage();
-            if (pageId === 'users-page') loadUsersForAdmin(); 
-            if (pageId === 'maintenance-page') loadMaintenancePage();
-            if (pageId === 'workflow-builder-page') loadWorkflowBuilderPage();
-			if (pageId === 'feedback-page') loadFeedbackPage();
-        }
 		
 		// NOVA FUNÇÃO: Controle das Abas de Processos
         function switchProcessTab(tabId) {
