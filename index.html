@@ -7086,7 +7086,9 @@ function toggleRecipientSelection(user) {
             if (pageId === 'kb-page') loadKBPage();
             if (pageId === 'users-page') loadUsersForAdmin(); 
             if (pageId === 'maintenance-page') loadMaintenancePage();
-            if (pageId === 'workflow-builder-page') loadWorkflowBuilderPage(); // <--- NOSSO NOVO EDITOR
+            if (pageId === 'workflow-builder-page') {
+                loadWorkflowBuilderPage();
+            }
             if (pageId === 'feedback-page') loadFeedbackPage();
         }
 
@@ -7114,6 +7116,9 @@ function toggleRecipientSelection(user) {
             if(workspace) workspace.style.display = 'none';
             if(emptyState) emptyState.style.display = 'flex';
             
+            currentEditingWorkflowType = null;
+            tempWorkflowSteps = [];
+            
             renderWorkflowTypeList();
         }
 
@@ -7122,9 +7127,9 @@ function toggleRecipientSelection(user) {
             if(!listContainer) return;
             
             listContainer.innerHTML = Object.entries(RH_REQUEST_TYPES).map(([key, value]) => `
-                <div class="blueprint-card" id="wf-type-${key}" onclick="selectWorkflowToEdit('${key}')">
-                    <span class="material-icons">account_tree</span>
-                    <div style="font-weight:700; font-size: 0.9rem;">${value}</div>
+                <div class="blueprint-card" id="wf-type-${key}" onclick="selectWorkflowToEdit('${key}')" style="cursor: pointer;">
+                    <span class="material-icons" style="flex-shrink: 0;">account_tree</span>
+                    <div style="font-weight:700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${value}</div>
                 </div>
             `).join('');
         }
