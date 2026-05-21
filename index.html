@@ -7283,39 +7283,29 @@ function toggleRecipientSelection(user) {
             btn.disabled = true;
             btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Salvando...';
 
-            // Preparar payload limpando dados desnecessários
             const stepsData = tempWorkflowSteps.map((step, index) => ({
                 request_type: currentEditingWorkflowType,
                 step_order: index + 1,
                 step_name: step.step_name || `Etapa ${index + 1}`,
                 approver_type: step.approver_type,
                 approver_ids: (step.approver_type === 'specific_users' && step.approver_ids && step.approver_ids.length > 0) ? step.approver_ids : null,
+                specific_approver_id: (step.approver_type === 'specific_users' && step.approvers && step.approvers.length > 0) ? step.approvers : null,
                 approval_policy: step.approval_policy || 'any'
             }));
 
             try {
-                // Ao invés de usar o n8n para isso (que precisaria de um webhook extra),
-                // usamos uma operação segura diretamente no Supabase.
-                
-                // 1. Apagar fluxo antigo
-                await supabaseClient
-                    .from('request_approval_workflows')
-                    .delete()
-                    .eq('request_type', currentEditingWorkflowType);
+                // Usando a RPC segura (procedure) do banco para contornar o RLS
+                const { error } = await supabaseClient.rpc('save_workflow_steps', {
+                    p_request_type: currentEditingWorkflowType,
+                    p_steps: stepsData
+                });
 
-                // 2. Inserir fluxo novo se houver etapas
-                if(stepsData.length > 0) {
-                    const { error } = await supabaseClient
-                        .from('request_approval_workflows')
-                        .insert(stepsData);
-                    
-                    if (error) throw error;
-                }
+                if (error) throw error;
 
                 showToast("Fluxo de aprovação salvo com sucesso!", "success");
             } catch(e) {
                 console.error("Erro ao salvar fluxo:", e);
-                showToast("Erro ao salvar fluxo. Verifique o console.", "danger");
+                showToast("Erro ao salvar fluxo: " + e.message, "danger");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<span class="material-icons">save</span> Salvar Alterações no Fluxo';
