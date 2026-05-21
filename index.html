@@ -5205,41 +5205,43 @@ function initOrgZoomPan() {
         // --- REQUESTS MODULE LOGIC ---
 
 async function loadRequests() {
-    // Esta função agora carrega apenas as requisições de RH do usuário logado.
     const tableBody = document.getElementById('request-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-    const { data, error } = await supabaseClient
-        .from('rh_requests')
-        .select('*')
-        .eq('requester_id', currentUserProfile.id)
-        .order('created_at', { ascending: false });
+    // Agora usamos a RPC segura que também traz o nome da etapa atual
+    const { data, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
     if (error) {
         console.error("Erro ao buscar requisições de RH:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: var(--color-danger)">Falha ao carregar.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Falha ao carregar.</td></tr>`;
         return;
     }
 
-    if (!data || data.length === 0) {
+    // Filtramos para mostrar apenas as que o usuário logado é o solicitante
+    const myRequests = (data || []).filter(req => req.requester_id === currentUserProfile.id);
+
+    if (myRequests.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada.</td></tr>`;
         return;
     }
     
     const statusTranslations = {
-        'pending_approval': 'Em Análise',
-        'in_progress': 'Em Processamento',
-        'approved': 'Aprovada',
-        'rejected': 'Rejeitada',
-        'completed': 'Concluída',
-        'cancelled': 'Cancelada'
+        'pending_approval': 'Em Análise', 'in_progress': 'Em Processamento',
+        'approved': 'Aprovada', 'rejected': 'Rejeitada', 'completed': 'Concluída', 'cancelled': 'Cancelada'
     };
 
-    tableBody.innerHTML = data.map(req => {
-        const statusLabel = statusTranslations[req.status] || 'Desconhecido';
+    tableBody.innerHTML = myRequests.map(req => {
+        // Lógica de Status Inteligente
+        let statusLabel = statusTranslations[req.status] || 'Desconhecido';
         let statusClass = 'status-pending';
-        if (req.status === 'approved' || req.status === 'completed') statusClass = 'status-approved';
-        if (req.status === 'rejected' || req.status === 'cancelled') statusClass = 'status-rejected';
+
+        // Se não estiver finalizada, o status é o nome da etapa atual
+        if (!req.is_finished) {
+            statusLabel = req.current_step_name || 'Em Processamento';
+        } else {
+             if (req.status.includes('approved')) statusClass = 'status-approved';
+             if (req.status.includes('rejected')) statusClass = 'status-rejected';
+        }
         
         const typeLabel = RH_REQUEST_TYPES[req.request_type] || req.request_type;
         const date = new Date(req.created_at).toLocaleDateString('pt-BR');
@@ -9368,21 +9370,21 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    // 1. Chamar a nova RPC que faz todo o trabalho pesado no backend.
-    const { data: processedRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
+    // 1. Chamar a RPC que agora busca TODOS os dados relevantes, sem filtrar por usuário.
+    const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
     if (error) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
     }
     
-    // 2. Aplicar os filtros do frontend
+    // 2. Aplicar os filtros de visibilidade AQUI no frontend
     const viewFilter = document.getElementById('mgt-status-filter').value;
-    const finalRequests = (processedRequests || []).filter(req => {
+    const finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
-        if (viewFilter === 'others') return !req.my_action_required && !req.is_finished;
-        if (viewFilter === 'all_pending') return !req.is_finished;
-        if (viewFilter === 'finished') return req.is_finished;
+        if (viewFilter === 'others') return req.is_involved && !req.my_action_required && !req.is_finished;
+        if (viewFilter === 'all_pending') return !req.is_finished; // Mostra todas as pendentes, sem filtro de envolvimento
+        if (viewFilter === 'finished') return req.is_finished; // Mostra todas as finalizadas
         return true;
     });
 
