@@ -9187,7 +9187,7 @@ function openMaintenanceExecutionModal(requestId) {
                 let actionHtml = '';
                 const myActionRequired = currentStepInfo && (
                     (currentStepInfo.approver_type === 'manager' && (request.requester?.manager_id === currentUserProfile.id)) ||
-                    (currentStepInfo.approver_type === 'specific_users' && currentStepInfo.approver_ids && currentStepInfo.approver_ids.includes(currentUserProfile.id))
+                    (currentStepInfo.approver_type === 'specific_users' && Array.isArray(currentStepInfo.approver_ids) && currentStepInfo.approver_ids.includes(currentUserProfile.id))
                 );
 
                 if (myActionRequired) {
