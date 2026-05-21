@@ -9370,16 +9370,25 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
+    // DEBUG: Verificando o usuário logado
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    console.log("👤 USUÁRIO LOGADO:", user?.id, user?.email);
+
     // 1. Chamar a RPC que agora busca TODOS os dados relevantes.
     const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
-
+    
+    // DEBUG: Verificando o que o banco de dados retornou
     if (error) {
+        console.error("❌ ERRO NA CHAMADA RPC:", error);
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
     }
+    console.log("📋 REQUISIÇÕES RETORNADAS DO BANCO:", allRequests);
     
     // 2. Aplicar os filtros de visibilidade AQUI no frontend, usando as flags que o banco já calculou.
     const viewFilter = document.getElementById('mgt-status-filter').value;
+    console.log(`🔎 FILTRANDO PELA VISÃO: "${viewFilter}"`);
+
     const finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
         if (viewFilter === 'others') return req.is_involved && !req.my_action_required && !req.is_finished;
@@ -9387,6 +9396,9 @@ function toggleMgtView(view) {
         if (viewFilter === 'finished') return req.is_finished; // Mostra todas as finalizadas
         return true;
     });
+
+    // DEBUG: Verificando o resultado após o filtro
+    console.log("✅ REQUISIÇÕES APÓS FILTRO:", finalRequests);
 
     if (finalRequests.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada nesta visão.</td></tr>`;
