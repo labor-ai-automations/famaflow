@@ -9170,45 +9170,65 @@ function openMaintenanceExecutionModal(requestId) {
                 dataHtml += '</div>';
 
                 // 3. Montar a Linha do Tempo do Histórico
-                let historyHtml = '<h4 class="form-section-title">Histórico de Processamento</h4>';
-                history.forEach(h => {
+                let historyHtml = `
+                    <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
+                    </h4>
+                    <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
+                `;
+
+                // Renderiza as etapas concluídas
+                history.forEach((h, index) => {
+                    const isReject = h.new_status === 'rejected' || (h.notes && h.notes.toLowerCase().includes('rejeitad'));
+                    const isCalcRH = h.notes && h.notes.toLowerCase().includes('cálculo de valores');
+                    
+                    let color = 'var(--color-success)';
+                    if (isReject) color = 'var(--color-danger)';
+                    if (isCalcRH) color = 'var(--color-info)';
+
                     historyHtml += `
-                        <div class="history-item">
-                            <div class="icon-wrapper"><span class="material-icons">check_circle</span></div>
-                            <div class="info-wrapper">
-                                <div class="action-text"><strong>${h.step_name || `Etapa ${h.step}`} concluída por ${h.changed_by_name}</strong></div>
-                                ${h.notes ? `<p style="font-size:0.85rem; margin:0; font-style:italic;">"${h.notes}"</p>` : ''}
-                                <div class="timestamp">${new Date(h.created_at).toLocaleString('pt-BR')}</div>
+                        <div style="margin-bottom: 2rem; position: relative;">
+                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${color}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${color};"></div>
+                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${color}; letter-spacing: 0.05em;">Etapa ${h.step}: ${h.step_name || 'Concluída'}</div>
+                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Processada por ${h.changed_by_name || 'Sistema'}</div>
+                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(h.created_at).toLocaleString('pt-BR')}</div>
+                            ${h.notes ? `
+                            <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">
+                                <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${h.notes}</div>
                             </div>
+                            ` : ''}
                         </div>
                     `;
                 });
                 
-                // Adiciona a etapa atual como "pendente" no histórico
+                // Adiciona a etapa atual (se houver) como "pendente" no histórico
                 if (currentStepInfo) {
                     let stepStatusHtml = '';
                     if (currentStepInfo.approval_policy === 'all') {
                         const neededApprovers = new Set(currentStepInfo.approver_ids || []);
                         const currentApprovals = stepApprovals.filter(sa => sa.step === currentStepInfo.step_order);
-                        currentApprovals.forEach(sa => {
-                            stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-success);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">check</span> Aprovado por ${sa.approver?.full_name || 'Usuário'}</p>`;
-                            neededApprovers.delete(sa.approver_id);
-                        });
-                        if(neededApprovers.has(currentUserProfile.id)) {
-                             stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-warning);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">pending</span> Aguardando sua ação</p>`;
+                        
+                        if (currentApprovals.length > 0) {
+                            stepStatusHtml += `<div style="margin-top: 8px; font-size: 0.8rem;">`;
+                            currentApprovals.forEach(sa => {
+                                stepStatusHtml += `<div style="color:var(--color-success); display:flex; align-items:center; gap:4px;"><span class="material-icons" style="font-size:14px;">check</span> Aprovado por ${sa.approver?.full_name || 'Usuário'}</div>`;
+                                neededApprovers.delete(sa.approver_id);
+                            });
+                            stepStatusHtml += `</div>`;
                         }
                     }
 
                     historyHtml += `
-                        <div class="history-item">
-                            <div class="icon-wrapper" style="color:var(--color-warning);"><span class="material-icons">pending</span></div>
-                            <div class="info-wrapper">
-                                <div class="action-text"><strong>${currentStepInfo.step_name || `Etapa ${currentStepInfo.step_order}`} (Pendente)</strong></div>
-                                ${stepStatusHtml}
-                            </div>
+                        <div style="margin-bottom: 2rem; position: relative;">
+                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-warning); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-warning);"></div>
+                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-warning); letter-spacing: 0.05em;">Etapa ${currentStepInfo.step_order}: ${currentStepInfo.step_name || 'Pendente'}</div>
+                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Aguardando Ação...</div>
+                            ${stepStatusHtml}
                         </div>
                     `;
                 }
+
+                historyHtml += `</div>`; // Fecha a linha do tempo
 
                 // 4. Montar o Bloco de Ação Condicional
                 let actionHtml = '';
