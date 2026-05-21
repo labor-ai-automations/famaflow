@@ -9151,7 +9151,15 @@ function openMaintenanceExecutionModal(requestId) {
                 
                 // 2. Montar a Seção de Dados da Requisição (Output Inicial)
                 let dataHtml = '<h4 class="form-section-title" style="margin-top:0;">Dados da Solicitação</h4><div class="read-only-box" style="margin-bottom: 2rem;">';
-                for (const [key, value] of Object.entries(request.data)) {
+                
+                // CORREÇÃO: Garante que os dados sejam tratados como Objeto JSON e não como Texto corrido
+                let safeData = request.data;
+                if (typeof safeData === 'string') {
+                    try { safeData = JSON.parse(safeData); } 
+                    catch (e) { safeData = {}; }
+                }
+
+                for (const [key, value] of Object.entries(safeData)) {
                     const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                     dataHtml += `<p style="margin: 0.5rem 0;"><strong>${label}:</strong> ${value}</p>`;
                 }
