@@ -5208,8 +5208,19 @@ async function loadRequests() {
     const tableBody = document.getElementById('request-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-    // Agora usamos a RPC segura que também traz o nome da etapa atual
-    const { data, error } = await supabaseClient.rpc('get_rh_requests_for_management');
+    // Garante que pega o ID do usuário de forma segura antes de chamar o banco
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (!user || userError) {
+        console.error("Erro de autenticação ao carregar Minhas Requisições.");
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Sessão inválida.</td></tr>`;
+        return;
+    }
+
+    // Chama a RPC enviando o ID do usuário de forma explícita (a correção está AQUI)
+    const { data, error } = await supabaseClient.rpc(
+        'get_rh_requests_for_management',
+        { p_user_id: user.id }
+    );
 
     if (error) {
         console.error("Erro ao buscar requisições de RH:", error);
