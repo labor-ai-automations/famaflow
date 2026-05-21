@@ -9370,7 +9370,7 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    // 1. Chamar a RPC que agora busca TODOS os dados relevantes, sem filtrar por usuário.
+    // 1. Chamar a RPC que agora busca TODOS os dados relevantes.
     const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
     if (error) {
@@ -9378,12 +9378,12 @@ function toggleMgtView(view) {
         return;
     }
     
-    // 2. Aplicar os filtros de visibilidade AQUI no frontend
+    // 2. Aplicar os filtros de visibilidade AQUI no frontend, usando as flags que o banco já calculou.
     const viewFilter = document.getElementById('mgt-status-filter').value;
     const finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
         if (viewFilter === 'others') return req.is_involved && !req.my_action_required && !req.is_finished;
-        if (viewFilter === 'all_pending') return !req.is_finished; // Mostra todas as pendentes, sem filtro de envolvimento
+        if (viewFilter === 'all_pending') return !req.is_finished; // Mostra todas as pendentes
         if (viewFilter === 'finished') return req.is_finished; // Mostra todas as finalizadas
         return true;
     });
