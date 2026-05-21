@@ -9370,12 +9370,22 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    // DEBUG: Verificando o usuário logado
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    console.log("👤 USUÁRIO LOGADO:", user?.id, user?.email);
+    // 1. Captura e valida o usuário logado antes de qualquer coisa
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
-    // 1. Chamar a RPC que agora busca TODOS os dados relevantes.
-    const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
+    if (!user || userError) {
+        console.error("❌ ERRO DE AUTENTICAÇÃO:", userError);
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro de autenticação. Recarregue a página.</td></tr>`;
+        return;
+    }
+
+    console.log("👤 USUÁRIO LOGADO:", user.id, user.email);
+
+    // 2. Chama a RPC enviando o ID do usuário de forma explícita e segura
+    const { data: allRequests, error } = await supabaseClient.rpc(
+        'get_rh_requests_for_management',
+        { p_user_id: user.id }
+    );
     
     // DEBUG: Verificando o que o banco de dados retornou
     if (error) {
@@ -9383,7 +9393,9 @@ function toggleMgtView(view) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
     }
-    console.log("📋 REQUISIÇÕES RETORNADAS DO BANCO:", allRequests);
+    
+    console.log("📋 REQUISIÇÕES RETORNADAS:", allRequests);
+    console.log("📊 Total de requisições do banco:", allRequests ? allRequests.length : 0);
     
     // 2. Aplicar os filtros de visibilidade AQUI no frontend, usando as flags que o banco já calculou.
     const viewFilter = document.getElementById('mgt-status-filter').value;
