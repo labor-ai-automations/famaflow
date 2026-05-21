@@ -9134,7 +9134,7 @@ function openMaintenanceExecutionModal(requestId) {
             try {
                 // 1. Buscar todos os dados necessários em paralelo
                 const [requestRes, historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
-                    supabaseClient.from('rh_requests').select('*, requester:requester_id(full_name)').eq('id', requestId).single(),
+                    supabaseClient.from('rh_requests').select('*, requester:requester_id(full_name, manager_id)').eq('id', requestId).single(),
                     supabaseClient.from('rh_request_history').select('*').eq('request_id', requestId).order('created_at'),
                     supabaseClient.from('request_approval_workflows').select('*'),
                     supabaseClient.from('rh_request_step_approvals').select('*, approver:approver_id(full_name)').eq('request_id', requestId)
@@ -9217,8 +9217,11 @@ function openMaintenanceExecutionModal(requestId) {
                 if (myActionRequired) {
                     actionHtml = '<h4 class="form-section-title">Sua Ação Nesta Etapa</h4>';
                     
-                    // Caso especial: Cálculo de Hora Extra
-                    if (request.request_type === 'overtime' && (request.status === 'pending_approval' || request.status === 'in_progress')) {
+                    // Descobre se esta é a etapa do RH preencher valores
+                    const isRhCalculationStep = request.request_type === 'overtime' && currentStepInfo && currentStepInfo.step_name.toLowerCase().includes('cálculo');
+                    
+                    // Caso especial: Cálculo de Hora Extra (RH)
+                    if (isRhCalculationStep) {
                          actionHtml += `
                             <div class="form-group">
                                 <label>Valor Total (R$)</label>
