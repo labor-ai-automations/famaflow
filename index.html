@@ -9122,16 +9122,31 @@ function openMaintenanceExecutionModal(requestId) {
             modal.classList.add('visible');
 
             try {
-                // 1. Buscar todos os dados necessários em paralelo
-                const [requestRes, historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
-                    supabaseClient.from('rh_requests').select('*, requester:requester_id(full_name, manager_id)').eq('id', requestId).single(),
+                // 1. Busca os dados BÁSICOS da requisição primeiro, sem JOINs complexos.
+                // Removemos o .single() por um momento para garantir que não vai quebrar por falta de JOIN.
+                const { data: requestData, error: reqError } = await supabaseClient
+                    .from('rh_requests')
+                    .select('*')
+                    .eq('id', requestId);
+
+                if (reqError) throw reqError;
+                if (!requestData || requestData.length === 0) {
+                     throw new Error("Requisição não encontrada no banco de dados.");
+                }
+                
+                const request = requestData[0];
+
+                // 2. Busca o restante dos dados agora que sabemos que a requisição existe
+                const [requesterRes, historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
+                    supabaseClient.from('profiles').select('full_name, manager_id').eq('id', request.requester_id).single(),
                     supabaseClient.from('rh_request_history').select('*').eq('request_id', requestId).order('created_at'),
                     supabaseClient.from('request_approval_workflows').select('*'),
                     supabaseClient.from('rh_request_step_approvals').select('*, approver:approver_id(full_name)').eq('request_id', requestId)
                 ]);
 
-                if (requestRes.error) throw requestRes.error;
-                const request = requestRes.data;
+                // Junta o requester de volta ao objeto request
+                request.requester = requesterRes.data || { full_name: 'Usuário Desconhecido', manager_id: null };
+                
                 const history = historyRes.data || [];
                 const workflows = workflowRes.data || [];
                 const stepApprovals = stepApprovalsRes.data || [];
@@ -9176,7 +9191,7 @@ function openMaintenanceExecutionModal(requestId) {
                         const neededApprovers = new Set(currentStepInfo.approver_ids || []);
                         const currentApprovals = stepApprovals.filter(sa => sa.step === currentStepInfo.step_order);
                         currentApprovals.forEach(sa => {
-                            stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-success);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">check</span> Aprovado por ${sa.approver.full_name}</p>`;
+                            stepStatusHtml += `<p style="margin:2px 0 2px 1rem; font-size:0.8rem; color:var(--color-success);"><span class="material-icons" style="font-size:14px; vertical-align:middle;">check</span> Aprovado por ${sa.approver?.full_name || 'Usuário'}</p>`;
                             neededApprovers.delete(sa.approver_id);
                         });
                         if(neededApprovers.has(currentUserProfile.id)) {
@@ -9195,11 +9210,10 @@ function openMaintenanceExecutionModal(requestId) {
                     `;
                 }
 
-
                 // 4. Montar o Bloco de Ação Condicional
                 let actionHtml = '';
                 const myActionRequired = currentStepInfo && (
-                    (currentStepInfo.approver_type === 'manager' && (request.requester?.manager_id === currentUserProfile.id)) ||
+                    (currentStepInfo.approver_type === 'manager' && (request.requester.manager_id === currentUserProfile.id)) ||
                     (currentStepInfo.approver_type === 'specific_users' && Array.isArray(currentStepInfo.approver_ids) && currentStepInfo.approver_ids.includes(currentUserProfile.id))
                 );
 
