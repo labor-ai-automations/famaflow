@@ -2697,7 +2697,7 @@ const appHTML = `<div id="app-container">
                             </div>
                             
                             <div class="modal-footer" style="margin-top: auto;">
-                                <button class="btn btn-danger" onclick="saveWorkflow()"><span class="material-icons">save</span> Salvar Alterações no Fluxo</button>
+                                <button class="btn btn-danger" onclick="saveAdminWorkflow()"><span class="material-icons">save</span> Salvar Alterações no Fluxo</button>
                             </div>
                         </div>
 
@@ -7277,7 +7277,7 @@ function toggleRecipientSelection(user) {
             });
         }
 
-        async function saveWorkflow() {
+        async function saveAdminWorkflow() {
             if (!currentEditingWorkflowType) return;
             const btn = event.target;
             btn.disabled = true;
