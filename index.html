@@ -9177,21 +9177,32 @@ function openMaintenanceExecutionModal(requestId) {
                     <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
                 `;
 
-                // Renderiza as etapas concluídas
-                history.forEach((h, index) => {
-                    const isReject = h.new_status === 'rejected' || (h.notes && h.notes.toLowerCase().includes('rejeitad'));
-                    const isCalcRH = h.notes && h.notes.toLowerCase().includes('cálculo de valores');
-                    
-                    let color = 'var(--color-success)';
-                    if (isReject) color = 'var(--color-danger)';
-                    if (isCalcRH) color = 'var(--color-info)';
+                // 3.1 Adiciona a Etapa de Abertura (sempre presente)
+                historyHtml += `
+                    <div style="margin-bottom: 2rem; position: relative;">
+                        <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
+                        <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Abertura</div>
+                        <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                    </div>
+                `;
+
+                // 3.2 Renderiza as etapas concluídas do histórico
+                history.forEach((h) => {
+                    // Determina a cor com base no status ou observações
+                    let color = 'var(--color-success)'; // Padrão: Aprovado
+                    if (h.new_status === 'rejected' || (h.notes && h.notes.toLowerCase().includes('rejeitad'))) {
+                        color = 'var(--color-danger)';
+                    } else if (h.notes && h.notes.toLowerCase().includes('cálculo')) {
+                        color = 'var(--color-info)'; // RH
+                    }
 
                     historyHtml += `
                         <div style="margin-bottom: 2rem; position: relative;">
                             <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${color}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${color};"></div>
                             <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${color}; letter-spacing: 0.05em;">Etapa ${h.step}: ${h.step_name || 'Concluída'}</div>
                             <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Processada por ${h.changed_by_name || 'Sistema'}</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(h.created_at).toLocaleString('pt-BR')}</div>
+                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
                             ${h.notes ? `
                             <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">
                                 <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${h.notes}</div>
@@ -9201,8 +9212,8 @@ function openMaintenanceExecutionModal(requestId) {
                     `;
                 });
                 
-                // Adiciona a etapa atual (se houver) como "pendente" no histórico
-                if (currentStepInfo) {
+                // 3.3 Adiciona a etapa atual (se houver e não estiver finalizada)
+                if (currentStepInfo && request.status !== 'approved' && request.status !== 'rejected') {
                     let stepStatusHtml = '';
                     if (currentStepInfo.approval_policy === 'all') {
                         const neededApprovers = new Set(currentStepInfo.approver_ids || []);
@@ -9229,6 +9240,7 @@ function openMaintenanceExecutionModal(requestId) {
                 }
 
                 historyHtml += `</div>`; // Fecha a linha do tempo
+                
 
                 // 4. Montar o Bloco de Ação Condicional
                 let actionHtml = '';
