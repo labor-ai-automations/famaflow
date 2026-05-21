@@ -9381,47 +9381,32 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    // 1. Captura e valida o usuário logado antes de qualquer coisa
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-
-    if (!user || userError) {
-        console.error("❌ ERRO DE AUTENTICAÇÃO:", userError);
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro de autenticação. Recarregue a página.</td></tr>`;
-        return;
+    // 1. Pegar o ID do usuário logado (AQUI ESTÁ A CHAVE)
+    if (!currentUserProfile || !currentUserProfile.id) {
+         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro: Usuário não identificado. Recarregue a página.</td></tr>`;
+         return;
     }
 
-    console.log("👤 USUÁRIO LOGADO:", user.id, user.email);
-
-    // 2. Chama a RPC enviando o ID do usuário de forma explícita e segura
+    // 2. Chamar a RPC, passando o ID do usuário logado como parâmetro
     const { data: allRequests, error } = await supabaseClient.rpc(
-        'get_rh_requests_for_management',
-        { p_user_id: user.id }
+        'get_rh_requests_for_management', 
+        { p_user_id: currentUserProfile.id } // Passando o parâmetro!
     );
-    
-    // DEBUG: Verificando o que o banco de dados retornou
+
     if (error) {
-        console.error("❌ ERRO NA CHAMADA RPC:", error);
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
     }
     
-    console.log("📋 REQUISIÇÕES RETORNADAS:", allRequests);
-    console.log("📊 Total de requisições do banco:", allRequests ? allRequests.length : 0);
-    
-    // 2. Aplicar os filtros de visibilidade AQUI no frontend, usando as flags que o banco já calculou.
+    // 3. Aplicar os filtros de visibilidade (já mastigados pelo banco)
     const viewFilter = document.getElementById('mgt-status-filter').value;
-    console.log(`🔎 FILTRANDO PELA VISÃO: "${viewFilter}"`);
-
     const finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
         if (viewFilter === 'others') return req.is_involved && !req.my_action_required && !req.is_finished;
-        if (viewFilter === 'all_pending') return !req.is_finished; // Mostra todas as pendentes
-        if (viewFilter === 'finished') return req.is_finished; // Mostra todas as finalizadas
+        if (viewFilter === 'all_pending') return !req.is_finished; 
+        if (viewFilter === 'finished') return req.is_finished; 
         return true;
     });
-
-    // DEBUG: Verificando o resultado após o filtro
-    console.log("✅ REQUISIÇÕES APÓS FILTRO:", finalRequests);
 
     if (finalRequests.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Nenhuma requisição encontrada nesta visão.</td></tr>`;
