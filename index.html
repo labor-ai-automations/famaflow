@@ -3114,6 +3114,11 @@ async function showApp() {
         if (isAdmin || hasAnyGeneralMgt || p.includes('view_management_requests')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="request-management-page"><span class="material-icons">rule_folder</span> Gerenciar Requisições</a></li>`;
         }
+
+        // ADICIONADO: Restaura o botão de viagens para o Claudemir / Admin
+        if (isAdmin || p.includes('mgt_travel')) {
+            adminMenuHTML += `<li><a href="#" class="nav-link" data-page="travel-request-management-page"><span class="material-icons">flight_takeoff</span> Aprovação de Viagens</a></li>`;
+        }
         
         if (isAdmin || p.includes('manage_routines')) {
             adminMenuHTML += `<li><a href="#" class="nav-link" data-page="manage-processes-page"><span class="material-icons">hub</span> Gerenciar Processos</a></li>`;
