@@ -5209,23 +5209,12 @@ function initOrgZoomPan() {
 
         // --- REQUESTS MODULE LOGIC ---
 
-async function loadRequests() {
+        async function loadRequests() {
     const tableBody = document.getElementById('request-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-    // Garante que pega o ID do usuário de forma segura antes de chamar o banco
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (!user || userError) {
-        console.error("Erro de autenticação ao carregar Minhas Requisições.");
-        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Sessão inválida.</td></tr>`;
-        return;
-    }
-
-    // Chama a RPC enviando o ID do usuário de forma explícita (a correção está AQUI)
-    const { data, error } = await supabaseClient.rpc(
-        'get_rh_requests_for_management',
-        { p_user_id: user.id }
-    );
+    // Chama a RPC sem parâmetros. A nova função no banco de dados lida com o auth.uid() de forma segura.
+    const { data, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
     if (error) {
         console.error("Erro ao buscar requisições de RH:", error);
@@ -9428,24 +9417,20 @@ function toggleMgtView(view) {
     if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    // 1. Pegar o ID do usuário logado (AQUI ESTÁ A CHAVE)
     if (!currentUserProfile || !currentUserProfile.id) {
          tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Erro: Usuário não identificado. Recarregue a página.</td></tr>`;
          return;
     }
 
-    // 2. Chamar a RPC, passando o ID do usuário logado como parâmetro
-    const { data: allRequests, error } = await supabaseClient.rpc(
-        'get_rh_requests_for_management', 
-        { p_user_id: currentUserProfile.id } // Passando o parâmetro!
-    );
+    // Chama a RPC sem parâmetros
+    const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
 
     if (error) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
     }
     
-    // 3. Aplicar os filtros de visibilidade (já mastigados pelo banco)
+    // Aplicar os filtros de visibilidade (já mastigados pelo banco)
     const viewFilter = document.getElementById('mgt-status-filter').value;
     const finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
