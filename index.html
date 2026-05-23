@@ -5213,8 +5213,20 @@ function initOrgZoomPan() {
     const tableBody = document.getElementById('request-table-body');
     tableBody.innerHTML = `<tr><td colspan="5" class="empty-state">Carregando suas requisições...</td></tr>`;
 
-    // Chama a RPC sem parâmetros. A nova função no banco de dados lida com o auth.uid() de forma segura.
-    const { data, error } = await supabaseClient.rpc('get_rh_requests_for_management');
+    // 1. Pegar o ID do usuário de forma segura antes de chamar o banco
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+    if (!user || userError) {
+        console.error("Erro de autenticação ao carregar Minhas Requisições:", userError);
+        tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Sessão inválida.</td></tr>`;
+        return;
+    }
+
+    // 2. Chamar a RPC, PASSANDO O PARÂMETRO OBRIGATÓRIO (A correção está aqui)
+    const { data, error } = await supabaseClient.rpc(
+        'get_rh_requests_for_management',
+        { p_user_id: user.id }
+    );
 
     if (error) {
         console.error("Erro ao buscar requisições de RH:", error);
