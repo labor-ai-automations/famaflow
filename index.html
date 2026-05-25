@@ -989,82 +989,113 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
         .task-description-span { font-size: 0.85rem; color: var(--color-text-secondary); }
         .task-due-time { font-weight: 600; margin-left: 0.5rem; font-size: 0.8rem; }
 
-        /* --- RESPONSIVIDADE (FEATURE 1) --- */
-        @media (max-width: 768px) {
-            body {
-                overflow-x: hidden;
-            }
-            /* Oculta e move a Sidebar para o modo menu-hamburguer */
-            .sidebar { 
-                width: 100%; height: 100vh; transform: translateX(-100%); 
-                transition: transform 0.3s; z-index: 4000; 
-                position: fixed; 
-            }
-            .sidebar.open {
-                transform: translateX(0);
-            }
-            
-            /* Ajusta o conteúdo principal */
-            main.content { 
-                margin-left: 0; padding: 1rem 1rem; 
-                padding-top: 3.5rem; /* Espaço para o botão de menu */
-            }
+        /* --- RESPONSIVIDADE ABRANGENTE (MOBILE-FIRST) --- */
+@media (max-width: 768px) {
+    body {
+        overflow-x: hidden;
+    }
 
-            /* Exibe o botão de menu mobile e ajusta o FAB */
-            #mobile-menu-toggle {
-                display: flex !important;
-                position: fixed; 
-                top: 0.5rem; 
-                left: 0.5rem; 
-                z-index: 4001;
-                background-color: var(--color-surface);
-                border: 1px solid var(--color-border);
-                box-shadow: var(--shadow);
-                width: 40px; 
-                height: 40px; 
-                align-items: center;
-                justify-content: center;
-            }
-            .fab {
-                right: 1rem;
-                bottom: 1rem;
-            }
+    /* --- MELHORIA DA SIDEBAR --- */
+    .sidebar { 
+        width: 100%; 
+        height: 100vh; 
+        transform: translateX(-100%); 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 5000; /* Prioridade máxima */
+        position: fixed; 
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    /* Adiciona um botão 'fechar' visível dentro da sidebar aberta */
+    .sidebar.open::before {
+        content: 'close';
+        font-family: 'Material Icons';
+        font-size: 28px;
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        cursor: pointer;
+        z-index: 5001;
+        color: var(--color-text-primary);
+    }
 
-            /* Simplifica Grids */
-            .grid, .grid-cols-2, .grid-cols-3 {
-                display: block; 
-                gap: 0; 
-            }
-            .grid > div {
-                margin-bottom: 1rem;
-            }
+    /* --- AJUSTE DO CONTEÚDO PRINCIPAL --- */
+    main.content { 
+        margin-left: 0; 
+        padding: 4.5rem 1rem 1rem 1rem; /* Aumenta espaço no topo para o header */
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
 
-            /* Torna o pop-up de nova mensagem fullscreen */
-            #new-message-popup {
-                top: 0;
-                right: 0;
-                width: 100%;
-                max-width: 100%;
-                height: 100vh;
-                border-radius: 0;
-                transform: translateY(100%);
-            }
-            #new-message-form {
-                height: calc(100% - 48px);
-            }
-            .popup-body {
-                padding: 0.5rem;
-            }
-            
-            /* Adaptação de tabelas longas - Garante que haja scroll em tabelas importantes */
-            .data-table-fino {
-                min-width: 600px;
-            }
-            
-            #conversation-view-page .card {
-                height: calc(100vh - 8rem);
-            }
-        }
+    /* --- BOTÕES FLUTUANTES E DE MENU --- */
+    #mobile-menu-toggle {
+        display: flex !important;
+        position: fixed; 
+        top: 0.75rem; 
+        left: 0.75rem; 
+        z-index: 4500; /* Abaixo da sidebar, mas acima do conteúdo */
+        background-color: var(--color-surface);
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow);
+        width: 40px; height: 40px; 
+        align-items: center; justify-content: center;
+        border-radius: 50%;
+    }
+    .theme-toggle {
+        top: 0.75rem;
+        right: 0.75rem;
+        z-index: 4500;
+    }
+    .fab {
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    /* --- CORREÇÃO GERAL DOS MODAIS --- */
+    .modal-overlay.visible {
+        align-items: flex-end; /* Alinha o modal na base da tela */
+    }
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        height: 90vh; /* Ocupa 90% da altura da tela */
+        max-height: 90vh;
+        border-radius: 16px 16px 0 0; /* Bordas arredondadas apenas no topo */
+        display: flex;
+        flex-direction: column;
+    }
+    .modal-body {
+        overflow-y: auto; /* Garante scroll dentro do corpo do modal */
+        flex-grow: 1;
+    }
+    .modal-header .material-icons[onclick*="close"] {
+        display: block; /* Garante que o 'X' esteja sempre visível */
+    }
+    /* Ajuste específico para o formulário de requisição */
+    #request-modal .request-type-selection,
+    #feedback-modal .request-type-selection {
+        grid-template-columns: 1fr; /* Força uma única coluna de botões */
+    }
+
+
+    /* --- OTIMIZAÇÃO DE GRIDS E TABELAS --- */
+    .grid, .grid-cols-2, .grid-cols-3 {
+        display: block; 
+        gap: 0; 
+    }
+    .grid > div, .grid > .card {
+        margin-bottom: 1rem;
+    }
+    .data-table, .data-table-fino {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
         
         /* Estilo para o botão de menu padrão */
         #mobile-menu-toggle {
@@ -3083,14 +3114,21 @@ const sidebar = document.querySelector('.sidebar');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 
 if (mobileMenuToggle && sidebar) {
-    mobileMenuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
+    const closeSidebar = () => sidebar.classList.remove('open');
+    
+    mobileMenuToggle.addEventListener('click', (e) => {
+        e.stopPropagation(); // Impede que o clique feche o menu imediatamente
+        sidebar.classList.add('open');
     });
 
-    // Fecha o menu ao clicar em um link
+    // Lógica de fechamento
     sidebar.addEventListener('click', (e) => {
-        if (e.target.closest('.nav-link') && window.innerWidth <= 768) {
-            sidebar.classList.remove('open');
+        // Se o clique for no pseudo-elemento '::before' (o 'X') ou em um link, fecha.
+        const rect = sidebar.getBoundingClientRect();
+        const isCloseButtonClick = e.clientX > rect.width - 40 && e.clientY < 40;
+        
+        if (isCloseButtonClick || e.target.closest('.nav-link')) {
+            closeSidebar();
         }
     });
 }
@@ -6030,7 +6068,7 @@ function renderRequestForm(type) {
 
             switch (type) {
                 case 'maintenance':
-                    title = 'Solicitação de Serviços Manutenção - Briefing Obrigatório';
+                    title = 'Solicitação de Manutenção';
                     formHTML = `
                         <div class="form-group">
                             <label>1. Setor*</label>
