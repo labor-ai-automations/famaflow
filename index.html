@@ -9711,8 +9711,10 @@ function toggleMgtView(view) {
          return;
     }
 
-    // Chama a RPC sem parâmetros
-    const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management');
+    // CORREÇÃO: Chama a RPC COM o parâmetro p_user_id
+    const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management', {
+        p_user_id: currentUserProfile.id
+    });
 
     if (error) {
         tableBody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
