@@ -8760,9 +8760,11 @@ async function saveTechnician() {
 }
 
     let allMaintenanceRequestsCache = [];
-        let currentMaintenancePage = 1;
-        const maintenanceItemsPerPage = 50; // ALTERADO: Padrão aumentado para 50
-        // NOVA FUNÇÃO para mudar a quantidade de itens por página
+let currentMaintenancePage = 1;
+let maintenanceItemsPerPage = 50; // ALTERADO: Padrão aumentado para 50
+let currentMaintenanceStatusFilter = 'all';
+
+// NOVA FUNÇÃO para mudar a quantidade de itens por página
 function changeItemsPerPage(value) {
     maintenanceItemsPerPage = parseInt(value);
     currentMaintenancePage = 1; // Volta para a primeira página
