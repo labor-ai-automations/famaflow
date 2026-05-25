@@ -870,8 +870,93 @@ let currentEditingKBId = null; // Controle para saber se estamos editando na KB
         }
         
         /* --- ROUTINES CALENDAR STYLES --- */
-        #my-routines-page .grid { grid-template-columns: 350px 1fr; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0 0.5rem; }
+#my-routines-page .grid { grid-template-columns: 350px 1fr; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0 0.5rem; }
+
+/* --- RESPONSIVIDADE (FEATURE 1) --- */
+    @media (max-width: 768px) {
+        body {
+            overflow-x: hidden;
+        }
+        /* Oculta e move a Sidebar para o modo menu-hamburguer */
+        .sidebar { 
+            width: 100%; height: 100vh; transform: translateX(-100%); 
+            transition: transform 0.3s; z-index: 4000; 
+            position: fixed; 
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        
+        /* Ajusta o conteúdo principal */
+        main.content { 
+            margin-left: 0; padding: 1rem 1rem; 
+            padding-top: 4.5rem; /* Espaço para o header e botão de menu */
+        }
+
+        /* Exibe o botão de menu mobile e ajusta o FAB */
+        #mobile-menu-toggle {
+            display: flex !important;
+            position: fixed; 
+            top: 0.75rem; 
+            left: 0.75rem; 
+            z-index: 4001;
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow);
+            width: 40px; 
+            height: 40px; 
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .fab {
+            right: 1rem;
+            bottom: 1rem;
+        }
+
+        /* Simplifica Grids e Modais */
+        .grid, .grid-cols-2, .grid-cols-3 {
+            display: block; 
+            gap: 0; 
+        }
+        .grid > div, .grid > .card {
+            margin-bottom: 1rem;
+        }
+
+        /* Pop-up de nova mensagem fullscreen */
+        #new-message-popup {
+            top: 0;
+            right: 0;
+            width: 100%;
+            max-width: 100%;
+            height: 100vh;
+            border-radius: 0;
+            transform: translateY(100%);
+        }
+        #new-message-form {
+            height: calc(100% - 48px);
+        }
+        .popup-body {
+            padding: 0.5rem;
+        }
+        
+        /* Scroll horizontal para tabelas largas */
+        .data-table, .data-table-fino {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        #conversation-view-page .card {
+            height: calc(100vh - 8rem);
+        }
+    }
+    
+    /* Estilo para o botão de menu padrão (oculto em desktop) */
+    #mobile-menu-toggle {
+        display: none; 
+    }
         .calendar-header h3 { margin: 0; text-transform: capitalize; font-size: 1.1rem; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
         .calendar-day, .calendar-weekday { display: flex; align-items: center; justify-content: center; height: 40px; text-align: center; position: relative; }
@@ -2993,7 +3078,23 @@ const appHTML = `<div id="app-container">
             
             document.getElementById('post-media-file').addEventListener('change', handlePostMediaPreview);
 
-            const sidebar = document.querySelector('.sidebar');
+        // --- LÓGICA DO MENU MOBILE ---
+        const sidebar = document.querySelector('.sidebar');
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        
+        if (mobileMenuToggle && sidebar) {
+            mobileMenuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Fecha o menu ao clicar em um link
+            sidebar.addEventListener('click', (e) => {
+                if (e.target.closest('.nav-link') && window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+        // --- FIM DA LÓGICA DO MENU MOBILE ---
             const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
             
             if (mobileMenuToggle && sidebar) {
