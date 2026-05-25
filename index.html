@@ -8936,11 +8936,17 @@ function changeItemsPerPage(value) {
 		// --- NOVAS FUNÇÕES PARA EXPORTAÇÃO ---
 function openExportModal() {
     const modal = document.getElementById('export-modal');
-    const sectorSelect = document.getElementById('rep-maint-sector');
+    const sectorListContainer = document.getElementById('rep-maint-sector-list');
     
-    // Popula o seletor de setores dinamicamente
+    // Popula o container de setores com checkboxes
     const allSectors = [...new Set(allMaintenanceRequestsCache.map(req => req.data.setor).filter(Boolean))].sort();
-    sectorSelect.innerHTML = allSectors.map(sector => `<option value="${sector}">${sector}</option>`).join('');
+    sectorListContainer.innerHTML = allSectors.map(sector => `
+        <label class="custom-checkbox">
+            <input type="checkbox" name="rep-maint-sector" value="${sector}" checked>
+            <span class="checkbox-box"><span class="material-icons">check</span></span>
+            ${sector}
+        </label>
+    `).join('');
 
     // Define as datas padrão (últimos 30 dias)
     const endDate = new Date();
@@ -8968,8 +8974,8 @@ async function runMaintenanceReport() {
             start_date: document.getElementById('rep-maint-start-date').value,
             end_date: document.getElementById('rep-maint-end-date').value,
             status_filter: Array.from(document.querySelectorAll('input[name="rep-maint-status"]:checked')).map(el => el.value),
-            sector_filter: Array.from(document.getElementById('rep-maint-sector').selectedOptions).map(el => el.value)
-            // O filtro de "Situação da Máquina" não foi implementado na RPC, mas pode ser adicionado se necessário.
+            sector_filter: Array.from(document.querySelectorAll('input[name="rep-maint-sector"]:checked')).map(el => el.value), // <-- LINHA ALTERADA
+            situation_filter: Array.from(document.querySelectorAll('input[name="rep-maint-situation"]:checked')).map(el => el.value)
         };
 
         // Validações
@@ -13007,7 +13013,7 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
 
 <!-- NOVO: MODAL DE EXPORTAÇÃO DE RELATÓRIO DE MANUTENÇÃO -->
 <div id="export-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h3>Exportar Relatório de Manutenção</h3>
             <span class="material-icons" style="cursor:pointer;" onclick="closeExportModal()">close</span>
@@ -13017,8 +13023,10 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
                 Selecione os filtros abaixo para gerar seu relatório em Excel (.xlsx).
             </p>
             
-            <div class="report-grid" style="gap: 1.5rem; margin-bottom: 1rem;">
-                <div class="report-selector-box" style="padding: 1rem;">
+            <div class="grid grid-cols-2" style="gap: 1.5rem; margin-bottom: 1rem;">
+            <!-- Coluna da Esquerda: Filtros Principais -->
+            <div>
+                <div class="report-selector-box" style="padding: 1rem; margin-bottom: 1.5rem;">
                     <label>Período de Análise*</label>
                     <div style="display:flex; gap: 10px;">
                         <input type="date" id="rep-maint-start-date" class="input-field" required>
@@ -13026,31 +13034,34 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
                     </div>
                 </div>
                 <div class="report-selector-box" style="padding: 1rem;">
+                    <label>Status das Solicitações</label>
+                    <div class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
+                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label>
+                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label>
+                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label>
+                    </div>
+                </div>
+            </div>
+            <!-- Coluna da Direita: Filtros de Detalhe -->
+            <div>
+                <div class="report-selector-box" style="padding: 1rem; height: 100%;">
                     <label>Filtrar por Setor</label>
-                    <select id="rep-maint-sector" class="input-field" multiple size="3">
-                        <!-- Opções de setor serão carregadas dinamicamente -->
-                    </select>
+                    <div id="rep-maint-sector-list" class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); max-height: 150px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Setores serão carregados aqui -->
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="report-selector-box" style="padding: 1rem; margin-bottom: 1rem;">
-                <label>Status das Solicitações</label>
-                <div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);">
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="pending" checked> Pendentes</label>
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="planned" checked> Planejadas</label>
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="executed" checked> Executadas</label>
-                </div>
+        <div class="report-selector-box" style="padding: 1rem;">
+            <label>Situação da Máquina</label>
+            <div class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina parada" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Máquina Parada</label>
+                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando, mas com risco" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Rodando com Risco</label>
+                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando normal (preventiva)" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Rodando Normal (Preventiva)</label>
+                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Manutenção infraestrutura" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Infraestrutura</label>
             </div>
-            
-            <div class="report-selector-box" style="padding: 1rem;">
-                <label>Situação da Máquina</label>
-                <div class="report-check-grid" style="grid-template-columns: repeat(2, 1fr);">
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina parada" checked> Máquina Parada</label>
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando, mas com risco" checked> Rodando com Risco</label>
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando normal (preventiva)" checked> Rodando Normal (Preventiva)</label>
-                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Manutenção infraestrutura" checked> Infraestrutura</label>
-                </div>
-            </div>
+        </div>
 
         </div>
         <div class="modal-footer">
@@ -13061,9 +13072,6 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
         </div>
     </div>
 </div>
-
-</body>
-</html>
 
 </body>
 </html>
