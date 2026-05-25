@@ -9112,30 +9112,43 @@ function closeExportModal() {
     document.getElementById('export-modal').classList.remove('visible');
 }
 
-async function runMaintenanceReport() {
-    const btn = document.getElementById('btn-run-export');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
-    showToast("Preparando dados para o relatório. Isso pode levar um momento.", "info");
+async function runMaintenanceReport(type) {
+        // Identifica qual botão foi clicado
+        const isSmart = type === 'smart';
+        const btn = isSmart ? document.getElementById('btn-run-smart-report') : document.getElementById('btn-run-export');
+        
+        // Salva o conteúdo original para restaurar depois
+        const originalContent = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
+        
+        showToast(isSmart ? "A IA está analisando os dados e gerando o PDF. Aguarde..." : "Preparando o arquivo Excel. Aguarde...", "info");
 
-    try {
-        // 1. Coleta dos filtros
-        const payload = {
-            start_date: document.getElementById('rep-maint-start-date').value,
-            end_date: document.getElementById('rep-maint-end-date').value,
-            status_filter: Array.from(document.querySelectorAll('input[name="rep-maint-status"]:checked')).map(el => el.value),
-            sector_filter: Array.from(document.querySelectorAll('input[name="rep-maint-sector"]:checked')).map(el => el.value), // <-- LINHA ALTERADA
-            situation_filter: Array.from(document.querySelectorAll('input[name="rep-maint-situation"]:checked')).map(el => el.value)
-        };
+        try {
+            // 1. Coleta dos filtros
+            const payload = {
+                report_type: type, // Diz ao n8n qual relatório gerar
+                start_date: document.getElementById('rep-maint-start-date').value,
+                end_date: document.getElementById('rep-maint-end-date').value,
+                status_filter: Array.from(document.querySelectorAll('input[name="rep-maint-status"]:checked')).map(el => el.value),
+                sector_filter: Array.from(document.querySelectorAll('input[name="rep-maint-sector"]:checked')).map(el => el.value),
+                situation_filter: Array.from(document.querySelectorAll('input[name="rep-maint-situation"]:checked')).map(el => el.value),
+                usuario_gerador: currentUserProfile.full_name // Passa o nome para o PDF
+            };
 
-        // Validações
-        if (!payload.start_date || !payload.end_date) {
-            throw new Error("As datas de início e fim são obrigatórias.");
-        }
+            // Validações
+            if (!payload.start_date || !payload.end_date) {
+                throw new Error("As datas de início e fim são obrigatórias.");
+            }
 
-        // 2. Chamada para o Webhook do n8n
+           // 2. Definir o Webhook correto e fazer a chamada
+        const webhookUrl = isSmart 
+            ? 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-inteligente-manutencao' 
+            : 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-manutencao';
+
         const { data: { session } } = await supabaseClient.auth.getSession();
-        const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-manutencao', {
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -9144,33 +9157,38 @@ async function runMaintenanceReport() {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            throw new Error('O servidor de relatórios retornou um erro.');
+            if (!response.ok) {
+                throw new Error('O servidor retornou um erro ao processar a solicitação.');
+            }
+
+            // 3. Processamento do arquivo e download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            
+            // Define o nome e a extensão baseados no tipo
+            const fileExtension = isSmart ? 'pdf' : 'xlsx';
+            const fileNamePrefix = isSmart ? 'Relatorio_Inteligente_Manutencao_' : 'Relatorio_Bruto_Manutencao_';
+            a.download = `${fileNamePrefix}${new Date().toISOString().split('T')[0]}.${fileExtension}`;
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            
+            showToast("Relatório baixado com sucesso!", "success");
+            closeExportModal();
+
+        } catch (error) {
+            console.error("Erro ao gerar relatório:", error);
+            showToast(error.message, "danger");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent; // Restaura o botão original
         }
-
-        // 3. Processamento do arquivo e download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `Relatorio_Manutencao_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-        
-        showToast("Relatório baixado com sucesso!", "success");
-        closeExportModal();
-
-    } catch (error) {
-        console.error("Erro ao gerar relatório:", error);
-        showToast(error.message, "danger");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-icons" style="font-size: 18px; margin-right: 5px;">download</span> Gerar e Baixar';
     }
-}
 // --- FIM DAS NOVAS FUNÇÕES ---
 
         function openMaintenanceExecutionModal(requestId) {
@@ -13210,11 +13228,19 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
             </div>
 
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <!-- Botão Cancelar movido para a esquerda -->
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancelar</button>
-            <button class="btn btn-success" id="btn-run-export" onclick="runMaintenanceReport()">
-                <span class="material-icons" style="font-size: 18px; margin-right: 5px;">download</span> Gerar e Baixar
-            </button>
+            
+            <!-- Grupo de Botões de Exportação à direita -->
+            <div style="display: flex; gap: 0.75rem;">
+                <button class="btn btn-secondary" id="btn-run-export" onclick="runMaintenanceReport('excel')">
+                    <span class="material-icons" style="font-size: 18px; margin-right: 5px; color: #1D6F42;">table_view</span> Dados Brutos (Excel)
+                </button>
+                <button class="btn btn-danger" id="btn-run-smart-report" onclick="runMaintenanceReport('smart')">
+                    <span class="material-icons" style="font-size: 18px; margin-right: 5px;">psychology</span> Relatório Inteligente
+                </button>
+            </div>
         </div>
     </div>
 </div>
