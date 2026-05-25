@@ -9125,10 +9125,25 @@ async function runMaintenanceReport() {
             }).join('');
 
             paginationContainer.innerHTML = `
-                <button class="btn btn-icon" ${currentMaintenancePage <= 1 ? 'disabled' : ''} onclick="changeMaintenancePage(-1)"><span class="material-icons">chevron_left</span></button>
-                <span style="font-size: 0.9rem; font-weight: 500;">Página ${currentMaintenancePage} de ${totalPages || 1}</span>
-                <button class="btn btn-icon" ${currentMaintenancePage >= totalPages ? 'disabled' : ''} onclick="changeMaintenancePage(1)"><span class="material-icons">chevron_right</span></button>
-            `;
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="items-per-page-selector" style="font-size: 0.8rem; color: var(--color-text-secondary);">Itens:</label>
+            <select id="items-per-page-selector" onchange="changeItemsPerPage(this.value)" class="input-field" style="padding: 0.2rem 0.5rem; height: auto;">
+                <option value="10" ${maintenanceItemsPerPage == 10 ? 'selected' : ''}>10</option>
+                <option value="25" ${maintenanceItemsPerPage == 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${maintenanceItemsPerPage == 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${maintenanceItemsPerPage == 100 ? 'selected' : ''}>100</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button class="btn btn-icon" ${currentMaintenancePage <= 1 ? 'disabled' : ''} onclick="changeMaintenancePage(-1)"><span class="material-icons">chevron_left</span></button>
+            <span style="font-size: 0.9rem; font-weight: 500;">Página ${currentMaintenancePage} de ${totalPages || 1}</span>
+            <button class="btn btn-icon" ${currentMaintenancePage >= totalPages ? 'disabled' : ''} onclick="changeMaintenancePage(1)"><span class="material-icons">chevron_right</span></button>
+        </div>
+         <!-- NOVO: Botão de Exportar adicionado aqui -->
+        <button id="btn-export-maintenance" class="btn btn-secondary" onclick="openExportModal()">
+            <span class="material-icons" style="font-size:18px;">download</span> Exportar
+        </button>
+    `;
         }
 
         function changeMaintenancePage(direction) {
