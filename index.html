@@ -3078,32 +3078,26 @@ const appHTML = `<div id="app-container">
             
             document.getElementById('post-media-file').addEventListener('change', handlePostMediaPreview);
 
-        // --- LÓGICA DO MENU MOBILE ---
-        const sidebar = document.querySelector('.sidebar');
-        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-        
-        if (mobileMenuToggle && sidebar) {
-            mobileMenuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
+        // --- LÓGICA DO MENU MOBILE (CORRIGIDA) ---
+const sidebar = document.querySelector('.sidebar');
+const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 
-            // Fecha o menu ao clicar em um link
-            sidebar.addEventListener('click', (e) => {
-                if (e.target.closest('.nav-link') && window.innerWidth <= 768) {
-                    sidebar.classList.remove('open');
-                }
-            });
+if (mobileMenuToggle && sidebar) {
+    mobileMenuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+    });
+
+    // Fecha o menu ao clicar em um link
+    sidebar.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-link') && window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
         }
-        // --- FIM DA LÓGICA DO MENU MOBILE ---
-            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-            
-            if (mobileMenuToggle && sidebar) {
-                mobileMenuToggle.addEventListener('click', () => {
-                    sidebar.classList.toggle('open');
-                });
-            }
+    });
+}
+// --- FIM DA LÓGICA DO MENU MOBILE ---
 
-            // O loop que estava aqui foi removido. A função showApp agora gerencia todos os cliques da sidebar.
+// O loop que estava aqui foi removido. A função showApp agora gerencia todos os cliques da sidebar.
+        
 
             const replyForm = document.getElementById('reply-form');
             if (replyForm) {
