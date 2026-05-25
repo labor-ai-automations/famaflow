@@ -1329,7 +1329,24 @@ body.fullscreen-flow .flowchart-monitor-bar {
 }
 .report-selector-box label {
     font-weight: 700; font-size: 0.85rem; color: var(--color-text-secondary);
-    text-transform: uppercase; margin-bottom: 1rem; display: block;
+    margin-bottom: 1rem; display: block;
+}
+/* CORREÇÕES ESTRUTURAIS PARA FILTROS */
+.report-selector-box, .custom-checkbox {
+    min-width: 0; /* Impede o vazamento de texto em grids */
+}
+.checkbox-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sector-checkbox-list {
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.5rem;
 }
 .report-check-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
@@ -8938,13 +8955,13 @@ function openExportModal() {
     const modal = document.getElementById('export-modal');
     const sectorListContainer = document.getElementById('rep-maint-sector-list');
     
-    // Popula o container de setores com checkboxes
+    // Popula o container de setores com a estrutura de checkbox correta
     const allSectors = [...new Set(allMaintenanceRequestsCache.map(req => req.data.setor).filter(Boolean))].sort();
     sectorListContainer.innerHTML = allSectors.map(sector => `
         <label class="custom-checkbox">
             <input type="checkbox" name="rep-maint-sector" value="${sector}" checked>
             <span class="checkbox-box"><span class="material-icons">check</span></span>
-            ${sector}
+            <span class="checkbox-label">${sector}</span>
         </label>
     `).join('');
 
@@ -13013,55 +13030,49 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
 
 <!-- NOVO: MODAL DE EXPORTAÇÃO DE RELATÓRIO DE MANUTENÇÃO -->
 <div id="export-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-content" style="max-width: 720px;">
         <div class="modal-header">
             <h3>Exportar Relatório de Manutenção</h3>
             <span class="material-icons" style="cursor:pointer;" onclick="closeExportModal()">close</span>
         </div>
         <div class="modal-body">
-            <p style="color: var(--color-text-secondary); margin-top: 0; font-size: 0.9rem;">
-                Selecione os filtros abaixo para gerar seu relatório em Excel (.xlsx).
-            </p>
-            
-            <div class="grid grid-cols-2" style="gap: 1.5rem; margin-bottom: 1rem;">
-            <!-- Coluna da Esquerda: Filtros Principais -->
-            <div>
-                <div class="report-selector-box" style="padding: 1rem; margin-bottom: 1.5rem;">
-                    <label>Período de Análise*</label>
-                    <div style="display:flex; gap: 10px;">
-                        <input type="date" id="rep-maint-start-date" class="input-field" required>
-                        <input type="date" id="rep-maint-end-date" class="input-field" required>
+            <div class="grid grid-cols-2" style="gap: 1rem; align-items: flex-start;">
+                <!-- Coluna Esquerda -->
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="report-selector-box" style="padding: 1rem;">
+                        <label>Período de Análise*</label>
+                        <div style="display:flex; gap: 10px;">
+                            <input type="date" id="rep-maint-start-date" class="input-field" required>
+                            <input type="date" id="rep-maint-end-date" class="input-field" required>
+                        </div>
+                    </div>
+                    <div class="report-selector-box" style="padding: 1rem;">
+                        <label>Status das Solicitações</label>
+                        <div class="report-check-grid" style="grid-template-columns: 1fr 1fr;">
+                            <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Pendentes</span></label>
+                            <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Planejadas</span></label>
+                            <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Executadas</span></label>
+                        </div>
                     </div>
                 </div>
-                <div class="report-selector-box" style="padding: 1rem;">
-                    <label>Status das Solicitações</label>
-                    <div class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
-                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label>
-                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label>
-                        <label class="custom-checkbox"><input type="checkbox" name="rep-maint-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label>
-                    </div>
-                </div>
-            </div>
-            <!-- Coluna da Direita: Filtros de Detalhe -->
-            <div>
+                <!-- Coluna Direita -->
                 <div class="report-selector-box" style="padding: 1rem; height: 100%;">
                     <label>Filtrar por Setor</label>
-                    <div id="rep-maint-sector-list" class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); max-height: 150px; overflow-y: auto; padding-right: 5px;">
+                    <div class="sector-checkbox-list" id="rep-maint-sector-list">
                         <!-- Setores serão carregados aqui -->
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="report-selector-box" style="padding: 1rem;">
-            <label>Situação da Máquina</label>
-            <div class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
-                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina parada" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Máquina Parada</label>
-                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando, mas com risco" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Rodando com Risco</label>
-                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando normal (preventiva)" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Rodando Normal (Preventiva)</label>
-                <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Manutenção infraestrutura" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Infraestrutura</label>
+            <div class="report-selector-box" style="padding: 1rem; margin-top: 1rem;">
+                <label>Situação da Máquina</label>
+                <div class="report-check-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina parada" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Máquina Parada</span></label>
+                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando, mas com risco" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Rodando com Risco</span></label>
+                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Maquina rodando normal (preventiva)" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Rodando Normal (Preventiva)</span></label>
+                    <label class="custom-checkbox"><input type="checkbox" name="rep-maint-situation" value="Manutenção infraestrutura" checked><span class="checkbox-box"><span class="material-icons">check</span></span><span class="checkbox-label">Infraestrutura</span></label>
+                </div>
             </div>
-        </div>
 
         </div>
         <div class="modal-footer">
