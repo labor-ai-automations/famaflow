@@ -6276,11 +6276,11 @@ function renderRequestForm(type) {
                         <h3 class="form-section-title">Detalhes da Solicitação</h3>
                         <div class="grid grid-cols-2">
                             <div class="form-group"><label for="req-cargo-atual">Cargo ATUAL*</label><input type="text" id="req-cargo-atual" name="cargo_atual" class="input-field" required></div>
-                            <div class="form-group"><label for="req-salario-atual">Salário ATUAL (R$)*</label><input type="number" id="req-salario-atual" name="salario_atual" class="input-field" placeholder="0.00" required></div>
+                            <div class="form-group"><label for="req-salario-atual">Salário ATUAL (R$)*</label><input type="number" step="0.01" id="req-salario-atual" name="salario_atual" class="input-field" placeholder="0.00" required></div>
                         </div>
                         <div class="grid grid-cols-2">
                             <div class="form-group"><label for="req-cargo-pretendido">Cargo PRETENDIDO*</label><input type="text" id="req-cargo-pretendido" name="cargo_pretendido" class="input-field" required></div>
-                            <div class="form-group"><label for="req-salario-pretendido">Salário PRETENDIDO (R$)*</label><input type="number" id="req-salario-pretendido" name="salario_pretendido" class="input-field" placeholder="0.00" required></div>
+                            <div class="form-group"><label for="req-salario-pretendido">Salário PRETENDIDO (R$)*</label><input type="number" step="0.01" id="req-salario-pretendido" name="salario_pretendido" class="input-field" placeholder="0.00" required></div>
                         </div>
                         <div class="form-group"><label for="req-justificativa-promocao">Justificativa da solicitação*</label><textarea id="req-justificativa-promocao" name="justificativa" class="input-field" required placeholder="Descreva as motivações, resultados obtidos, conquistas e razões..."></textarea></div>
                     `;
@@ -6314,9 +6314,9 @@ function renderRequestForm(type) {
                         </div>
                         <div class="form-group"><label for="req-local-treinamento">Local (Cidade/Plataforma online)</label><input type="text" id="req-local-treinamento" name="local" class="input-field"></div>
                         <div class="grid grid-cols-2">
-                            <div class="form-group"><label for="req-datas-treinamento">Data(s) de início e término</label><input type="text" id="req-datas-treinamento" name="datas" class="input-field"></div>
-                            <div class="form-group"><label for="req-carga-horaria">Carga horária</label><input type="text" id="req-carga-horaria" name="carga_horaria" class="input-field"></div>
-                        </div>
+                        <div class="form-group"><label for="req-datas-treinamento">Data de Início</label><input type="date" id="req-datas-treinamento" name="datas" class="input-field"></div>
+                        <div class="form-group"><label for="req-carga-horaria">Carga horária</label><input type="text" id="req-carga-horaria" name="carga_horaria" class="input-field"></div>
+                    </div>
 
                         <h3 class="form-section-title">2. Objetivo da Participação</h3>
                         <div class="form-group">
@@ -6332,10 +6332,10 @@ function renderRequestForm(type) {
 
                         <h3 class="form-section-title">3. Custos Estimados</h3>
                         <div class="grid grid-cols-2">
-                            <div class="form-group"><label for="req-custo-inscricao">Inscrição (R$)</label><input type="number" id="req-custo-inscricao" name="custo_inscricao" class="input-field" placeholder="0.00"></div>
-                            <div class="form-group"><label for="req-custo-transporte">Transporte (R$)</label><input type="number" id="req-custo-transporte" name="custo_transporte" class="input-field" placeholder="0.00"></div>
-                            <div class="form-group"><label for="req-custo-hospedagem">Hospedagem/Alimentação (R$)</label><input type="number" id="req-custo-hospedagem" name="custo_hospedagem" class="input-field" placeholder="0.00"></div>
-                            <div class="form-group"><label for="req-custo-outras">Outras despesas (R$)</label><input type="number" id="req-custo-outras" name="custo_outras" class="input-field" placeholder="0.00"></div>
+                            <div class="form-group"><label for="req-custo-inscricao">Inscrição (R$)</label><input type="number" step="0.01" id="req-custo-inscricao" name="custo_inscricao" class="input-field" placeholder="0.00"></div>
+                            <div class="form-group"><label for="req-custo-transporte">Transporte (R$)</label><input type="number" step="0.01" id="req-custo-transporte" name="custo_transporte" class="input-field" placeholder="0.00"></div>
+                            <div class="form-group"><label for="req-custo-hospedagem">Hospedagem/Alimentação (R$)</label><input type="number" step="0.01" id="req-custo-hospedagem" name="custo_hospedagem" class="input-field" placeholder="0.00"></div>
+                            <div class="form-group"><label for="req-custo-outras">Outras despesas (R$)</label><input type="number" step="0.01" id="req-custo-outras" name="custo_outras" class="input-field" placeholder="0.00"></div>
                         </div>
                     `;
                     break;
@@ -9112,43 +9112,30 @@ function closeExportModal() {
     document.getElementById('export-modal').classList.remove('visible');
 }
 
-async function runMaintenanceReport(type) {
-        // Identifica qual botão foi clicado
-        const isSmart = type === 'smart';
-        const btn = isSmart ? document.getElementById('btn-run-smart-report') : document.getElementById('btn-run-export');
-        
-        // Salva o conteúdo original para restaurar depois
-        const originalContent = btn.innerHTML;
-        
-        btn.disabled = true;
-        btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
-        
-        showToast(isSmart ? "A IA está analisando os dados e gerando o PDF. Aguarde..." : "Preparando o arquivo Excel. Aguarde...", "info");
+async function runMaintenanceReport() {
+    const btn = document.getElementById('btn-run-export');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-icons refresh-spin">sync</span> Gerando...';
+    showToast("Preparando dados para o relatório. Isso pode levar um momento.", "info");
 
-        try {
-            // 1. Coleta dos filtros
-            const payload = {
-                report_type: type, // Diz ao n8n qual relatório gerar
-                start_date: document.getElementById('rep-maint-start-date').value,
-                end_date: document.getElementById('rep-maint-end-date').value,
-                status_filter: Array.from(document.querySelectorAll('input[name="rep-maint-status"]:checked')).map(el => el.value),
-                sector_filter: Array.from(document.querySelectorAll('input[name="rep-maint-sector"]:checked')).map(el => el.value),
-                situation_filter: Array.from(document.querySelectorAll('input[name="rep-maint-situation"]:checked')).map(el => el.value),
-                usuario_gerador: currentUserProfile.full_name // Passa o nome para o PDF
-            };
+    try {
+        // 1. Coleta dos filtros
+        const payload = {
+            start_date: document.getElementById('rep-maint-start-date').value,
+            end_date: document.getElementById('rep-maint-end-date').value,
+            status_filter: Array.from(document.querySelectorAll('input[name="rep-maint-status"]:checked')).map(el => el.value),
+            sector_filter: Array.from(document.querySelectorAll('input[name="rep-maint-sector"]:checked')).map(el => el.value), // <-- LINHA ALTERADA
+            situation_filter: Array.from(document.querySelectorAll('input[name="rep-maint-situation"]:checked')).map(el => el.value)
+        };
 
-            // Validações
-            if (!payload.start_date || !payload.end_date) {
-                throw new Error("As datas de início e fim são obrigatórias.");
-            }
+        // Validações
+        if (!payload.start_date || !payload.end_date) {
+            throw new Error("As datas de início e fim são obrigatórias.");
+        }
 
-           // 2. Definir o Webhook correto e fazer a chamada
-        const webhookUrl = isSmart 
-            ? 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-inteligente-manutencao' 
-            : 'https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-manutencao';
-
+        // 2. Chamada para o Webhook do n8n
         const { data: { session } } = await supabaseClient.auth.getSession();
-        const response = await fetch(webhookUrl, {
+        const response = await fetch('https://n8n-n8n.znxk1t.easypanel.host/webhook/gerar-relatorio-manutencao', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -9157,38 +9144,33 @@ async function runMaintenanceReport(type) {
             body: JSON.stringify(payload)
         });
 
-            if (!response.ok) {
-                throw new Error('O servidor retornou um erro ao processar a solicitação.');
-            }
-
-            // 3. Processamento do arquivo e download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            
-            // Define o nome e a extensão baseados no tipo
-            const fileExtension = isSmart ? 'pdf' : 'xlsx';
-            const fileNamePrefix = isSmart ? 'Relatorio_Inteligente_Manutencao_' : 'Relatorio_Bruto_Manutencao_';
-            a.download = `${fileNamePrefix}${new Date().toISOString().split('T')[0]}.${fileExtension}`;
-            
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-            
-            showToast("Relatório baixado com sucesso!", "success");
-            closeExportModal();
-
-        } catch (error) {
-            console.error("Erro ao gerar relatório:", error);
-            showToast(error.message, "danger");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalContent; // Restaura o botão original
+        if (!response.ok) {
+            throw new Error('O servidor de relatórios retornou um erro.');
         }
+
+        // 3. Processamento do arquivo e download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Relatorio_Manutencao_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        
+        showToast("Relatório baixado com sucesso!", "success");
+        closeExportModal();
+
+    } catch (error) {
+        console.error("Erro ao gerar relatório:", error);
+        showToast(error.message, "danger");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons" style="font-size: 18px; margin-right: 5px;">download</span> Gerar e Baixar';
     }
+}
 // --- FIM DAS NOVAS FUNÇÕES ---
 
         function openMaintenanceExecutionModal(requestId) {
@@ -9280,6 +9262,16 @@ async function runMaintenanceReport(type) {
                     btnAcao = `<div style="width: 110px;"><button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button></div>`;
                 }
 
+                // NOVO: Lógica para exibir as estrelas caso o status seja "executed" e haja uma nota registrada
+                let starsHTML = '';
+                if (req.status === 'executed' && req.feedback_rating) {
+                    starsHTML = `
+                        <div style="display: flex; align-items: center; margin-right: 5px; font-size: 15px; letter-spacing: 1px;" title="Avaliado com ${req.feedback_rating} estrelas">
+                            ${'⭐'.repeat(req.feedback_rating)}
+                        </div>
+                    `;
+                }
+
                 return `
                     <tr>
                         <td>${req.requester_name || 'N/A'}</td>
@@ -9290,6 +9282,7 @@ async function runMaintenanceReport(type) {
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
                         <td style="position: sticky; right: 0; background: var(--color-surface); z-index: 2; text-align: right;">
                             <div style="display:flex; align-items:center; gap:0.5rem; justify-content: flex-end;">
+                                ${starsHTML}
                                 ${btnVerDetalhes}
                                 ${btnAcao}
                             </div>
@@ -13228,19 +13221,11 @@ async function generateSingleFeedbackPDF(feedbackId = null) {
             </div>
 
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <!-- Botão Cancelar movido para a esquerda -->
+        <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancelar</button>
-            
-            <!-- Grupo de Botões de Exportação à direita -->
-            <div style="display: flex; gap: 0.75rem;">
-                <button class="btn btn-secondary" id="btn-run-export" onclick="runMaintenanceReport('excel')">
-                    <span class="material-icons" style="font-size: 18px; margin-right: 5px; color: #1D6F42;">table_view</span> Dados Brutos (Excel)
-                </button>
-                <button class="btn btn-danger" id="btn-run-smart-report" onclick="runMaintenanceReport('smart')">
-                    <span class="material-icons" style="font-size: 18px; margin-right: 5px;">psychology</span> Relatório Inteligente
-                </button>
-            </div>
+            <button class="btn btn-success" id="btn-run-export" onclick="runMaintenanceReport()">
+                <span class="material-icons" style="font-size: 18px; margin-right: 5px;">download</span> Gerar e Baixar
+            </button>
         </div>
     </div>
 </div>
