@@ -9217,7 +9217,7 @@ async function runMaintenanceReport() {
             document.getElementById('maintenance-execution-modal').classList.remove('visible');
         }
 
-        function renderOptimizedMaintenanceTable() {
+        async function renderOptimizedMaintenanceTable() {
             const tableBody = document.getElementById('manage-maintenance-table-body');
             const paginationContainer = document.getElementById('maintenance-pagination-controls');
             if (!tableBody || !paginationContainer) return;
@@ -9243,6 +9243,22 @@ async function runMaintenanceReport() {
                 return;
             }
 
+            // BUSCA ATIVA DAS AVALIAÇÕES
+            // Pega os IDs apenas das OSs "Executadas" que estão aparecendo nesta página específica (Evita erro de URL grande)
+            const executedIds = paginatedItems.filter(r => r.status === 'executed').map(r => r.id);
+            let ratingsMap = {};
+            
+            if (executedIds.length > 0) {
+                const { data: ratingsData } = await supabaseClient
+                    .from('requests')
+                    .select('id, feedback_rating, feedback_comment')
+                    .in('id', executedIds);
+                    
+                if (ratingsData) {
+                    ratingsData.forEach(rt => ratingsMap[rt.id] = rt);
+                }
+            }
+
             const statusTranslations = { 'pending': 'Pendente', 'planned': 'Planejada', 'executed': 'Executada', 'pending_manager_check': 'Com Gerente' };
 
             tableBody.innerHTML = paginatedItems.map(req => {
@@ -9259,7 +9275,6 @@ async function runMaintenanceReport() {
                     technicians = req.data?.tecnicos_planejados || 'N/A';
                 }
 
-                // CORREÇÃO: DECLARAÇÃO DA VARIÁVEL FALTANTE
                 const situacaoMaquina = req.data?.situacao_maquina || 'N/A';
                 let situacaoClass = '';
                 if (situacaoMaquina === 'Maquina parada') {
@@ -9267,25 +9282,35 @@ async function runMaintenanceReport() {
                 } else if (situacaoMaquina.includes('risco')) {
                     situacaoClass = 'text-warning';
                 }
-                // FIM DA CORREÇÃO
 
                 const btnVerDetalhes = `<div style="width: 110px;"><button class="btn btn-secondary" onclick="openRequestDetailsModal('${req.id}')">Ver Detalhes</button></div>`;
                 let btnAcao = `<div style="width: 110px;"></div>`;
+                
                 if (req.status === 'pending' || req.status === 'pending_manager_check') {
                     btnAcao = `<div style="width: 110px;"><button class="btn btn-warning" onclick="openMaintenancePlanningModal('${req.id}')">Planejar</button></div>`;
-                }
-                if (req.status === 'planned') {
+                } else if (req.status === 'planned') {
                     btnAcao = `<div style="width: 110px;"><button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button></div>`;
-                }
+                } else if (req.status === 'executed') {
+                    
+                    // A MÁGICA ACONTECE AQUI: Usamos a nota que acabamos de buscar ativamente
+                    const notaReal = ratingsMap[req.id]?.feedback_rating || req.feedback_rating;
+                    const commentReal = ratingsMap[req.id]?.feedback_comment || req.feedback_comment;
 
-                // NOVO: Lógica para exibir as estrelas caso o status seja "executed" e haja uma nota registrada
-                let starsHTML = '';
-                if (req.status === 'executed' && req.feedback_rating) {
-                    starsHTML = `
-                        <div style="display: flex; align-items: center; margin-right: 5px; font-size: 15px; letter-spacing: 1px;" title="Avaliado com ${req.feedback_rating} estrelas">
-                            ${'⭐'.repeat(req.feedback_rating)}
-                        </div>
-                    `;
+                    if (notaReal) {
+                        const starsHTML = '★'.repeat(notaReal) + '☆'.repeat(5 - notaReal);
+                        const commentTooltip = commentReal ? commentReal.replace(/"/g, '&quot;') : 'Sem comentário';
+                        
+                        btnAcao = `
+                            <div style="width: 110px; display: flex; flex-direction: column; align-items: flex-end;" title="${commentTooltip}">
+                                <span style="color: var(--color-warning); font-size: 1.2rem; letter-spacing: 2px; cursor: help;">${starsHTML}</span>
+                                <span style="font-size: 0.65rem; color: var(--color-text-secondary); text-transform: uppercase;">${notaReal}/5</span>
+                            </div>`;
+                    } else {
+                        btnAcao = `
+                            <div style="width: 110px; text-align: right;">
+                                <span style="font-size: 0.75rem; color: var(--color-text-secondary); font-style: italic;">Aguardando<br>Avaliação</span>
+                            </div>`;
+                    }
                 }
 
                 return `
@@ -9298,7 +9323,6 @@ async function runMaintenanceReport() {
                         <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
                         <td style="position: sticky; right: 0; background: var(--color-surface); z-index: 2; text-align: right;">
                             <div style="display:flex; align-items:center; gap:0.5rem; justify-content: flex-end;">
-                                ${starsHTML}
                                 ${btnVerDetalhes}
                                 ${btnAcao}
                             </div>
@@ -9307,6 +9331,7 @@ async function runMaintenanceReport() {
                 `;
             }).join('');
 
+            // MANTÉM OS SEUS BOTÕES DE EXPORTAÇÃO E PAGINAÇÃO INTACTOS
             paginationContainer.innerHTML = `
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             <label for="items-per-page-selector" style="font-size: 0.8rem; color: var(--color-text-secondary);">Itens:</label>
@@ -9322,7 +9347,6 @@ async function runMaintenanceReport() {
             <span style="font-size: 0.9rem; font-weight: 500;">Página ${currentMaintenancePage} de ${totalPages || 1}</span>
             <button class="btn btn-icon" ${currentMaintenancePage >= totalPages ? 'disabled' : ''} onclick="changeMaintenancePage(1)"><span class="material-icons">chevron_right</span></button>
         </div>
-         <!-- NOVO: Botão de Exportar adicionado aqui -->
         <button id="btn-export-maintenance" class="btn btn-secondary" onclick="openExportModal()">
             <span class="material-icons" style="font-size:18px;">download</span> Exportar
         </button>
