@@ -9244,7 +9244,7 @@ async function runMaintenanceReport() {
             }
 
             // BUSCA ATIVA DAS AVALIAÇÕES
-            // Pega os IDs apenas das OSs "Executadas" que estão aparecendo nesta página específica (Evita erro de URL grande)
+            // Pega os IDs apenas das OSs "Executadas" que estão aparecendo nesta página específica
             const executedIds = paginatedItems.filter(r => r.status === 'executed').map(r => r.id);
             let ratingsMap = {};
             
@@ -9292,7 +9292,7 @@ async function runMaintenanceReport() {
                     btnAcao = `<div style="width: 110px;"><button class="btn btn-success" onclick="executeMaintenanceRequestHandler('${req.id}')">Executar</button></div>`;
                 } else if (req.status === 'executed') {
                     
-                    // A MÁGICA ACONTECE AQUI: Usamos a nota que acabamos de buscar ativamente
+                    // A MÁGICA VISUAL ACONTECE AQUI: Usamos a nota que buscamos ativamente
                     const notaReal = ratingsMap[req.id]?.feedback_rating || req.feedback_rating;
                     const commentReal = ratingsMap[req.id]?.feedback_comment || req.feedback_comment;
 
@@ -9331,7 +9331,6 @@ async function runMaintenanceReport() {
                 `;
             }).join('');
 
-            // MANTÉM OS SEUS BOTÕES DE EXPORTAÇÃO E PAGINAÇÃO INTACTOS
             paginationContainer.innerHTML = `
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             <label for="items-per-page-selector" style="font-size: 0.8rem; color: var(--color-text-secondary);">Itens:</label>
