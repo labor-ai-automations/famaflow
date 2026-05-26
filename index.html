@@ -8990,21 +8990,19 @@ function changeItemsPerPage(value) {
                 } else {
                     allMaintenanceRequestsCache = (allReqs || []).filter(r => r.type === 'maintenance');
                     
-                    // CORREÇÃO: Busca as notas de feedback direto da tabela 'requests'
-                    // porque a view/RPC 'get_all_requests_for_viewing' não retorna essa coluna nativamente.
-                    const executedIds = allMaintenanceRequestsCache.filter(r => r.status === 'executed').map(r => r.id);
-                    if (executedIds.length > 0) {
-                        const { data: ratingsData } = await supabaseClient
-                            .from('requests')
-                            .select('id, feedback_rating')
-                            .in('id', executedIds);
-                            
-                        if (ratingsData) {
-                            ratingsData.forEach(ratingObj => {
-                                const req = allMaintenanceRequestsCache.find(r => r.id === ratingObj.id);
-                                if (req) req.feedback_rating = ratingObj.feedback_rating;
-                            });
-                        }
+                    // CORREÇÃO DEFINITIVA: Busca apenas as notas de manutenções já avaliadas 
+                    // de forma otimizada para evitar limites de tamanho de URL no Supabase
+                    const { data: ratingsData, error: ratingsError } = await supabaseClient
+                        .from('requests')
+                        .select('id, feedback_rating')
+                        .eq('type', 'maintenance')
+                        .not('feedback_rating', 'is', null);
+
+                    if (!ratingsError && ratingsData) {
+                        ratingsData.forEach(ratingObj => {
+                            const req = allMaintenanceRequestsCache.find(r => r.id === ratingObj.id);
+                            if (req) req.feedback_rating = ratingObj.feedback_rating;
+                        });
                     }
 
                     renderOptimizedMaintenanceTable();
