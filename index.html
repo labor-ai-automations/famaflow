@@ -2476,63 +2476,59 @@ const appHTML = `<div id="app-container">
                 <div id="users-page" class="page-content"><div class="page-header"><div class="page-header-title"><h1>Gerenciamento de Usuários</h1></div><div class="page-header-actions"><button id="refresh-users-btn" class="refresh-btn" title="Atualizar usuários"><span class="material-icons">refresh</span></button><button id="btn-new-user" class="btn btn-danger"><span class="material-icons">add</span> Novo Usuário</button></div></div><div class="card" style="padding:0;"><table class="data-table"><thead><tr><th>Usuário & Email</th><th>Departamento & Cargo</th><th>Score</th><th>Ações</th></tr></thead><tbody id="user-table-body"></tbody></table></div></div>
                 <div id="profile-page" class="page-content"><div id="user-profile-content"></div><div id="user-history-content"></div></div>
                 <div id="request-management-page" class="page-content">
-    <div class="page-header">
-        <div><h1>Gerenciamento de Requisições</h1><p>Aprovação de pendências em fluxo.</p></div>
-        <div class="page-header-actions">
-            <button class="btn btn-secondary" onclick="toggleMgtView('report')" id="btn-toggle-report"><span class="material-icons" style="font-size: 18px; margin-right: 5px;">picture_as_pdf</span> Relatórios (BI)</button>
-        </div>
-    </div>
-    
-    <div id="mgt-view-list">
-        <!-- MODIFICADO: Adicionado filtro de ordenação -->
-        <div class="card" style="margin-bottom: 1.5rem; padding: 1rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; background: var(--color-background);">
-            <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 250px;">
-                <span class="material-icons" style="color: var(--color-text-secondary);">filter_alt</span>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Visão da Fila</label>
-                    <select id="mgt-status-filter" class="input-field" style="border: none; background: transparent; padding: 0; font-size: 1rem; font-weight: 600; cursor: pointer; color: var(--color-brand-primary);" onchange="loadRequestManagementPage()">
-                        <option value="my_action" selected>⏳ Aguardando Minha Ação</option>
-                        <option value="others">👁️ Paradas com Outros (Acompanhamento)</option>
-                        <option value="all_pending">📋 Todas as Pendentes (Visão Geral)</option>
-                        <option value="finished">✅ Finalizadas (Aprovadas/Recusadas)</option>
-                    </select>
-                </div>
-            </div>
-            <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 250px;">
-                <span class="material-icons" style="color: var(--color-text-secondary);">sort</span>
-                <div>
-                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Ordenar Por</label>
-                    <select id="mgt-sort-filter" class="input-field" style="border: none; background: transparent; padding: 0; font-size: 1rem; font-weight: 600; cursor: pointer;" onchange="loadRequestManagementPage()">
-                        <option value="newest" selected>Mais Recentes</option>
-                        <option value="oldest">Mais Antigas</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+                    <div class="page-header">
+                        <div><h1>Gerenciamento de Requisições</h1><p>Aprovação de pendências em fluxo.</p></div>
+                        <div class="page-header-actions">
+                            <button class="btn btn-secondary" onclick="toggleMgtView('report')" id="btn-toggle-report"><span class="material-icons" style="font-size: 18px; margin-right: 5px;">picture_as_pdf</span> Relatórios (BI)</button>
+                        </div>
+                    </div>
+                    
+                    <div id="mgt-view-list">
+                        <div class="card" style="margin-bottom: 1.5rem; padding: 1rem; display: flex; gap: 1rem; align-items: center; background: var(--color-background); flex-wrap: wrap;">
+                            <span class="material-icons" style="color: var(--color-text-secondary);">filter_alt</span>
+                            <div style="flex-grow: 1; display: flex; gap: 2rem; flex-wrap: wrap;">
+                                <div>
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Visão da Fila</label>
+                                    <select id="mgt-status-filter" class="input-field" style="border: none; background: transparent; padding: 0; font-size: 1rem; font-weight: 600; cursor: pointer; color: var(--color-brand-primary);" onchange="loadRequestManagementPage()">
+                                        <option value="all" selected>📋 Todas as Requisições</option>
+                                        <option value="my_action">⏳ Aguardando Minha Ação</option>
+                                        <option value="others">👁️ Paradas com Outros</option>
+                                        <option value="all_pending">📋 Apenas Pendentes</option>
+                                        <option value="finished">✅ Finalizadas</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase;">Ordem</label>
+                                    <select id="mgt-sort-filter" class="input-field" style="border: none; background: transparent; padding: 0; font-size: 1rem; font-weight: 600; cursor: pointer; color: var(--color-brand-primary);" onchange="loadRequestManagementPage()">
+                                        <option value="newest" selected>⬇️ Mais Recentes</option>
+                                        <option value="oldest">⬆️ Mais Antigas</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
-        <div class="card" style="padding:0;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <!-- MODIFICADO: Colunas ajustadas -->
-                        <th style="width: 20%;">Solicitante</th>
-                        <th style="width: 20%;">Tipo</th>
-                        <th style="width: 15%;">Data de Abertura</th>
-                        <th style="width: 15%;">Etapa Atual</th>
-                        <th style="width: 15%;">Status</th>
-                        <th style="width: 15%;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="request-management-table-body">
-                    <tr><td colspan="6" class="empty-state">Carregando requisições...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+                        <div class="card" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 15%;">Solicitante</th>
+                                        <th style="width: 20%;">Tipo</th>
+                                        <th style="width: 20%;">Data/Hora</th>
+                                        <th style="width: 15%;">Etapa Atual</th>
+                                        <th style="width: 15%;">Status</th>
+                                        <th style="width: 15%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="request-management-table-body">
+                                    <tr><td colspan="6" class="empty-state">Carregando requisições...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-    <!-- MANTÉM O GERADOR DE RELATÓRIOS INTACTO -->
-    <div id="mgt-view-report" style="display: none;"><div class="report-form-wrapper"><div class="report-header-ui"><span class="material-icons" style="font-size: 32px; color: var(--color-brand-primary);">analytics</span><div><h3 style="margin:0;">Gerador de Relatórios Executivos</h3><p style="margin:0; font-size: 0.85rem; color: var(--color-text-secondary);">Filtre os dados para gerar o documento PDF oficial.</p></div></div><div class="report-grid"><div class="report-selector-box"><label>Período de Análise</label><div style="display:flex; gap: 10px;"><input type="date" id="rep-start-date" class="input-field"><input type="date" id="rep-end-date" class="input-field"></div></div><div class="report-selector-box"><label>Tipos de Requisição</label><div id="rep-allowed-types" class="report-check-grid"></div></div></div><div class="report-selector-box" style="margin-bottom: 2rem;"><label>Status das Solicitações</label><div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);"><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="approved" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Aprovadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="rejected"><span class="checkbox-box"><span class="material-icons">check</span></span> Recusadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="cancelled_by_requester"><span class="checkbox-box"><span class="material-icons">check</span></span> Canceladas</label></div></div><button class="btn-generate-report" id="btn-execute-report" onclick="runExecutiveReport()"><span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO</button><div style="text-align: center; margin-top: 1rem;"><button class="btn btn-secondary" onclick="toggleMgtView('list')">Voltar para Fila</button></div></div></div>
-</div>
+                    <!-- MANTÉM O GERADOR DE RELATÓRIOS INTACTO -->
+                    <div id="mgt-view-report" style="display: none;"><div class="report-form-wrapper"><div class="report-header-ui"><span class="material-icons" style="font-size: 32px; color: var(--color-brand-primary);">analytics</span><div><h3 style="margin:0;">Gerador de Relatórios Executivos</h3><p style="margin:0; font-size: 0.85rem; color: var(--color-text-secondary);">Filtre os dados para gerar o documento PDF oficial.</p></div></div><div class="report-grid"><div class="report-selector-box"><label>Período de Análise</label><div style="display:flex; gap: 10px;"><input type="date" id="rep-start-date" class="input-field"><input type="date" id="rep-end-date" class="input-field"></div></div><div class="report-selector-box"><label>Tipos de Requisição</label><div id="rep-allowed-types" class="report-check-grid"></div></div></div><div class="report-selector-box" style="margin-bottom: 2rem;"><label>Status das Solicitações</label><div class="report-check-grid" style="grid-template-columns: repeat(3, 1fr);"><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="pending" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Pendentes</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="planned" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Planejadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="approved" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Aprovadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="executed" checked><span class="checkbox-box"><span class="material-icons">check</span></span> Executadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="rejected"><span class="checkbox-box"><span class="material-icons">check</span></span> Recusadas</label><label class="custom-checkbox"><input type="checkbox" name="rep-status" value="cancelled_by_requester"><span class="checkbox-box"><span class="material-icons">check</span></span> Canceladas</label></div></div><button class="btn-generate-report" id="btn-execute-report" onclick="runExecutiveReport()"><span class="material-icons">picture_as_pdf</span> GERAR RELATÓRIO ANALÍTICO</button><div style="text-align: center; margin-top: 1rem;"><button class="btn btn-secondary" onclick="toggleMgtView('list')">Voltar para Fila</button></div></div></div>
+                </div>
                 <div id="travel-request-management-page" class="page-content">
                     <div class="page-header">
                         <div>
@@ -5648,7 +5644,7 @@ async function submitOvertimeCalculation(requestId) {
     const btn = event.target;
     const valorTotal = document.getElementById('rh-valor-total').value;
     const qtdHoras = document.getElementById('rh-qtd-horas').value;
-    const observacoes = document.getElementById('rh-observacoes').value.trim();
+    const observacoes = document.getElementById('rh-observacoes').value.trim(); // ADICIONADO: Captura as observações
 
     if (!valorTotal || !qtdHoras) {
         showToast("Preencha o valor total e a quantidade de horas.", "warning");
@@ -5671,7 +5667,7 @@ async function submitOvertimeCalculation(requestId) {
                 valor_total: parseFloat(valorTotal),
                 quantidade_horas: parseFloat(qtdHoras),
                 calculado_por_nome: currentUserProfile.full_name,
-                observacoes_rh: observacoes
+                observacoes_rh: observacoes // ADICIONADO: Envia o novo campo
             })
         });
 
@@ -9425,124 +9421,193 @@ function openMaintenanceExecutionModal(requestId) {
         
 
         async function openRhRequestDetailsModal(requestId) {
-    const modal = document.getElementById('request-modal');
-    const modalTitle = document.getElementById('request-modal-title');
-    const modalBody = document.getElementById('request-modal-body');
-    const modalFooter = document.getElementById('request-modal-footer');
+            const modal = document.getElementById('request-modal');
+            const modalTitle = document.getElementById('request-modal-title');
+            const modalBody = document.getElementById('request-modal-body');
+            const modalFooter = document.getElementById('request-modal-footer');
 
-    modalTitle.textContent = 'Análise de Requisição';
-    modalBody.innerHTML = '<div class="empty-state">Carregando detalhes do fluxo...</div>';
-    modalFooter.innerHTML = '';
-    modal.classList.add('visible');
+            modalTitle.textContent = 'Análise de Requisição';
+            modalBody.innerHTML = '<div class="empty-state">Carregando detalhes do fluxo...</div>';
+            modalFooter.innerHTML = '';
+            modal.classList.add('visible');
 
-    try {
-        const { data: request, error: reqError } = await supabaseClient
-            .from('rh_requests')
-            .select('*, requester:requester_id(full_name, manager_id)')
-            .eq('id', requestId)
-            .single();
+            try {
+                // 1. Busca os dados BÁSICOS da requisição primeiro, sem JOINs complexos.
+                // Removemos o .single() por um momento para garantir que não vai quebrar por falta de JOIN.
+                const { data: requestData, error: reqError } = await supabaseClient
+                    .from('rh_requests')
+                    .select('*')
+                    .eq('id', requestId);
 
-        if (reqError) throw reqError;
-        
-        const [historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
-            supabaseClient.from('rh_request_history').select('*').eq('request_id', requestId).order('created_at'),
-            supabaseClient.from('request_approval_workflows').select('*').eq('request_type', request.request_type).order('step_order'),
-            supabaseClient.from('rh_request_step_approvals').select('*, approver:approver_id(full_name)').eq('request_id', requestId)
-        ]);
-        
-        const history = historyRes.data || [];
-        const requestWorkflow = workflowRes.data || [];
-        const stepApprovals = stepApprovalsRes.data || [];
+                if (reqError) throw reqError;
+                if (!requestData || requestData.length === 0) {
+                     throw new Error("Requisição não encontrada no banco de dados.");
+                }
+                
+                const request = requestData[0];
 
-        const currentStepInfo = requestWorkflow.find(w => w.step_order === request.current_approval_step);
+                // 2. Busca o restante dos dados agora que sabemos que a requisição existe
+                const [requesterRes, historyRes, workflowRes, stepApprovalsRes] = await Promise.all([
+                    supabaseClient.from('profiles').select('full_name, manager_id').eq('id', request.requester_id).single(),
+                    supabaseClient.from('rh_request_history').select('*').eq('request_id', requestId).order('created_at'),
+                    supabaseClient.from('request_approval_workflows').select('*'),
+                    supabaseClient.from('rh_request_step_approvals').select('*, approver:approver_id(full_name)').eq('request_id', requestId)
+                ]);
 
-        let dataHtml = '<h4 class="form-section-title" style="margin-top:0;">Dados da Solicitação</h4><div class="read-only-box" style="margin-bottom: 2rem;">';
-        for (const [key, value] of Object.entries(request.data)) {
-            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            dataHtml += `<p style="margin: 0.5rem 0;"><strong>${label}:</strong> ${value}</p>`;
-        }
-        dataHtml += '</div>';
+                // Junta o requester de volta ao objeto request
+                request.requester = requesterRes.data || { full_name: 'Usuário Desconhecido', manager_id: null };
+                
+                const history = historyRes.data || [];
+                const workflows = workflowRes.data || [];
+                const stepApprovals = stepApprovalsRes.data || [];
 
-        let timelineHTML = `
-            <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
-                <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
-            </h4>
-            <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">`;
+                const requestWorkflow = workflows.filter(w => w.request_type === request.request_type).sort((a,b) => a.step_order - b.step_order);
+                const currentStepInfo = requestWorkflow.find(w => w.step_order === request.current_approval_step);
+                
+                // 2. Montar a Seção de Dados da Requisição (Output Inicial)
+                let dataHtml = '<h4 class="form-section-title" style="margin-top:0;">Dados da Solicitação</h4><div class="read-only-box" style="margin-bottom: 2rem;">';
+                
+                let safeData = request.data;
+                if (typeof safeData === 'string') {
+                    try { safeData = JSON.parse(safeData); } 
+                    catch (e) { safeData = {}; }
+                }
 
-        timelineHTML += `
-            <div style="margin-bottom: 2rem; position: relative;">
-                <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
-                <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Abertura</div>
-                <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado por ${request.requester.full_name}</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-            </div>`;
+                for (const [key, value] of Object.entries(safeData)) {
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    dataHtml += `<p style="margin: 0.5rem 0;"><strong>${label}:</strong> ${value}</p>`;
+                }
+                dataHtml += '</div>';
 
-        history.forEach(h => {
-            let color = h.new_status === 'rejected' ? 'var(--color-danger)' : 'var(--color-success)';
-            let icon = h.new_status === 'rejected' ? 'cancel' : 'check_circle';
-            timelineHTML += `
-                <div style="margin-bottom: 2rem; position: relative;">
-                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${color}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${color};"></div>
-                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${color}; letter-spacing: 0.05em;">${h.step_name}</div>
-                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600; display:flex; align-items:center; gap:5px;"><span class="material-icons" style="font-size:16px;">${icon}</span> ${h.new_status === 'rejected' ? 'Rejeitado' : 'Aprovado'} por ${h.changed_by_name}</div>
-                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                    ${h.notes ? `<div style="font-size: 0.85rem; margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);"><p style="margin:0;"><strong>Observações:</strong> ${h.notes}</p></div>` : ''}
-                </div>`;
-        });
-        
-        if (currentStepInfo && request.status !== 'approved' && request.status !== 'rejected') {
-            timelineHTML += `
-                <div style="margin-bottom: 2rem; position: relative;">
-                    <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-warning); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-warning);"></div>
-                    <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-warning); letter-spacing: 0.05em;">PENDENTE: ${currentStepInfo.step_name}</div>
-                    <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Aguardando ação...</div>
-                </div>`;
-        }
-        timelineHTML += `</div>`;
+                // 3. Montar a Linha do Tempo do Histórico
+                let historyHtml = `
+                    <h4 style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--color-text-secondary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons" style="font-size: 16px;">timeline</span> Histórico de Processamento
+                    </h4>
+                    <div style="margin-left: 15px; border-left: 2px solid var(--color-border); padding-left: 25px; position: relative;">
+                `;
 
-        let actionHtml = '';
-        const myActionRequired = currentStepInfo && (
-            (currentStepInfo.approver_type === 'manager' && request.requester.manager_id === currentUserProfile.id) ||
-            (currentStepInfo.approver_type === 'specific_user' && Array.isArray(currentStepInfo.specific_approver_id) && currentStepInfo.specific_approver_id.some(approver => approver.id === currentUserProfile.id))
-        );
-
-        if (myActionRequired) {
-            actionHtml = '<h4 class="form-section-title">Sua Ação Nesta Etapa</h4>';
-            const isRhCalculationStep = request.request_type === 'overtime' && currentStepInfo && currentStepInfo.step_name.toLowerCase().includes('cálculo');
-            
-            if (isRhCalculationStep) {
-                 actionHtml += `
-                    <div class="form-group">
-                        <label>Valor Total (R$)</label>
-                        <input type="number" id="rh-valor-total" class="input-field" step="0.01" placeholder="Ex: 250.75">
-                    </div>
-                    <div class="form-group">
-                        <label>Qtd. Horas</label>
-                        <input type="number" id="rh-qtd-horas" class="input-field" step="0.1" placeholder="Ex: 8">
-                    </div>
-                     <div class="form-group">
-                        <label>Observações do Cálculo (Opcional)</label>
-                        <textarea id="rh-observacoes" class="input-field" rows="2"></textarea>
+                // 3.1 Adiciona a Etapa de Abertura (sempre presente)
+                historyHtml += `
+                    <div style="margin-bottom: 2rem; position: relative;">
+                        <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-brand-primary); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-brand-primary);"></div>
+                        <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-brand-primary); letter-spacing: 0.05em;">Abertura</div>
+                        <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Pedido registrado no sistema</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">Por: ${request.requester?.full_name || 'Usuário Desconhecido'} • ${new Date(request.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
                     </div>
                 `;
-                modalFooter.innerHTML = `
-                    <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
-                    <button class="btn btn-danger" onclick="submitOvertimeCalculation('${requestId}')">Salvar Cálculo e Avançar</button>
-                `;
-            } else {
-                actionHtml += `<div class="form-group"><label for="decision-notes">Observações da Decisão (Obrigatório ao Rejeitar)</label><textarea id="decision-notes" class="input-field" rows="3"></textarea></div>`;
-                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button><button class="btn btn-danger" onclick="submitRhRequestDecision('${requestId}', 'rejected')">Rejeitar</button><button class="btn btn-success" onclick="submitRhRequestDecision('${requestId}', 'approved')">Aprovar</button>`;
+
+                // 3.2 Renderiza as etapas concluídas do histórico
+                history.forEach((h) => {
+                    // Determina a cor com base no status ou observações
+                    let color = 'var(--color-success)'; // Padrão: Aprovado
+                    if (h.new_status === 'rejected' || (h.notes && h.notes.toLowerCase().includes('rejeitad'))) {
+                        color = 'var(--color-danger)';
+                    } else if (h.notes && h.notes.toLowerCase().includes('cálculo')) {
+                        color = 'var(--color-info)'; // RH
+                    }
+
+                    historyHtml += `
+                        <div style="margin-bottom: 2rem; position: relative;">
+                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: ${color}; border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px ${color};"></div>
+                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: ${color}; letter-spacing: 0.05em;">Etapa ${h.step}: ${h.step_name || 'Concluída'}</div>
+                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Processada por ${h.changed_by_name || 'Sistema'}</div>
+                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 2px;">${new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                            ${h.notes ? `
+                            <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-top: 8px; background: var(--color-background); padding: 12px; border-radius: 8px; border: 1px solid var(--color-border);">
+                                <div><strong style="color: var(--color-text-secondary);">Observações:</strong> ${h.notes}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                // 3.3 Adiciona a etapa atual (se houver e não estiver finalizada)
+                if (currentStepInfo && request.status !== 'approved' && request.status !== 'rejected') {
+                    let stepStatusHtml = '';
+                    if (currentStepInfo.approval_policy === 'all') {
+                        const neededApprovers = new Set(currentStepInfo.approver_ids || []);
+                        const currentApprovals = stepApprovals.filter(sa => sa.step === currentStepInfo.step_order);
+                        
+                        if (currentApprovals.length > 0) {
+                            stepStatusHtml += `<div style="margin-top: 8px; font-size: 0.8rem;">`;
+                            currentApprovals.forEach(sa => {
+                                stepStatusHtml += `<div style="color:var(--color-success); display:flex; align-items:center; gap:4px;"><span class="material-icons" style="font-size:14px;">check</span> Aprovado por ${sa.approver?.full_name || 'Usuário'}</div>`;
+                                neededApprovers.delete(sa.approver_id);
+                            });
+                            stepStatusHtml += `</div>`;
+                        }
+                    }
+
+                    historyHtml += `
+                        <div style="margin-bottom: 2rem; position: relative;">
+                            <div style="position: absolute; left: -36px; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--color-warning); border: 4px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-warning);"></div>
+                            <div style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--color-warning); letter-spacing: 0.05em;">Etapa ${currentStepInfo.step_order}: ${currentStepInfo.step_name || 'Pendente'}</div>
+                            <div style="font-size: 0.9rem; margin-top: 4px; font-weight: 600;">Aguardando Ação...</div>
+                            ${stepStatusHtml}
+                        </div>
+                    `;
+                }
+
+                historyHtml += `</div>`; // Fecha a linha do tempo
+                
+
+                // 4. Montar o Bloco de Ação Condicional
+                let actionHtml = '';
+                const myActionRequired = currentStepInfo && (
+                    (currentStepInfo.approver_type === 'manager' && (request.requester.manager_id === currentUserProfile.id)) ||
+                    (currentStepInfo.approver_type === 'specific_users' && Array.isArray(currentStepInfo.approver_ids) && currentStepInfo.approver_ids.includes(currentUserProfile.id))
+                );
+
+                if (myActionRequired) {
+                    actionHtml = '<h4 class="form-section-title">Sua Ação Nesta Etapa</h4>';
+                    
+                    const isRhCalculationStep = request.request_type === 'overtime' && currentStepInfo && currentStepInfo.step_name.toLowerCase().includes('cálculo');
+                    
+                    if (isRhCalculationStep) {
+                         actionHtml += `
+                            <div class="form-group">
+                                <label>Valor Total (R$)</label>
+                                <input type="number" id="rh-valor-total" class="input-field" step="0.01" placeholder="Ex: 250.75">
+                            </div>
+                            <div class="form-group">
+                                <label>Qtd. Horas</label>
+                                <input type="number" id="rh-qtd-horas" class="input-field" step="0.1" placeholder="Ex: 8">
+                            </div>
+                             <div class="form-group">
+                                <label>Observações do Cálculo (Opcional)</label>
+                                <textarea id="rh-observacoes" class="input-field" rows="2"></textarea>
+                            </div>
+                        `;
+                        modalFooter.innerHTML = `
+                            <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="submitOvertimeCalculation('${requestId}')">Salvar Cálculo e Avançar</button>
+                        `;
+                    } else {
+                        actionHtml += `
+                            <div class="form-group">
+                                <label for="decision-notes">Observações da Decisão (Obrigatório ao Rejeitar)</label>
+                                <textarea id="decision-notes" class="input-field" rows="3"></textarea>
+                            </div>
+                        `;
+                        modalFooter.innerHTML = `
+                            <button class="btn btn-secondary" onclick="closeRequestModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="submitRhRequestDecision('${requestId}', 'rejected')">Rejeitar</button>
+                            <button class="btn btn-success" onclick="submitRhRequestDecision('${requestId}', 'approved')">Aprovar</button>
+                        `;
+                    }
+                } else {
+                     modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
+                }
+
+                modalBody.innerHTML = dataHtml + historyHtml + actionHtml;
+
+            } catch (error) {
+                console.error("Erro ao abrir detalhes da requisição de RH:", error);
+                modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
+                modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
             }
-        } else {
-            modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
         }
-        modalBody.innerHTML = dataHtml + timelineHTML + actionHtml;
-    } catch (error) {
-        console.error("Erro ao abrir detalhes:", error);
-        modalBody.innerHTML = `<div class="empty-state" style="color:var(--color-danger);">${error.message}</div>`;
-        modalFooter.innerHTML = `<button class="btn btn-secondary" onclick="closeRequestModal()">Fechar</button>`;
-    }
-}
 
         async function submitRhRequestDecision(requestId, decision) {
             const notes = document.getElementById('decision-notes').value.trim();
@@ -9669,14 +9734,15 @@ function toggleMgtView(view) {
 
   async function loadRequestManagementPage() {
     const tableBody = document.getElementById('request-management-table-body');
-    if (!tableBody) return;
+    if(!tableBody) return;
     tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Analisando fluxos de aprovação...</td></tr>`;
 
-    if (!currentUserProfile || !currentUserProfile.id) {
-        tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Erro: Usuário não identificado. Recarregue a página.</td></tr>`;
-        return;
+    if (!currentUserProfile || !currentUserProfile.id) { 
+         tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">Erro: Usuário não identificado. Recarregue a página.</td></tr>`; 
+         return;
     }
 
+    // CORREÇÃO: Chama a RPC COM o parâmetro p_user_id
     const { data: allRequests, error } = await supabaseClient.rpc('get_rh_requests_for_management', {
         p_user_id: currentUserProfile.id
     });
@@ -9684,23 +9750,23 @@ function toggleMgtView(view) {
     if (error) {
         tableBody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color:var(--color-danger)">Erro ao carregar dados: ${error.message}</td></tr>`;
         return;
-    }
-
-    // ADICIONADO: Lógica de Ordenação
-    const sortFilter = document.getElementById('mgt-sort-filter').value;
-    const sortedRequests = (allRequests || []).sort((a, b) => {
-        const dateA = new Date(a.created_at);
-        const dateB = new Date(b.created_at);
-        return sortFilter === 'oldest' ? dateA - dateB : dateB - dateA;
-    });
-
+    }        
+    // Aplicar os filtros de visibilidade (já mastigados pelo banco)
     const viewFilter = document.getElementById('mgt-status-filter').value;
-    const finalRequests = sortedRequests.filter(req => {
+    let finalRequests = (allRequests || []).filter(req => {
         if (viewFilter === 'my_action') return req.my_action_required && !req.is_finished;
         if (viewFilter === 'others') return req.is_involved && !req.my_action_required && !req.is_finished;
-        if (viewFilter === 'all_pending') return !req.is_finished;
-        if (viewFilter === 'finished') return req.is_finished;
-        return true;
+        if (viewFilter === 'all_pending') return !req.is_finished; 
+        if (viewFilter === 'finished') return req.is_finished; 
+        return true; // Para o caso 'all'
+    });
+
+    // Filtro de Ordenação (Mais Recentes / Mais Antigas)
+    const sortFilter = document.getElementById('mgt-sort-filter') ? document.getElementById('mgt-sort-filter').value : 'newest';
+    finalRequests.sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortFilter === 'newest' ? dateB - dateA : dateA - dateB;
     });
 
     if (finalRequests.length === 0) {
@@ -9719,10 +9785,10 @@ function toggleMgtView(view) {
         if (req.status.includes('approved')) statusClass = 'status-approved';
         if (req.status.includes('rejected')) statusClass = 'status-rejected';
 
-        // MODIFICADO: Formatação de data completa
+        // Formatando Data e Hora
         const date = new Date(req.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
         const rowClass = req.my_action_required ? 'row-pending-check' : '';
-
+        
         let actionsHTML = `<button class="btn btn-secondary" onclick="openRhRequestDetailsModal('${req.id}')">Analisar</button>`;
 
         return `
